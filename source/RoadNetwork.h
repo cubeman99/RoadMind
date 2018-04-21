@@ -2,7 +2,8 @@
 #define _ROAD_NETWORK_H_
 
 #include "NodeGroup.h"
-#include "Road.h"
+#include "NodeGroupTie.h"
+#include "NodeGroupConnection.h"
 #include "Connection.h"
 #include <set>
 
@@ -19,20 +20,25 @@ public:
 	std::set<Connection*>& GetConnections();
 	std::set<NodeGroup*>& GetNodeGroups();
 	std::set<NodeGroupTie*>& GetNodeGroupTies();
-	std::set<RoadSurface*>& GetRoadSurfaces();
+	std::set<NodeGroupConnection*>& GetNodeGroupConnections();
 	const RoadMetrics& GetMetrics() const;
 
 	// Topology Modification
 	NodeGroup* CreateNodeGroup(const Vector2f& position,
 		const Vector2f& direction = Vector2f::UNITX, int laneCount = 1);
-	RoadSurface* ConnectNodeGroups(NodeGroup* from, NodeGroup* to);
-	RoadSurface* ConnectNodeSubGroups(
+	Node* AddNodeToGroup(NodeGroup* group);
+	NodeGroupConnection* ConnectNodeGroups(NodeGroup* from, NodeGroup* to);
+	NodeGroupConnection* ConnectNodeSubGroups(
 		NodeGroup* from, int fromIndex, int fromCount,
 		NodeGroup* to, int toIndex, int toCount);
+	NodeGroupConnection* ConnectNodeSubGroups(
+		const NodeSubGroup& from, const NodeSubGroup& to);
 	NodeGroupTie* TieNodeGroups(NodeGroup* a, NodeGroup* b);
+	void AddNodesToGroup(NodeGroup* group, int count = 1);
+	void RemoveNodeFromGroup(NodeGroup* group, int count = 1);
 	void UntieNodeGroup(NodeGroup* nodeGroup);
 	void DeleteNodeGroup(NodeGroup* nodeGroup);
-	void DeleteNodeGroupConnection(RoadSurface* connection);
+	void DeleteNodeGroupConnection(NodeGroupConnection* connection);
 	void ClearNodes();
 
 	Node* CreateNode();
@@ -40,6 +46,7 @@ public:
 	void DeleteNode(Node* node);
 	Connection* Connect(Node* from, Node* to);
 	void Disconnect(Node* from, Node* to);
+	void DeleteConnection(Connection* connection);
 	void SewNode(Node* node, Node* left);
 	void SewOpposite(Node* node, Node* left);
 
@@ -50,7 +57,7 @@ private:
 	RoadMetrics m_metrics;
 	std::set<NodeGroupTie*> m_nodeGroupTies;
 	std::set<NodeGroup*> m_nodeGroups;
-	std::set<RoadSurface*> m_roadSurfaces;
+	std::set<NodeGroupConnection*> m_nodeGroupConnections;
 	std::set<Node*> m_nodes;
 	std::set<Connection*> m_connections;
 	unsigned int m_nodeIdCounter;

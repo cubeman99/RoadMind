@@ -71,10 +71,6 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <None Include="..\assets\edit.fs" />
-    <None Include="..\assets\edit.vs" />
-  </ItemGroup>
-  <ItemGroup>
     <ClInclude Include="..\source\Biarc.h" />
     <ClInclude Include="..\source\Camera.h" />
     <ClInclude Include="..\source\CommonTypes.h" />
@@ -83,7 +79,8 @@
     <ClInclude Include="..\source\Node.h" />
     <ClInclude Include="..\source\MainApp.h" />
     <ClInclude Include="..\source\NodeGroup.h" />
-    <ClInclude Include="..\source\Road.h" />
+    <ClInclude Include="..\source\NodeGroupConnection.h" />
+    <ClInclude Include="..\source\NodeGroupTie.h" />
     <ClInclude Include="..\source\RoadNetwork.h" />
   </ItemGroup>
   <ItemGroup>
@@ -95,7 +92,8 @@
     <ClCompile Include="..\source\main.cpp" />
     <ClCompile Include="..\source\MainApp.cpp" />
     <ClCompile Include="..\source\NodeGroup.cpp" />
-    <ClCompile Include="..\source\Road.cpp" />
+    <ClCompile Include="..\source\NodeGroupConnection.cpp" />
+    <ClCompile Include="..\source\NodeGroupTie.cpp" />
     <ClCompile Include="..\source\RoadNetwork.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

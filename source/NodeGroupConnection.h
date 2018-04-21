@@ -8,40 +8,56 @@
 
 
 //-----------------------------------------------------------------------------
-// Class:   RoadSurface
+// Class:   NodeGroupConnection
 // Purpose: Represents a one-way connection between two node (sub) groups.
 //-----------------------------------------------------------------------------
-class RoadSurface
+class NodeGroupConnection
 {
 	friend class RoadNetwork;
+	friend class NodeGroup;
 
 public:
 	// Constructors
-	RoadSurface();
-	~RoadSurface();
+
+	NodeGroupConnection();
+	~NodeGroupConnection();
 
 	// Getters
+
 	const RoadMetrics* GetMetrics() const;
 	BiarcPair GetLeftEdgeLine() const;
 	BiarcPair GetRightEdgeLine() const;
-	RoadSurface* GetTwin();
-	NodeGroup* GetInput();
-	NodeGroup* GetOutput();
+	NodeGroupConnection* GetTwin();
+	const NodeSubGroup& GetInput();
+	const NodeSubGroup& GetOutput();
 
-	// Setters
+	// Geometry
+
 	void UpdateGeometry();
-	
-private:
-	const RoadMetrics* m_metrics;
 
-	NodeGroup* m_groups[2];
-	int m_indexes[2];
-	int m_counts[2];
-	RoadSurface* m_twin;
+
+public:
+	union
+	{
+		struct
+		{
+			NodeSubGroup m_input;
+			NodeSubGroup m_output;
+		};
+		struct
+		{
+			NodeSubGroup m_groups[2];
+		};
+	};
+
+	NodeGroupConnection* m_twin;
+
+	const RoadMetrics* m_metrics;
 
 public:
 	std::vector<BiarcPair> m_dividerLines;
 };
+
 
 
 #endif // _ROAD_H_

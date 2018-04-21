@@ -39,11 +39,11 @@ public:
 	void OnDropFile(const String& fileName) override;
 	void OnUpdate(float timeDelta) override;
 	void OnRender() override;
-	
+
 	void CreateTestNetwork();
 	void DrawGridFloor(const Vector3f& center, Meters squareSize, Meters gridRadius);
 	void DrawConnection(Graphics2D& g, Connection* connection);
-	void DrawRoadSurface(Graphics2D& g, Connection* connection);
+	void DrawNodeGroupConnection(Graphics2D& g, Connection* connection);
 	void DrawRoadMarkings(Graphics2D& g, Connection* connection);
 	void DrawNode(Graphics2D& g, Node* node);
 
@@ -54,6 +54,7 @@ public:
 	void CancelDragging();
 	void StopDragging();
 
+	void UpdateHoverInfo();
 	void UpdateCameraControls(float dt);
 
 private:
@@ -67,32 +68,40 @@ private:
 
 	DragState m_dragState;
 
-	struct DragInfo {
+	struct DragInfo
+	{
 		DragState state;
 		NodeGroup* inputGroup;
 		NodeGroup* nodeGroup;
-		RoadSurface* connection;
+		NodeGroupConnection* connection;
+		Vector2f position;
 	};
 
 	DragInfo m_dragInfo;
 	EditMode m_editMode;
 
 	Array<Driver*> m_drivers;
-	
+
 	NodeGroup* m_lastNodeGroup;
 
 	bool m_wireframeMode;
 	int m_rightLaneCount;
 	int m_leftLaneCount;
 
-	struct {
+	struct
+	{
 		Node* node;
 		LaneSide side;
 		bool reverse;
 		Vector2f center;
+		NodeGroup* nodeGroup;
+		int nodeIndex;
+		float nodePartialIndex;
+		int startIndex;
 	} m_hoverInfo;
 
-	struct {
+	struct
+	{
 		Node* node;
 		LaneSide side;
 		bool reverse;

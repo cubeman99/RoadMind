@@ -15,14 +15,6 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <None Include="..\assets\edit.fs">
-      <Filter>Resource Files</Filter>
-    </None>
-    <None Include="..\assets\edit.vs">
-      <Filter>Resource Files</Filter>
-    </None>
-  </ItemGroup>
-  <ItemGroup>
     <ClInclude Include="..\source\MainApp.h">
       <Filter>Source Files</Filter>
     </ClInclude>
@@ -33,9 +25,6 @@
       <Filter>Source Files</Filter>
     </ClInclude>
     <ClInclude Include="..\source\Biarc.h">
-      <Filter>Source Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\source\Road.h">
       <Filter>Source Files</Filter>
     </ClInclude>
     <ClInclude Include="..\source\Connection.h">
@@ -53,6 +42,12 @@
     <ClInclude Include="..\source\NodeGroup.h">
       <Filter>Source Files</Filter>
     </ClInclude>
+    <ClInclude Include="..\source\NodeGroupConnection.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\source\NodeGroupTie.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\source\main.cpp">
@@ -65,9 +60,6 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="..\source\Biarc.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="..\source\Road.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="..\source\Connection.cpp">
@@ -83,6 +75,12 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="..\source\NodeGroup.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\source\NodeGroupConnection.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\source\NodeGroupTie.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

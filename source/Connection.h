@@ -11,6 +11,8 @@ class Node;
 
 class Connection
 {
+	friend class RoadNetwork;
+
 public:
 	Connection(Node* from, Node* to);
 	~Connection();

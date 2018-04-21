@@ -8,8 +8,8 @@
 #include <set>
 
 class Connection;
-class RoadNetwork;
 class NodeGroup;
+class NodeGroupConnection;
 
 
 class Node
@@ -17,7 +17,7 @@ class Node
 	friend class Connection;
 	friend class RoadNetwork;
 	friend class NodeGroup;
-	friend class RoadSurface;
+	friend class NodeGroupConnection;
 
 public:
 	// Constructors
@@ -29,12 +29,14 @@ public:
 
 	// Getters
 
+	int GetIndex() const;
 	NodeGroup* GetNodeGroup();
 	const RoadMetrics* GetMetrics() const;
 	float GetWidth() const;
 	unsigned int GetNodeId() const;
 	Vector2f GetEndNormal() const;
 	Vector2f GetEndTangent() const;
+	Vector2f GetPosition() const;
 	Vector2f GetLeftEdge() const;
 	Vector2f GetRightEdge() const;
 	Vector2f GetLeftEdgeTangent() const;
@@ -50,10 +52,8 @@ public:
 	std::set<Connection*>& GetOutputs();
 	bool HasInput(Node* node) const;
 	bool HasOutput(Node* node) const;
-
 	Connection* GetInputConnection(Node* node) const;
 	Connection* GetOutputConnection(Node* node) const;
-
 	LaneDivider GetLeftLaneDivider() const;
 	LaneDivider GetRightLaneDivider() const;
 	bool IsLeftMostLane() const;
@@ -71,18 +71,21 @@ public:
 	void SetEndNormal(const Vector2f& normal);
 	void SetLeftEdgeTangent(const Vector2f& tangent);
 	void SetRightEdgeTangent(const Vector2f& tangent);
+	
+	// Geometry
+
+	void UpdateGeometry();
 
 private:
-	void UpdateGeometry();
-	
 	unsigned int m_nodeId;
 	Meters m_width;
 	Vector2f m_position;
 	Vector2f m_endNormal;
 	Vector2f m_rightTangent;
 	Vector2f m_leftTangent;
-
 	LaneDivider m_leftDivider;
+
+	int m_index;
 
 	union
 	{
@@ -94,8 +97,8 @@ private:
 		Node* m_sideNodes[2];
 	};
 
-	std::set<Connection*> m_outputs;
-	std::set<Connection*> m_inputs;
+	Set<Connection*> m_outputs;
+	Set<Connection*> m_inputs;
 
 	void* m_signal; // Stop-light, stop-sign, yield-sign
 	void* m_laneMarking;

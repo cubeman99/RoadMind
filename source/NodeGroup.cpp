@@ -1,86 +1,27 @@
 #include "NodeGroup.h"
+#include "NodeGroupConnection.h"
 
-
-//-----------------------------------------------------------------------------
-// Constructors
-//-----------------------------------------------------------------------------
-
-NodeGroupTie::NodeGroupTie()
-	: m_centerDividerWidth(0.0f)
-	, m_position(Vector2f::ZERO)
-	, m_direction(Vector2f::UNITX)
-	, m_nodeGroup(nullptr)
+float NodeSubGroup::GetWidth() const
 {
+	float width = 0.0f;
+	for (int i = 0; i < count; i++)
+		width += group->GetNode(index + i)->GetWidth();
+	return width;
 }
 
-NodeGroupTie::~NodeGroupTie()
+Vector2f NodeSubGroup::GetLeftPosition() const
 {
+	return group->GetNode(index)->GetPosition();
 }
 
-
-//-----------------------------------------------------------------------------
-// Getters
-//-----------------------------------------------------------------------------
-
-float NodeGroupTie::GetCenterWidth() const
+Vector2f NodeSubGroup::GetCenterPosition() const
 {
-	return m_centerDividerWidth;
+	Vector2f leftEdge = group->GetNode(index)->GetPosition();
+	float width = GetWidth();
+	Vector2f right = group->GetDirection();
+	right = Vector2f(-right.y, right.x);
+	return (leftEdge + (right * width * 0.5f));
 }
-
-const Vector2f& NodeGroupTie::GetPosition() const
-{
-	return m_position;
-}
-
-const Vector2f& NodeGroupTie::GetDirection() const
-{
-	return m_direction;
-}
-
-NodeGroup* NodeGroupTie::GetNodeGroup() const
-{
-	return m_nodeGroup;
-}
-
-NodeGroup* NodeGroupTie::GetNodeGroupTwin() const
-{
-	return m_nodeGroup->GetTwin();
-}
-
-void NodeGroupTie::UpdateGeometry()
-{
-	Vector2f normal = m_direction;
-	normal = Vector2f(-normal.y, normal.x);
-
-	m_nodeGroup->SetPosition(m_position + (normal * m_centerDividerWidth * 0.5f));
-	m_nodeGroup->SetDirection(m_direction);
-
-	NodeGroup* twin = m_nodeGroup->GetTwin();
-	twin->SetPosition(m_position - (normal * m_centerDividerWidth * 0.5f));
-	twin->SetDirection(-m_direction);
-}
-
-//-----------------------------------------------------------------------------
-// Setters
-//-----------------------------------------------------------------------------
-
-void NodeGroupTie::SetPosition(const Vector2f& position)
-{
-	m_position = position;
-}
-
-void NodeGroupTie::SetDirection(const Vector2f& direction)
-{
-	m_direction = direction;
-}
-
-void NodeGroupTie::SetCenterWidth(Meters centerWidth)
-{
-	m_centerDividerWidth = centerWidth;
-}
-
-
-
 
 
 //-----------------------------------------------------------------------------
@@ -92,6 +33,7 @@ NodeGroup::NodeGroup()
 	, m_position(Vector2f::ZERO)
 	, m_direction(Vector2f::UNITX)
 	, m_tie(nullptr)
+	, m_allowPassing(false)
 {
 }
 
@@ -150,6 +92,21 @@ int NodeGroup::GetNumNodes() const
 	return (int) m_nodes.size();
 }
 
+float NodeGroup::GetWidth() const
+{
+	float width = 0.0f;
+	for (unsigned int i = 0; i < m_nodes.size(); i++)
+		width += m_nodes[i]->m_width;
+	return width;
+}
+
+Vector2f NodeGroup::GetCenterPosition() const
+{
+	float width = GetWidth();
+	Vector2f right(-m_direction.y, m_direction.x);
+	return (m_position + (right * width * 0.5f));
+}
+
 
 //-----------------------------------------------------------------------------
 // Setters
@@ -187,3 +144,55 @@ void NodeGroup::UpdateGeometry()
 	}
 }
 
+
+//-----------------------------------------------------------------------------
+// Internal Methods
+//-----------------------------------------------------------------------------
+
+void NodeGroup::InsertInput(NodeGroupConnection* input)
+{
+	InsertConnection(input, 0);
+}
+
+void NodeGroup::InsertOutput(NodeGroupConnection* output)
+{
+	InsertConnection(output, 1);
+}
+
+void NodeGroup::InsertConnection(NodeGroupConnection* connection, int direction)
+{
+	Array<NodeGroupConnection*>& connections = m_connections[direction];
+	int opposite = 1 - direction;
+
+	for (unsigned int i = 0; i < connections.size(); i++)
+	{
+		if (connection->m_groups[opposite].index <=
+			connections[i]->m_groups[opposite].index &&
+			connection->m_groups[opposite].count <=
+			connections[i]->m_groups[opposite].count)
+		{
+			connections.insert(connections.begin() + i, connection);
+			return;
+		}
+	}
+
+	connections.push_back(connection);
+}
+
+void NodeGroup::RemoveInput(NodeGroupConnection* input)
+{
+	RemoveConnection(input, 0);
+}
+
+void NodeGroup::RemoveOutput(NodeGroupConnection* output)
+{
+	RemoveConnection(output, 1);
+}
+
+void NodeGroup::RemoveConnection(NodeGroupConnection* connection, int direction)
+{
+	Array<NodeGroupConnection*>& connections = m_connections[direction];
+	auto it = std::find(connections.begin(), connections.end(), connection);
+	if (it != connections.end())
+		connections.erase(it);
+}

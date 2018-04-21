@@ -1,16 +1,17 @@
-#include "Road.h"
+#include "NodeGroupConnection.h"
+
 
 //-----------------------------------------------------------------------------
 // Constructors
 //-----------------------------------------------------------------------------
 
-RoadSurface::RoadSurface()
+NodeGroupConnection::NodeGroupConnection()
 	: m_metrics(nullptr)
 	, m_twin(nullptr)
 {
 }
 
-RoadSurface::~RoadSurface()
+NodeGroupConnection::~NodeGroupConnection()
 {
 }
 
@@ -19,34 +20,34 @@ RoadSurface::~RoadSurface()
 // Getters
 //-----------------------------------------------------------------------------
 
-const RoadMetrics* RoadSurface::GetMetrics() const
+const RoadMetrics* NodeGroupConnection::GetMetrics() const
 {
 	return m_metrics;
 }
 
-BiarcPair RoadSurface::GetLeftEdgeLine() const
+BiarcPair NodeGroupConnection::GetLeftEdgeLine() const
 {
 	return m_dividerLines.front();
 }
 
-BiarcPair RoadSurface::GetRightEdgeLine() const
+BiarcPair NodeGroupConnection::GetRightEdgeLine() const
 {
 	return m_dividerLines.back();
 }
 
-RoadSurface* RoadSurface::GetTwin()
+NodeGroupConnection* NodeGroupConnection::GetTwin()
 {
 	return m_twin;
 }
 
-NodeGroup* RoadSurface::GetInput()
+const NodeSubGroup& NodeGroupConnection::GetInput()
 {
-	return m_groups[0];
+	return m_input;
 }
 
-NodeGroup* RoadSurface::GetOutput()
+const NodeSubGroup& NodeGroupConnection::GetOutput()
 {
-	return m_groups[1];
+	return m_output;
 }
 
 
@@ -54,41 +55,38 @@ NodeGroup* RoadSurface::GetOutput()
 // Geometry
 //-----------------------------------------------------------------------------
 
-void RoadSurface::UpdateGeometry()
+void NodeGroupConnection::UpdateGeometry()
 {
 	// Create the left edge
+	Node* nodes[2];
+	nodes[0] = m_input.group->GetNode(m_input.index);
+	nodes[1] = m_output.group->GetNode(m_output.index);
 	BiarcPair prev, curr;
 	prev = BiarcPair::Interpolate(
-		m_groups[0]->GetPosition(), m_groups[0]->GetDirection(),
-		m_groups[1]->GetPosition(), m_groups[1]->GetDirection());
+		nodes[0]->m_position, m_input.group->GetDirection(),
+		nodes[1]->m_position, m_output.group->GetDirection());
 	m_dividerLines.clear();
 	m_dividerLines.push_back(prev);
 
 	// Create the lane dividers
-	Node* nodes[2];
-	nodes[0] = m_groups[0]->GetLeftNode();
-	nodes[1] = m_groups[1]->GetLeftNode();
-	int minRightCount = Math::Min(m_counts[0], m_counts[1]);
-	int mxaRightCount = Math::Max(m_counts[0], m_counts[1]);
+	int minRightCount = Math::Min(m_input.count, m_output.count);
+	int mxaRightCount = Math::Max(m_input.count, m_output.count);
 	for (int i = 0; i < minRightCount; i++)
 	{
+		nodes[0] = m_input.group->GetNode(i);
+		nodes[1] = m_output.group->GetNode(i);
 		curr = BiarcPair::CreateParallel(prev,
 			nodes[0]->GetWidth(), nodes[1]->GetWidth());
 		m_dividerLines.push_back(curr);
 		prev = curr;
-		nodes[0] = nodes[0]->m_rightNode;
-		nodes[1] = nodes[1]->m_rightNode;
 	}
 
 	// Create the right edge
 	float offsets[2] = { 0.0f, 0.0f };
 	for (int k = 0; k < 2; k++)
 	{
-		for (int i = minRightCount; i < m_counts[k]; i++)
-		{
-			offsets[k] += nodes[k]->GetWidth();
-			nodes[k] = nodes[k]->GetRightNode();
-		}
+		for (int i = minRightCount; i < m_groups[k].count; i++)
+			offsets[k] += m_groups[k].group->GetNode(i)->GetWidth();
 	}
 	curr = BiarcPair::CreateParallel(prev, offsets[0], offsets[1]);
 	m_dividerLines.push_back(curr);

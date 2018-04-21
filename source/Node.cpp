@@ -15,6 +15,7 @@ Node::Node()
 	, m_leftNode(nullptr)
 	, m_leftDivider(LaneDivider::DASHED)
 	, m_nodeGroup(nullptr)
+	, m_index(0)
 {
 }
 
@@ -22,6 +23,11 @@ Node::Node()
 //-----------------------------------------------------------------------------
 // Getters
 //-----------------------------------------------------------------------------
+
+int Node::GetIndex() const
+{
+	return m_index;
+}
 
 NodeGroup* Node::GetNodeGroup()
 {
@@ -51,6 +57,11 @@ Vector2f Node::GetEndNormal() const
 Vector2f Node::GetEndTangent() const
 {
 	return Vector2f(-m_endNormal.y, m_endNormal.x);
+}
+
+Vector2f Node::GetPosition() const
+{
+	return m_position;
 }
 
 Vector2f Node::GetLeftEdge() const

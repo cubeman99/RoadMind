@@ -1,6 +1,10 @@
 #include "RoadNetwork.h"
 
 
+//-----------------------------------------------------------------------------
+// Constructors
+//-----------------------------------------------------------------------------
+
 RoadNetwork::RoadNetwork()
 {
 	m_nodeIdCounter = 1;
@@ -18,11 +22,16 @@ RoadNetwork::~RoadNetwork()
 	ClearNodes();
 }
 
+
+//-----------------------------------------------------------------------------
+// Topolgy Modifications
+//-----------------------------------------------------------------------------
+
 void RoadNetwork::ClearNodes()
 {
-	for (RoadSurface* surface : m_roadSurfaces)
+	for (NodeGroupConnection* surface : m_nodeGroupConnections)
 		delete surface;
-	m_roadSurfaces.clear();
+	m_nodeGroupConnections.clear();
 	for (NodeGroupTie* tie : m_nodeGroupTies)
 		delete tie;
 	m_nodeGroupTies.clear();
@@ -37,7 +46,8 @@ void RoadNetwork::ClearNodes()
 	m_nodes.clear();
 }
 
-NodeGroup* RoadNetwork::CreateNodeGroup(const Vector2f& position, const Vector2f& direction, int laneCount)
+NodeGroup* RoadNetwork::CreateNodeGroup(const Vector2f& position,
+	const Vector2f& direction, int laneCount)
 {
 	// Construct the node group
 	NodeGroup* group = new NodeGroup();
@@ -68,39 +78,130 @@ NodeGroup* RoadNetwork::CreateNodeGroup(const Vector2f& position, const Vector2f
 	return group;
 }
 
-RoadSurface* RoadNetwork::ConnectNodeGroups(NodeGroup* from, NodeGroup* to)
+Node* RoadNetwork::AddNodeToGroup(NodeGroup* group)
 {
-	return ConnectNodeSubGroups(from, 0, from->GetNumNodes(),
-		to, 0, to->GetNumNodes());
+	Node* node = new Node();
+	node->m_width = m_metrics.laneWidth;
+	group->m_nodes.push_back(node);
+	return node;
 }
 
-RoadSurface* RoadNetwork::ConnectNodeSubGroups(
+void RoadNetwork::AddNodesToGroup(NodeGroup* group, int count)
+{
+	Node* left = nullptr;;
+	if (!group->m_nodes.empty())
+		left = group->m_nodes.back();
+
+	for (int i = 0; i < count; i++)
+	{
+		Node* node = new Node();
+		node->m_width = m_metrics.laneWidth;
+		node->m_index = (int) group->m_nodes.size();
+		node->m_nodeGroup = group;
+
+		left->m_rightNode = node;
+		node->m_leftNode = left;
+		left = node;
+		group->m_nodes.push_back(node);
+		m_nodes.insert(node);
+	}
+}
+
+void RoadNetwork::RemoveNodeFromGroup(NodeGroup* group, int count)
+{
+	// Adjust or remove group connections involving this node
+	int end = group->m_nodes.size() - count;
+	for (int k = 0; k < 2; k++)
+	{
+		for (unsigned int i = 0; i < group->m_connections[k].size(); i++)
+		{
+			NodeGroupConnection* connection = group->m_connections[k][i];
+			NodeSubGroup& subGroup = connection->m_groups[1 - k];
+
+			int delta = subGroup.index + subGroup.count - end;
+			if (delta > 0)
+			{
+				if (delta >= subGroup.count)
+				{
+					// Delete this connection entirely
+					DeleteNodeGroupConnection(connection);
+					i--;
+				}
+				else
+				{
+					subGroup.count -= count;
+				}
+			}
+		}
+	}
+
+	// Delete the individual nodes from the group
+	for (int i = 0; i < count; i++)
+	{
+		Node* node = group->m_nodes.back();
+		while (!node->m_inputs.empty())
+			DeleteConnection(*node->m_inputs.begin());
+		while (!node->m_outputs.empty())
+			DeleteConnection(*node->m_outputs.begin());
+
+		m_nodes.erase(node);
+		group->m_nodes.pop_back();
+		delete node;
+	}
+
+	if (group->m_nodes.empty())
+	{
+
+	}
+	else
+	{
+		group->m_nodes.back()->m_rightNode = nullptr;
+	}
+}
+
+NodeGroupConnection* RoadNetwork::ConnectNodeGroups(NodeGroup* from, NodeGroup* to)
+{
+	return ConnectNodeSubGroups(
+		NodeSubGroup(from, 0, from->GetNumNodes()),
+		NodeSubGroup(to, 0, to->GetNumNodes()));
+}
+
+NodeGroupConnection* RoadNetwork::ConnectNodeSubGroups(
 	NodeGroup* from, int fromIndex, int fromCount,
 	NodeGroup* to, int toIndex, int toCount)
 {
+	return ConnectNodeSubGroups(
+		NodeSubGroup(from, fromIndex, fromCount),
+		NodeSubGroup(to, toIndex, toCount));
+}
+
+NodeGroupConnection* RoadNetwork::ConnectNodeSubGroups(
+	const NodeSubGroup& from, const NodeSubGroup& to)
+{
 	// Construct the node group connection
-	RoadSurface* surface = new RoadSurface();
-	surface->m_groups[0] = from;
-	surface->m_indexes[0] = fromIndex;
-	surface->m_counts[0] = fromCount;
-	surface->m_groups[1] = to;
-	surface->m_indexes[1] = toIndex;
-	surface->m_counts[1] = toCount;
-	surface->m_twin = nullptr;
-	surface->m_metrics = &m_metrics;
-	m_roadSurfaces.insert(surface);
+	NodeGroupConnection* connection = new NodeGroupConnection();
+	connection->m_input = from;
+	connection->m_output = to;
+	connection->m_twin = nullptr;
+	connection->m_metrics = &m_metrics;
+	m_nodeGroupConnections.insert(connection);
+
+	from.group->InsertOutput(connection);
+	to.group->InsertInput(connection);
 
 	// Connect the individual nodes
 	Node* nodes[2];
-	int maxCount = Math::Max(fromCount, toCount);
+	int maxCount = Math::Max(from.count, to.count);
 	for (int i = 0; i < maxCount; i++)
 	{
-		nodes[0] = from->GetNode(fromIndex + Math::Min(fromCount - 1, i));
-		nodes[1] = to->GetNode(toIndex + Math::Min(toCount - 1, i));
+		nodes[0] = from.group->GetNode(
+			from.index + Math::Min(from.count - 1, i));
+		nodes[1] = to.group->GetNode(
+			to.index + Math::Min(to.count - 1, i));
 		Connect(nodes[0], nodes[1]);
 	}
 
-	return surface;
+	return connection;
 }
 
 NodeGroupTie* RoadNetwork::TieNodeGroups(NodeGroup* a, NodeGroup* b)
@@ -157,22 +258,27 @@ void RoadNetwork::DeleteNodeGroup(NodeGroup* nodeGroup)
 	delete nodeGroup;
 }
 
-void RoadNetwork::DeleteNodeGroupConnection(RoadSurface* connection)
+void RoadNetwork::DeleteNodeGroupConnection(NodeGroupConnection* connection)
 {
 	// Delete individiual node connections
-	NodeGroup* input = connection->GetInput();
-	for (int i = connection->m_indexes[0]; i < connection->m_counts[0]; i++)
+	NodeGroup* input = connection->m_input.group;
+	NodeGroup* output = connection->m_output.group;
+	for (int i = connection->m_input.index; i < connection->m_input.count; i++)
 	{
-		Node* a = connection->GetInput()->GetNode(i);
-		for (int j = connection->m_indexes[1]; j < connection->m_counts[1]; j++)
+		Node* a = connection->m_input.group->GetNode(i);
+		for (int j = connection->m_output.index;
+			j < connection->m_output.count; j++)
 		{
-			Node* b = connection->GetOutput()->GetNode(j);
+			Node* b = connection->m_output.group->GetNode(j);
 			Disconnect(a, b);
 		}
 	}
 
+	input->RemoveOutput(connection);
+	output->RemoveInput(connection);
+
 	// Delete the node group connection itself
-	m_roadSurfaces.erase(connection);
+	m_nodeGroupConnections.erase(connection);
 	delete connection;
 }
 
@@ -206,9 +312,9 @@ std::set<NodeGroupTie*>& RoadNetwork::GetNodeGroupTies()
 	return m_nodeGroupTies;
 }
 
-std::set<RoadSurface*>& RoadNetwork::GetRoadSurfaces()
+std::set<NodeGroupConnection*>& RoadNetwork::GetNodeGroupConnections()
 {
-	return m_roadSurfaces;
+	return m_nodeGroupConnections;
 }
 
 Node* RoadNetwork::CreateNode()
@@ -287,12 +393,15 @@ void RoadNetwork::Disconnect(Node* from, Node* to)
 {
 	Connection* connection = from->GetOutputConnection(to);
 	if (connection != nullptr)
-	{
-		m_connections.erase(connection);
-		delete connection;
-		from->m_outputs.erase(connection);
-		to->m_inputs.erase(connection);
-	}
+		DeleteConnection(connection);
+}
+
+void RoadNetwork::DeleteConnection(Connection* connection)
+{
+	m_connections.erase(connection);
+	connection->m_input->m_outputs.erase(connection);
+	connection->m_output->m_inputs.erase(connection);
+	delete connection;
 }
 
 void RoadNetwork::SewNode(Node* node, Node* left)
@@ -313,7 +422,7 @@ void RoadNetwork::UpdateNodeGeometry()
 		tie->UpdateGeometry();
 	for (NodeGroup* group : m_nodeGroups)
 		group->UpdateGeometry();
-	for (RoadSurface* surface : m_roadSurfaces)
+	for (NodeGroupConnection* surface : m_nodeGroupConnections)
 		surface->UpdateGeometry();
 	//for (Node* node : m_nodes)
 	//node->UpdateGeometry();

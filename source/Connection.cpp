@@ -2,17 +2,24 @@
 #include "Node.h"
 
 
-Connection::Connection(Node* from, Node* to) :
-m_input(from),
-m_output(to)
-{
+//-----------------------------------------------------------------------------
+// Constructors
+//-----------------------------------------------------------------------------
 
+Connection::Connection(Node* from, Node* to)
+	: m_input(from)
+	, m_output(to)
+{
 }
 
 Connection::~Connection()
 {
-
 }
+
+
+//-----------------------------------------------------------------------------
+// Getters
+//-----------------------------------------------------------------------------
 
 Node* Connection::GetInput()
 {
