@@ -1,0 +1,104 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" ToolsVersion="12.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|Win32">
+      <Configuration>Debug</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|Win32">
+      <Configuration>Release</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <ProjectGuid>{142D2E50-20DD-4504-BEDF-5A1296D97DB2}</ProjectGuid>
+    <RootNamespace>Presenter</RootNamespace>
+    <ProjectName>RoadMind</ProjectName>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <PlatformToolset>v120</PlatformToolset>
+    <CharacterSet>MultiByte</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <PlatformToolset>v120</PlatformToolset>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+    <CharacterSet>MultiByte</CharacterSet>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ImportGroup Label="ExtensionSettings">
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <PropertyGroup Label="UserMacros" />
+  <PropertyGroup />
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <Optimization>Disabled</Optimization>
+      <SDLCheck>true</SDLCheck>
+      <AdditionalIncludeDirectories>../../cmgEngine/INSTALL/include;../source;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ClCompile>
+    <Link>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalLibraryDirectories>../../cmgEngine/INSTALL/lib/Debug;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>cmgCore.lib;cmgMath.lib;cmgGraphics.lib;cmgInput.lib;cmgPhysics.lib;cmgApplication.lib;opengl32.lib;glu32.lib;dinput8.lib;%(AdditionalDependencies)</AdditionalDependencies>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <Optimization>MaxSpeed</Optimization>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <SDLCheck>true</SDLCheck>
+      <AdditionalIncludeDirectories>../../cmgEngine/INSTALL/include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ClCompile>
+    <Link>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <OptimizeReferences>true</OptimizeReferences>
+      <AdditionalDependencies>cmgCore.lib;cmgMath.lib;cmgGraphics.lib;cmgInput.lib;cmgApplication.lib;opengl32.lib;glu32.lib;dinput8.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>../../cmgEngine/INSTALL/lib/Release;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemGroup>
+    <None Include="..\assets\edit.fs" />
+    <None Include="..\assets\edit.vs" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\source\Biarc.h" />
+    <ClInclude Include="..\source\Camera.h" />
+    <ClInclude Include="..\source\CommonTypes.h" />
+    <ClInclude Include="..\source\Connection.h" />
+    <ClInclude Include="..\source\Driver.h" />
+    <ClInclude Include="..\source\Node.h" />
+    <ClInclude Include="..\source\MainApp.h" />
+    <ClInclude Include="..\source\NodeGroup.h" />
+    <ClInclude Include="..\source\Road.h" />
+    <ClInclude Include="..\source\RoadNetwork.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="..\source\Biarc.cpp" />
+    <ClCompile Include="..\source\Camera.cpp" />
+    <ClCompile Include="..\source\Connection.cpp" />
+    <ClCompile Include="..\source\Driver.cpp" />
+    <ClCompile Include="..\source\Node.cpp" />
+    <ClCompile Include="..\source\main.cpp" />
+    <ClCompile Include="..\source\MainApp.cpp" />
+    <ClCompile Include="..\source\NodeGroup.cpp" />
+    <ClCompile Include="..\source\Road.cpp" />
+    <ClCompile Include="..\source\RoadNetwork.cpp" />
+  </ItemGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets">
+  </ImportGroup>
+</Project>
