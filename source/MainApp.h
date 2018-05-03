@@ -98,6 +98,7 @@ private:
 		int nodeIndex;
 		float nodePartialIndex;
 		int startIndex;
+		bool isValidSubGroup;
 	} m_hoverInfo;
 
 	struct

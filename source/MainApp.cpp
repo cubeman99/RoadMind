@@ -68,40 +68,7 @@ void MainApp::OnInitialize()
 
 void MainApp::CreateTestNetwork()
 {
-	float w = 48.0f;
-	Node* n1a = m_network->CreateNode(Vector2f(100, 101), Vector2f(1, 0), w);
-	Node* n2a = m_network->CreateNode(Vector2f(300, 100), Vector2f(1, 0), w);
-	Node* n3a = m_network->CreateNode(Vector2f(500, 300), Vector2f(0, 1), w);
-	Node* n4a = m_network->CreateNode(Vector2f(501, 400), Vector2f(0, 1), w);
-	m_network->Connect(n1a, n2a);
-	m_network->Connect(n2a, n3a);
-	m_network->Connect(n3a, n4a);
 
-	Node* n1b = m_network->CreateNode(Vector2f(100, 101 + w), Vector2f(1, 0), w);
-	Node* n2b = m_network->CreateNode(Vector2f(300, 100 + w), Vector2f(1, 0), w);
-	Node* n3b = m_network->CreateNode(Vector2f(500 - w, 300), Vector2f(0, 1), w);
-	Node* n4b = m_network->CreateNode(Vector2f(501 - w, 400), Vector2f(0, 1), w);
-	m_network->Connect(n1b, n2b);
-	m_network->Connect(n2b, n3b);
-	m_network->Connect(n3b, n4b);
-	m_network->SewNode(n1b, n1a);
-	m_network->SewNode(n2b, n2a);
-	m_network->SewNode(n3b, n3a);
-	m_network->SewNode(n4b, n4a);
-
-	Node* m1a = m_network->CreateNode(Vector2f(100, 101), Vector2f(-1, 0), 48.0f);
-	Node* m2a = m_network->CreateNode(Vector2f(300, 100), Vector2f(-1, 0), 48.0f);
-	Node* m3a = m_network->CreateNode(Vector2f(500, 300), Vector2f(0, -1), 96.0f);
-	Node* m4a = m_network->CreateNode(Vector2f(501, 400), Vector2f(0, -1), 96.0f);
-	m_network->Connect(m4a, m3a);
-	m_network->Connect(m3a, m2a);
-	m_network->Connect(m2a, m1a);
-	m_network->SewOpposite(n1a, m1a);
-	m_network->SewOpposite(n2a, m2a);
-	m_network->SewOpposite(n3a, m3a);
-	m_network->SewOpposite(n4a, m4a);
-	//m_network->SewOpposite(m1, n1);
-	//m_network->SewOpposite(m2, n2);
 }
 
 
@@ -143,12 +110,12 @@ Node* MainApp::BeginExtending(Node* node, LaneSide side, bool reverse)
 		m_dragNode->SetEndNormal(direction);
 		m_dragNode->SetCenterPosition(node->GetCenter() + offset * node->GetEndTangent());
 
-		if (reverse)
-			m_network->SewOpposite(node, m_dragNode);
-		else if (side == LaneSide::LEFT)
-			m_network->SewNode(node, m_dragNode);
-		else if (side == LaneSide::RIGHT)
-			m_network->SewNode(m_dragNode, node);
+		/*	if (reverse)
+				m_network->SewOpposite(node, m_dragNode);
+				else if (side == LaneSide::LEFT)
+				m_network->SewNode(node, m_dragNode);
+				else if (side == LaneSide::RIGHT)
+				m_network->SewNode(m_dragNode, node);*/
 		node = m_dragNode;
 	}
 
@@ -251,14 +218,15 @@ void MainApp::UpdateDragging()
 					m_dragInfo.nodeGroup->SetDirection(autoNormal);
 				}
 
-				if (m_hoverInfo.node != nullptr)
+				if (m_hoverInfo.nodeGroup != nullptr)
 				{
 					// Snap
 					snapped = true;
-					m_dragInfo.nodeGroup->SetPosition(
-						m_hoverInfo.nodeGroup->GetNode(m_hoverInfo.startIndex)->GetPosition());
 					m_dragInfo.nodeGroup->SetDirection(
 						m_hoverInfo.nodeGroup->GetDirection());
+					float w = m_network->GetMetrics().laneWidth;
+					m_dragInfo.nodeGroup->SetPosition(m_hoverInfo.nodeGroup->GetPosition() +
+						(right * w * (float) m_hoverInfo.startIndex));
 				}
 			}
 
@@ -290,15 +258,32 @@ void MainApp::UpdateDragging()
 			m_dragInfo.inputGroup = nullptr;
 			m_dragInfo.connection = nullptr;
 
-			if (m_hoverInfo.node != nullptr)
+			if (m_hoverInfo.nodeGroup != nullptr)
 			{
+				int deltaCount = m_hoverInfo.startIndex + m_rightLaneCount -
+					m_hoverInfo.nodeGroup->GetNumNodes();
+
+				if (deltaCount > 0)
+				{
+					// Add new nodes to the right
+					m_network->AddNodesToGroup(m_hoverInfo.nodeGroup, deltaCount);
+				}
+				if (m_hoverInfo.startIndex < 0)
+				{
+					// Add new nodes to the left
+					m_network->AddNodesToLeftOfGroup(
+						m_hoverInfo.nodeGroup, -m_hoverInfo.startIndex);
+					m_hoverInfo.startIndex = 0;
+				}
+
 				NodeSubGroup startSubGroup;
 				startSubGroup.group = m_hoverInfo.nodeGroup;
 				startSubGroup.index = m_hoverInfo.startIndex;
-				startSubGroup.count = Math::Min(m_rightLaneCount,
-					m_hoverInfo.nodeGroup->GetNumNodes() - m_hoverInfo.startIndex);
+				startSubGroup.count = m_rightLaneCount;
+				//Math::Min(m_rightLaneCount,
+				//m_hoverInfo.nodeGroup->GetNumNodes() - m_hoverInfo.startIndex);
 				NodeSubGroup endSubGroup(m_dragInfo.nodeGroup, 0, m_rightLaneCount);
-				m_dragInfo.inputGroup = m_hoverInfo.node->GetNodeGroup();
+				m_dragInfo.inputGroup = m_hoverInfo.nodeGroup;
 				m_dragInfo.connection = m_network->ConnectNodeSubGroups(
 					startSubGroup, endSubGroup);
 			}
@@ -314,233 +299,109 @@ void MainApp::UpdateDragging()
 			m_dragInfo.state = DragState::POSITION;
 		}
 	}
-	return;
-
-	if (m_dragState == DragState::POSITION)
-	{
-		if (ctrl)
-		{
-			// Update direction
-			Vector2f center = m_dragNode->GetCenter();
-			Vector2f direction = m_mousePosition - center;
-			if (direction.Length() > 0.0f)
-			{
-				direction = Vector2f::Normalize(direction);
-				m_dragNode->SetEndNormal(direction);
-				m_dragNode->SetLeftEdgeTangent(direction);
-				m_dragNode->SetRightEdgeTangent(direction);
-			}
-			m_dragNode->SetCenterPosition(center);
-		}
-		else
-		{
-			m_dragNode->SetCenterPosition(m_mousePosition);
-
-			// Automatically choose and end normal
-			if (m_dragNode->GetNumInputs() > 0)
-			{
-				Node* prev = (*m_dragNode->GetInputs().begin())->GetInput();
-				Vector2f tangent = (m_mousePosition -
-					prev->GetCenter()).Normalize();
-				Vector2f normal(-tangent.y, tangent.x);
-				Vector2f middle = (m_mousePosition + prev->GetCenter()) * 0.5f;
-				Vector2f intersection = Line2f::GetLineIntersection(
-					prev->GetCenter(), prev->GetCenter() + prev->GetEndNormal(),
-					middle, middle + normal);
-				Vector2f autoNormal = Vector2f::Normalize(m_mousePosition - intersection);
-				float dot = m_mousePosition.Dot(prev->GetEndNormal()) - prev->GetCenter().Dot(prev->GetEndNormal());
-				if (Math::Abs(dot) < 0.001f)
-					autoNormal = -prev->GetEndNormal();
-				else if (dot < 0)
-					autoNormal = -autoNormal;
-				m_dragNode->SetEndNormal(autoNormal);
-				m_dragNode->SetLeftEdgeTangent(autoNormal);
-				m_dragNode->SetRightEdgeTangent(autoNormal);
-			}
-		}
-
-		m_snapInfo.node = nullptr;
-		if (m_hoverInfo.node != nullptr)
-		{
-			snapped = true;
-
-			m_snapInfo.node = m_hoverInfo.node;
-			m_snapInfo.side = m_hoverInfo.side;
-			m_snapInfo.center = m_hoverInfo.center;
-
-			Vector2f hoverCenter = m_hoverInfo.node->GetCenter();
-			if (m_hoverInfo.side != LaneSide::NONE)
-			{
-				float offset = m_hoverInfo.node->GetWidth();
-				if (m_hoverInfo.side == LaneSide::LEFT)
-					offset = -offset;
-				hoverCenter += m_hoverInfo.node->GetEndTangent() * offset;
-			}
-
-			Vector2f direction = m_hoverInfo.node->GetEndNormal();
-			if (m_dragInput != nullptr &&
-				m_dragInput->GetEndNormal().Dot(direction) < 0)
-			{
-				m_snapInfo.reverse = true;
-				direction = -direction;
-			}
-			else
-			{
-				m_snapInfo.reverse = false;
-			}
-
-			m_dragNode->SetEndNormal(direction);
-			m_dragNode->SetWidth(m_hoverInfo.node->GetWidth());
-			m_dragNode->SetCenterPosition(hoverCenter);
-		}
-
-		if (mouse->IsButtonPressed(MouseButtons::right))
-		{
-			m_network->DeleteNode(m_dragNode);
-			m_dragNode = nullptr;
-			m_dragState = DragState::NONE;
-		}
-		else if (mouse->IsButtonPressed(MouseButtons::left))
-		{
-			if (m_snapInfo.node != nullptr && m_dragNode->GetNumInputs() > 0)
-			{
-				if (m_hoverInfo.side != LaneSide::NONE)
-				{
-					// Sew the drag node to another node
-					Vector2f direction = m_snapInfo.node->GetEndNormal();
-					if (m_snapInfo.reverse)
-						direction = -direction;
-					m_dragNode->SetWidth(m_snapInfo.node->GetWidth());
-					m_dragNode->SetEndNormal(direction);
-					m_dragNode->SetCenterPosition(m_snapInfo.center);
-					if (m_snapInfo.reverse)
-						m_network->SewOpposite(m_dragNode, m_snapInfo.node);
-					else if (m_snapInfo.side == LaneSide::RIGHT)
-						m_network->SewNode(m_dragNode, m_snapInfo.node);
-					else if (m_snapInfo.side == LaneSide::LEFT)
-						m_network->SewNode(m_snapInfo.node, m_dragNode);
-					m_dragState = DragState::NONE;
-					BeginExtending(m_dragNode);
-				}
-				else
-				{
-					// Delete the node and connect two nodes instead
-					Node* output = m_hoverInfo.node;
-					Node* input = (*m_dragNode->GetInputs().begin())->GetInput();
-					m_network->Disconnect(input, m_dragNode);
-					m_network->Connect(input, output);
-					m_network->DeleteNode(m_dragNode);
-					m_dragNode = nullptr;
-					m_dragState = DragState::NONE;
-				}
-			}
-			else if (ctrl)
-			{
-				m_dragState = DragState::NONE;
-				BeginExtending(m_dragNode);
-			}
-			else
-			{
-				m_dragState = DragState::DIRECTION;
-			}
-		}
-	}
-	else if (m_dragState == DragState::DIRECTION)
-	{
-		Vector2f center = m_dragNode->GetCenter();
-		Vector2f direction = m_mousePosition - center;
-		if (direction.Length() > 4.0f)
-		{
-			direction = Vector2f::Normalize(direction);
-			m_dragNode->SetEndNormal(direction);
-			m_dragNode->SetLeftEdgeTangent(direction);
-			m_dragNode->SetRightEdgeTangent(direction);
-		}
-		m_dragNode->SetCenterPosition(center);
-
-		if (mouse->IsButtonPressed(MouseButtons::right))
-		{
-			m_network->DeleteNode(m_dragNode);
-			m_dragNode = nullptr;
-			m_dragState = DragState::NONE;
-		}
-		else if (!mouse->IsButtonDown(MouseButtons::left))
-		{
-			m_dragState = DragState::NONE;
-			BeginExtending(m_dragNode);
-		}
-	}
-	/*else if (mouse->IsButtonPressed(MouseButtons::left))
-	{
-	if (m_hoverInfo.node == nullptr)
-	BeginDraggingNewNode(m_mousePosition);
-	else if (ctrl)
-	BeginDragging(m_hoverInfo.node);
-	else
-	{
-	bool reverse = (m_mousePosition.Dot(m_hoverInfo.node->GetEndNormal()) <
-	m_hoverInfo.node->GetCenter().Dot(m_hoverInfo.node->GetEndNormal()));
-	BeginExtending(m_hoverInfo.node, m_hoverInfo.side, reverse);
-	}
-	}*/
 }
 
 void MainApp::UpdateHoverInfo()
 {
-	m_hoverInfo.node = nullptr;
-	m_hoverInfo.nodeGroup = nullptr;
-	m_hoverInfo.nodeIndex = 0;
-	m_hoverInfo.nodePartialIndex = 0.0f;
-	m_hoverInfo.side = LaneSide::NONE;
-	m_hoverInfo.reverse = false;
-
-	// Check which node is being hovered over
-	for (NodeGroup* group : m_network->GetNodeGroups())
+	if (!GetKeyboard()->IsKeyDown(Keys::left_shift))
 	{
-		if (m_dragInfo.state != DragState::NONE &&
-			m_dragInfo.nodeGroup == group)
-			continue;
+		m_hoverInfo.node = nullptr;
+		m_hoverInfo.nodeGroup = nullptr;
+		m_hoverInfo.nodeIndex = 0;
+		m_hoverInfo.nodePartialIndex = 0.0f;
+		m_hoverInfo.side = LaneSide::NONE;
+		m_hoverInfo.reverse = false;
 
-		for (int index = 0; index < group->GetNumNodes(); index++)
+		// Check which node is being hovered over
+		for (NodeGroup* group : m_network->GetNodeGroups())
 		{
-			Node* node = group->GetNode(index);
-
-			float radius = node->GetWidth() * 0.5f;
-			Vector2f center = node->GetCenter();
-			Vector2f right = node->GetEndTangent();
-			Vector2f leftEdge = center - (right * radius);
-			Vector2f rightEdge = center + (right * radius);
-
-			float t = (m_mousePosition.Dot(right) - leftEdge.Dot(right))
-				/ (rightEdge.Dot(right) - leftEdge.Dot(right));
-
-			if (m_mousePosition.DistTo(center) <= radius)
+			if (m_dragInfo.state != DragState::NONE &&
+				m_dragInfo.nodeGroup == group)
+				continue;
+			for (int index = 0; index < group->GetNumNodes(); index++)
 			{
-				m_hoverInfo.nodeGroup = group;
-				m_hoverInfo.node = node;
-				m_hoverInfo.nodeIndex = index;
-				m_hoverInfo.nodePartialIndex = (float) index + t;
-				m_hoverInfo.side = LaneSide::NONE;
-				m_hoverInfo.center = node->GetCenter();
-				m_hoverInfo.reverse = false;
-				m_hoverInfo.startIndex = Math::Max(0,
-					(int) ((m_hoverInfo.nodePartialIndex - m_rightLaneCount * 0.5f) + 0.5f));
+				Node* node = group->GetNode(index);
+				float radius = node->GetWidth() * 0.5f;
+				Vector2f center = node->GetCenter();
+				if (m_mousePosition.DistTo(center) <= radius)
+				{
+					m_hoverInfo.nodeGroup = group;
+					break;
+				}
 			}
-			//else if (node->GetLeftNode() == nullptr &&
-			//	m_mousePosition.DistTo(leftCenter) <= radius)
-			//{
-			//	m_hoverInfo.node = node;
-			//	m_hoverInfo.side = LaneSide::LEFT;
-			//	m_hoverInfo.center = leftCenter;
-			//}
-			//else if (node->GetRightNode() == nullptr &&
-			//	m_mousePosition.DistTo(rightCenter) <= radius)
-			//{
-			//	m_hoverInfo.node = node;
-			//	m_hoverInfo.side = LaneSide::RIGHT;
-			//	m_hoverInfo.center = rightCenter;
-			//}
+			if (m_hoverInfo.nodeGroup != nullptr)
+				break;
 		}
+	}
+
+	if (m_hoverInfo.nodeGroup != nullptr)
+	{
+		float groupWidth = m_hoverInfo.nodeGroup->GetWidth();
+		Vector2f leftEdge = m_hoverInfo.nodeGroup->GetPosition();
+		Vector2f rightEdge = m_hoverInfo.nodeGroup->GetRightPosition();
+		Vector2f right = m_hoverInfo.nodeGroup->GetDirection();
+		right = Vector2f(-right.y, right.x);
+		float w = m_network->GetMetrics().laneWidth;
+		float offset = (m_mousePosition.Dot(right) - leftEdge.Dot(right));
+
+		if (offset <= 0.0f)
+		{
+			m_hoverInfo.node = nullptr;
+			m_hoverInfo.nodePartialIndex = offset / w;
+			m_hoverInfo.nodeIndex = (int) (offset / w) - 1;
+			m_hoverInfo.center = leftEdge +
+				(right * w * (m_hoverInfo.nodePartialIndex + 0.5f));
+		}
+		else if (offset >= groupWidth)
+		{
+			m_hoverInfo.node = nullptr;
+			m_hoverInfo.nodePartialIndex =
+				m_hoverInfo.nodeGroup->GetNumNodes() +
+				(offset - groupWidth) / w;
+			m_hoverInfo.nodeIndex = m_hoverInfo.nodeGroup->GetNumNodes() +
+				(int) m_hoverInfo.nodePartialIndex;
+			m_hoverInfo.center = leftEdge +
+				(right * w * (m_hoverInfo.nodePartialIndex + 0.5f));
+		}
+		else
+		{
+			float o = 0.0f;
+			for (int index = 0;
+				index < m_hoverInfo.nodeGroup->GetNumNodes(); index++)
+			{
+				Node* node = m_hoverInfo.nodeGroup->GetNode(index);
+				if (offset >= o && offset <= o + node->GetWidth())
+				{
+					m_hoverInfo.nodeIndex = index;
+					m_hoverInfo.nodePartialIndex =
+						index + ((offset - o) / node->GetWidth());
+					m_hoverInfo.center = node->GetCenter();
+					m_hoverInfo.node = node;
+					break;
+				}
+				o += node->GetWidth();
+			}
+		}
+
+		m_hoverInfo.side = LaneSide::NONE;
+		m_hoverInfo.reverse = false;
+		m_hoverInfo.startIndex = (int) Math::Floor(
+			(m_hoverInfo.nodePartialIndex - (m_rightLaneCount - 1) * 0.5f));
+		NodeSubGroup hoverSubGroup(m_hoverInfo.nodeGroup,
+			m_hoverInfo.startIndex, m_rightLaneCount);
+
+		m_hoverInfo.isValidSubGroup = true;
+		for (auto connection : m_hoverInfo.nodeGroup->GetOutputs())
+		{
+			int overlap = NodeSubGroup::GetOverlap(
+				hoverSubGroup, connection->GetInput());
+			if (overlap > 1)
+			{
+				m_hoverInfo.isValidSubGroup = false;
+				break;
+			}
+		}
+
 	}
 }
 
@@ -1481,10 +1342,10 @@ void MainApp::OnRender()
 			Node* node = group->GetNode(i);
 			g.DrawLine(node->GetLeftEdge(), node->GetRightEdge(), Color::WHITE);
 			g.FillCircle(node->GetRightEdge(), r, Color::WHITE);
-			if (m_hoverInfo.nodeGroup == group &&
-				i >= m_hoverInfo.startIndex &&
-				i < m_hoverInfo.startIndex + m_rightLaneCount)
-				g.FillCircle(node->GetCenter(), node->GetWidth() * 0.5f, Color::GRAY);
+			//if (m_hoverInfo.nodeGroup == group &&
+			//i >= m_hoverInfo.startIndex &&
+			//i < m_hoverInfo.startIndex + m_rightLaneCount)
+			//g.FillCircle(node->GetCenter(), node->GetWidth() * 0.5f, Color::GRAY);
 			g.DrawCircle(node->GetCenter(), node->GetWidth() * 0.5f, Color::WHITE);
 			g.DrawLine(node->GetCenter(), node->GetCenter() + node->GetEndNormal() * r2, Color::WHITE);
 		}
@@ -1504,6 +1365,26 @@ void MainApp::OnRender()
 		g.DrawCircle(driver->GetPosition(), radius, Color::GREEN);
 		g.DrawLine(driver->GetPosition(), driver->GetPosition() +
 			driver->GetDirection() * radius, Color::BLACK);
+	}
+
+	// Draw hovered-over nodes
+	if (m_hoverInfo.nodeGroup != nullptr)
+	{
+		Vector2f leftEdge = m_hoverInfo.nodeGroup->GetPosition();
+		Vector2f right = m_hoverInfo.nodeGroup->GetRightDirection();
+		float w = metrics.laneWidth;
+		for (int i = 0; i < m_rightLaneCount; i++)
+		{
+			int index = m_hoverInfo.startIndex + i;
+
+			float radius = w * 0.5f;
+			Vector2f center = leftEdge + (right * w * (index + 0.5f));
+			Color outlineColor = Color::YELLOW;
+			if (!m_hoverInfo.isValidSubGroup)
+				outlineColor = Color::RED;
+			g.FillCircle(center, radius, Color::GRAY);
+			g.DrawCircle(center, radius, outlineColor);
+		}
 	}
 
 	Keyboard* keyboard = GetKeyboard();

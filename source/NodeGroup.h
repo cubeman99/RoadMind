@@ -42,6 +42,17 @@ public:
 	float GetWidth() const;
 	Vector2f GetLeftPosition() const;
 	Vector2f GetCenterPosition() const;
+
+public:
+
+	// Static methods
+
+	static int GetOverlap(const NodeSubGroup& a, const NodeSubGroup& b)
+	{
+		return Math::Max(0, Math::Min(
+			a.index + a.count - b.index, 
+			b.index + b.count - a.index));
+	}
 };
 
 
@@ -63,6 +74,8 @@ public:
 
 	const Vector2f& GetPosition() const;
 	const Vector2f& GetDirection() const;
+	Vector2f GetLeftDirection() const;
+	Vector2f GetRightDirection() const;
 	const RoadMetrics* GetMetrics() const;
 	NodeGroup* GetTwin() const;
 	Node* GetLeftNode() const;
@@ -71,6 +84,9 @@ public:
 	int GetNumNodes() const;
 	float GetWidth() const;
 	Vector2f GetCenterPosition() const;
+	Vector2f GetRightPosition() const;
+	Array<NodeGroupConnection*>& GetInputs();
+	Array<NodeGroupConnection*>& GetOutputs();
 
 	// Setters
 

@@ -34,6 +34,7 @@ public:
 	NodeGroupConnection* ConnectNodeSubGroups(
 		const NodeSubGroup& from, const NodeSubGroup& to);
 	NodeGroupTie* TieNodeGroups(NodeGroup* a, NodeGroup* b);
+	void AddNodesToLeftOfGroup(NodeGroup* group, int count = 1);
 	void AddNodesToGroup(NodeGroup* group, int count = 1);
 	void RemoveNodeFromGroup(NodeGroup* group, int count = 1);
 	void UntieNodeGroup(NodeGroup* nodeGroup);
@@ -47,8 +48,6 @@ public:
 	Connection* Connect(Node* from, Node* to);
 	void Disconnect(Node* from, Node* to);
 	void DeleteConnection(Connection* connection);
-	void SewNode(Node* node, Node* left);
-	void SewOpposite(Node* node, Node* left);
 
 	// Geometry
 	void UpdateNodeGeometry();

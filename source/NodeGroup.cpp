@@ -56,6 +56,16 @@ const Vector2f& NodeGroup::GetDirection() const
 	return m_direction;
 }
 
+Vector2f NodeGroup::GetLeftDirection() const
+{
+	return Vector2f(m_direction.y, -m_direction.x);
+}
+
+Vector2f NodeGroup::GetRightDirection() const
+{
+	return Vector2f(-m_direction.y, m_direction.x);
+}
+
 const RoadMetrics* NodeGroup::GetMetrics() const
 {
 	return m_metrics;
@@ -105,6 +115,23 @@ Vector2f NodeGroup::GetCenterPosition() const
 	float width = GetWidth();
 	Vector2f right(-m_direction.y, m_direction.x);
 	return (m_position + (right * width * 0.5f));
+}
+
+Vector2f NodeGroup::GetRightPosition() const
+{
+	float width = GetWidth();
+	Vector2f right(-m_direction.y, m_direction.x);
+	return (m_position + (right * width));
+}
+
+Array<NodeGroupConnection*>& NodeGroup::GetInputs()
+{
+	return m_inputs;
+}
+
+Array<NodeGroupConnection*>& NodeGroup::GetOutputs()
+{
+	return m_outputs;
 }
 
 

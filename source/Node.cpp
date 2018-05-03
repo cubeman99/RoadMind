@@ -1,5 +1,6 @@
 #include "Node.h"
 #include "Connection.h"
+#include "NodeGroup.h"
 
 
 //-----------------------------------------------------------------------------
@@ -12,7 +13,6 @@ Node::Node()
 	, m_leftTangent(Vector2f::UNITX)
 	, m_rightTangent(Vector2f::UNITX)
 	, m_width(1.0f)
-	, m_leftNode(nullptr)
 	, m_leftDivider(LaneDivider::DASHED)
 	, m_nodeGroup(nullptr)
 	, m_index(0)
@@ -91,12 +91,18 @@ Vector2f Node::GetCenter() const
 
 Node* Node::GetLeftNode() const
 {
-	return m_leftNode;
+	if (m_index <= 0)
+		return nullptr;
+	else
+		return m_nodeGroup->GetNode(m_index - 1);
 }
 
 Node* Node::GetRightNode() const
 {
-	return m_rightNode;
+	if (m_index >= m_nodeGroup->GetNumNodes() - 1)
+		return nullptr;
+	else
+		return m_nodeGroup->GetNode(m_index + 1);
 }
 
 int Node::GetNumInputs() const
@@ -169,45 +175,28 @@ Connection* Node::GetOutputConnection(Node* node) const
 
 LaneDivider Node::GetLeftLaneDivider() const
 {
-	if (m_leftNode != nullptr)
-		return m_leftDivider;
-	else
-		return LaneDivider::SOLID;
+	return LaneDivider::SOLID;
 }
 
 LaneDivider Node::GetRightLaneDivider() const
 {
-	if (m_rightNode != nullptr)
-		return m_rightNode->m_leftDivider;
-	else
-		return LaneDivider::SOLID;
+	return LaneDivider::SOLID;
 }
 
 bool Node::IsLeftMostLane() const
 {
-	return (m_leftNode == nullptr || m_leftNode->m_leftNode == this);
+	return (m_index == 0);
 }
 
 bool Node::IsRightMostLane() const
 {
-	return (m_rightNode == nullptr);
+	return (m_index == m_nodeGroup->GetNumNodes() - 1);
 }
 
 
 //-----------------------------------------------------------------------------
 // Setters
 //-----------------------------------------------------------------------------
-
-void Node::SetLeftNode(Node* node)
-{
-	m_leftNode = node;
-}
-
-void Node::SetRightNode(Node* node)
-{
-	m_rightNode = node;
-}
-
 
 void Node::SetWidth(float width)
 {
@@ -248,30 +237,25 @@ void Node::SetRightEdgeTangent(const Vector2f& tangent)
 
 void Node::UpdateGeometry()
 {
-	m_leftDivider = LaneDivider::SOLID;
-	if (m_rightNode == nullptr && m_leftNode != nullptr &&
-		m_leftNode->m_leftNode == this && m_leftNode->m_rightNode == nullptr)
-		m_leftDivider = LaneDivider::DASHED;
-	else if (m_leftNode != nullptr && m_leftNode->m_rightNode == this)
-		m_leftDivider = LaneDivider::DASHED;
+	m_leftTangent = m_endNormal;
+	m_rightTangent = m_endNormal;
+	//if (m_leftNode != nullptr)
+	//{
+	//	if (m_leftNode->m_leftNode == this)
+	//	{
+	//		if (m_nodeId > m_leftNode->m_nodeId)
+	//		{
+	//			m_position = m_leftNode->m_position;
+	//			m_endNormal = -m_leftNode->m_endNormal;
+	//		}
+	//	}
+	//	else
+	//	{
+	//		m_position = m_leftNode->GetRightEdge();
+	//		m_endNormal = m_leftNode->m_endNormal;
+	//	}
 
-	if (m_leftNode != nullptr)
-	{
-		if (m_leftNode->m_leftNode == this)
-		{
-			if (m_nodeId > m_leftNode->m_nodeId)
-			{
-				m_position = m_leftNode->m_position;
-				m_endNormal = -m_leftNode->m_endNormal;
-			}
-		}
-		else
-		{
-			m_position = m_leftNode->GetRightEdge();
-			m_endNormal = m_leftNode->m_endNormal;
-		}
-
-		m_leftTangent = m_endNormal;
-		m_rightTangent = m_endNormal;
-	}
+	//	m_leftTangent = m_endNormal;
+	//	m_rightTangent = m_endNormal;
+	//}
 }

@@ -63,8 +63,6 @@ public:
 
 	void SetPrevNode(Node* node);
 	void SetNextNode(Node* node);
-	void SetLeftNode(Node* node);
-	void SetRightNode(Node* node);
 	void SetWidth(float width);
 	void SetLeftPosition(const Vector2f& position);
 	void SetCenterPosition(const Vector2f& center);
@@ -86,16 +84,6 @@ private:
 	LaneDivider m_leftDivider;
 
 	int m_index;
-
-	union
-	{
-		struct
-		{
-			Node* m_leftNode;
-			Node* m_rightNode;
-		};
-		Node* m_sideNodes[2];
-	};
 
 	Set<Connection*> m_outputs;
 	Set<Connection*> m_inputs;

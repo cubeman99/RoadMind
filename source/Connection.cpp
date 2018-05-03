@@ -38,26 +38,26 @@ const Array<Vector2f>& Connection::GetVertices(LaneSide side) const
 
 Connection* Connection::GetLeftConnection() const
 {
-	if (m_input->m_leftNode != nullptr &&
-		m_output->m_leftNode != nullptr)
+	if (m_input->GetLeftNode() != nullptr &&
+		m_output->GetLeftNode() != nullptr)
 	{
-		if (m_input->m_leftNode->HasInput(m_output->m_leftNode))
-			return m_input->m_leftNode->GetInputConnection(m_output->m_leftNode);
-		else if (m_output->m_leftNode->HasInput(m_input->m_leftNode))
-			return m_output->m_leftNode->GetInputConnection(m_input->m_leftNode);
+		if (m_input->GetLeftNode()->HasInput(m_output->GetLeftNode()))
+			return m_input->GetLeftNode()->GetInputConnection(m_output->GetLeftNode());
+		else if (m_output->GetLeftNode()->HasInput(m_input->GetLeftNode()))
+			return m_output->GetLeftNode()->GetInputConnection(m_input->GetLeftNode());
 	}
 	return nullptr;
 }
 
 Connection* Connection::GetRightConnection() const
 {
-	if (m_input->m_rightNode != nullptr &&
-		m_output->m_rightNode != nullptr)
+	if (m_input->GetRightNode() != nullptr &&
+		m_output->GetRightNode() != nullptr)
 	{
-		if (m_input->m_rightNode->HasInput(m_output->m_rightNode))
-			return m_input->m_rightNode->GetInputConnection(m_output->m_rightNode);
-		else if (m_output->m_rightNode->HasInput(m_input->m_rightNode))
-			return m_output->m_rightNode->GetInputConnection(m_input->m_rightNode);
+		if (m_input->GetRightNode()->HasInput(m_output->GetRightNode()))
+			return m_input->GetRightNode()->GetInputConnection(m_output->GetRightNode());
+		else if (m_output->GetRightNode()->HasInput(m_input->GetRightNode()))
+			return m_output->GetRightNode()->GetInputConnection(m_input->GetRightNode());
 	}
 	return nullptr;
 }
