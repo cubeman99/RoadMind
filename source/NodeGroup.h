@@ -82,7 +82,9 @@ public:
 	Node* GetRightNode() const;
 	Node* GetNode(int index);
 	int GetNumNodes() const;
-	float GetWidth() const;
+	Meters GetWidth() const;
+	Meters GetRightShoulderWidth() const;
+	Meters GetLeftShoulderWidth() const;
 	Vector2f GetCenterPosition() const;
 	Vector2f GetRightPosition() const;
 	Array<NodeGroupConnection*>& GetInputs();
@@ -123,6 +125,9 @@ private:
 			Array<NodeGroupConnection*> m_connections[2];
 		};
 	};
+
+	Meters m_leftShoulderWidth;
+	Meters m_rightShoulderWidth;
 
 	NodeGroup* m_twin;
 	NodeGroupTie* m_tie;

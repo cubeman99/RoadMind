@@ -501,6 +501,9 @@ static void DrawArcs(Graphics2D& g, const BiarcPair& arcs, const Color& color)
 {
 	DrawArc(g, arcs.first, color);
 	DrawArc(g, arcs.second, color);
+	g.FillCircle(arcs.first.start, 0.15f, color);
+	g.FillCircle(arcs.first.end, 0.15f, color);
+	g.FillCircle(arcs.second.end, 0.15f, color);
 }
 
 void MainApp::DrawNode(Graphics2D& g, Node* node)
@@ -1307,7 +1310,8 @@ void MainApp::OnRender()
 		BiarcPair leftEdge = surface->GetLeftEdgeLine();
 		BiarcPair rightEdge = surface->GetRightEdgeLine();
 		int count = 10;
-		count = (int) (Math::Max(leftEdge.Length(), rightEdge.Length()) / 1.5f + 0.5f);
+		float interval = 1.5f;
+		count = (int) ((leftEdge.Length() / interval) + 0.5f);
 		count = Math::Max(2, count);
 		glBegin(GL_TRIANGLE_STRIP);
 		glColor3ubv(colorReadFill.data());
@@ -1321,11 +1325,20 @@ void MainApp::OnRender()
 	}
 
 	// Draw road markings
-	for (NodeGroupConnection* surface : m_network->GetNodeGroupConnections())
+	for (NodeGroupConnection* connection : m_network->GetNodeGroupConnections())
 	{
-		DrawArcs(g, surface->m_dividerLines[0], Color::YELLOW);
-		for (unsigned int i = 1; i < surface->m_dividerLines.size(); i++)
-			DrawArcs(g, surface->m_dividerLines[i], Color::WHITE);
+		if (connection->m_dividerLines.size() > 0)
+		{
+			//DrawArcs(g, connection->m_dividerLines.front(), Color::YELLOW * Vector4f(Vector3f::ONE, 0.3f));
+			//DrawArcs(g, connection->m_dividerLines.back(), Color::WHITE * Vector4f(Vector3f::ONE, 0.3f));
+		}
+		DrawArcs(g, connection->m_visualShoulderLines[0], Color::GREEN * Vector4f(Vector3f::ONE, 0.3f));
+		DrawArcs(g, connection->m_visualShoulderLines[1], Color::GREEN * Vector4f(Vector3f::ONE, 0.3f));
+
+		DrawArcs(g, connection->m_visualEdgeLines[0], Color::YELLOW);
+		for (unsigned int i = 1; i < connection->m_dividerLines.size() - 1; i++)
+			DrawArcs(g, connection->m_dividerLines[i], Color::WHITE);
+		DrawArcs(g, connection->m_visualEdgeLines[1], Color::WHITE);
 	}
 
 	// Draw node groups
@@ -1334,7 +1347,7 @@ void MainApp::OnRender()
 	for (NodeGroup* group : m_network->GetNodeGroups())
 	{
 		Vector2f center = group->GetPosition();
-		g.FillCircle(center, r * 2.0f, Color::RED);
+		//g.FillCircle(center, r * 2.0f, Color::RED);
 		g.DrawLine(center, center + (group->GetDirection() * r * 3), Color::WHITE);
 
 		for (int i = 0; i < group->GetNumNodes(); i++)
@@ -1409,4 +1422,24 @@ void MainApp::OnRender()
 		Vector2f v = Vector2f(30.0f + (i * 20.0f), 30.0f);
 		g.DrawCircle(v, 10, Color::WHITE);
 	}
+
+	/*
+	float r1 = 100.0f;
+	r2 = 50.0f;
+	float d = 110.0f;
+
+	Vector2f p1(200, 200);
+	Vector2f p2(p1.x + d, p1.y);
+	g.DrawCircle(p1, r1, Color::RED);
+	g.DrawCircle(p2, r2, Color::BLUE);
+	g.DrawLine(p1, p2, Color::WHITE);
+
+	float x = (d*d - r2*r2 + r1*r1) / (2 * d);
+	Vector2f v = p1 + (p2 - p1) * (x / d);
+	DrawPoint(g, v, Color::GREEN);
+
+	float y = (0.5f / d) * Math::Sqrt(4 * d*d * r1*r1 - Math::Sqr(d*d - r2*r2 + r1*r1));
+	v.y -= y;
+	DrawPoint(g, v, Color::MAGENTA);
+	*/
 }

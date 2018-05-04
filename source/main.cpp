@@ -17,7 +17,7 @@ int main(int argc, char* argv[])
 
 	//TestApp app;
 	MainApp app;
-	app.Initialize("Vehicle Simulator", 800, 600);
+	app.Initialize("Road Mind", 800, 600);
 	app.Run();
 
 	return 0;

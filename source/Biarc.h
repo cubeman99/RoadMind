@@ -34,6 +34,30 @@ struct Biarc
 	{
 	}
 
+	inline static Biarc CreatePoint(const Vector2f& point)
+	{
+		Biarc result;
+		result.start = point;
+		result.end = point;
+		result.center = point;
+		result.radius = 0.0f;
+		result.length = 0.0f;
+		result.angle = 0.0f;
+		return result;
+	}
+
+	inline static Biarc CreateLine(const Vector2f& start, const Vector2f& end)
+	{
+		Biarc result;
+		result.start = start;
+		result.end = end;
+		result.center = (start + end) * 0.5f;
+		result.radius = 0.0f;
+		result.length = start.DistTo(end);
+		result.angle = 0.0f;
+		return result;
+	}
+
 	inline bool IsStraight() const
 	{
 		return (radius == 0.0f);
@@ -41,7 +65,7 @@ struct Biarc
 
 	inline Vector2f GetStartTangent() const
 	{
-		Vector2f normal = Vector2f::Normalize(start - center);
+		Vector2f normal = (start - center) / radius;
 		normal = Vector2f(-normal.y, normal.x);
 		if (angle < 0.0f)
 			normal = -normal;
@@ -50,11 +74,21 @@ struct Biarc
 
 	inline Vector2f GetEndTangent() const
 	{
-		Vector2f normal = Vector2f::Normalize(end - center);
+		Vector2f normal = (end - center) / radius;
 		normal = Vector2f(-normal.y, normal.x);
 		if (angle < 0.0f)
 			normal = -normal;
 		return normal;
+	}
+
+	inline Vector2f GetStartNormal() const
+	{
+		return ((start - center) / radius);
+	}
+
+	inline Vector2f GetEndNormal() const
+	{
+		return ((end - center) / radius);
 	}
 
 	inline Vector2f GetPoint(float distance) const
@@ -68,7 +102,20 @@ struct Biarc
 		}
 	}
 
-	Biarc Reverse() const
+	inline void CalcAngleAndLength(bool shortWay)
+	{
+		Vector2f normal = center - start;
+		angle = (end - center).Dot(start - center) / (radius * radius);
+		angle = Math::ACos(angle);
+		if (!shortWay)
+			angle = Math::TWO_PI - Math::Abs(angle);
+		normal = Vector2f(-normal.y, normal.x);
+		if (end.Dot(normal) > center.Dot(normal))
+			angle = -angle;
+		length = Math::Abs(angle) * radius;
+	}
+
+	inline Biarc Reverse() const
 	{
 		Biarc result = *this;
 		result.start = end;
@@ -82,8 +129,18 @@ struct Biarc
 struct BiarcPair
 {
 public:
-	Biarc first;
-	Biarc second;
+	union
+	{
+		struct
+		{
+			Biarc first;
+			Biarc second;
+		};
+		struct
+		{
+			Biarc arcs[2];
+		};
+	};
 
 	//-------------------------------------------------------------------------
 	// Constructors

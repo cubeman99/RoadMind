@@ -8,6 +8,7 @@
 NodeGroupConnection::NodeGroupConnection()
 	: m_metrics(nullptr)
 	, m_twin(nullptr)
+	, m_laneIntersectionPoint(Vector2f::ZERO)
 {
 }
 
@@ -27,12 +28,12 @@ const RoadMetrics* NodeGroupConnection::GetMetrics() const
 
 BiarcPair NodeGroupConnection::GetLeftEdgeLine() const
 {
-	return m_dividerLines.front();
+	return m_edgeLines[(int) LaneSide::LEFT];
 }
 
 BiarcPair NodeGroupConnection::GetRightEdgeLine() const
 {
-	return m_dividerLines.back();
+	return m_edgeLines[(int) LaneSide::RIGHT];
 }
 
 NodeGroupConnection* NodeGroupConnection::GetTwin()
@@ -82,13 +83,25 @@ void NodeGroupConnection::UpdateGeometry()
 	}
 
 	// Create the right edge
-	float offsets[2] = { 0.0f, 0.0f };
-	for (int k = 0; k < 2; k++)
+	if (m_input.count != m_output.count)
 	{
-		for (int i = minRightCount; i < m_groups[k].count; i++)
-			offsets[k] += m_groups[k].group->GetNode(i)->GetWidth();
+		float offsets[2] = { 0.0f, 0.0f };
+		for (int k = 0; k < 2; k++)
+		{
+			for (int i = minRightCount; i < m_groups[k].count; i++)
+				offsets[k] += m_groups[k].group->GetNode(i)->GetWidth();
+		}
+		curr = BiarcPair::CreateParallel(prev, offsets[0], offsets[1]);
+		m_dividerLines.push_back(curr);
 	}
-	curr = BiarcPair::CreateParallel(prev, offsets[0], offsets[1]);
-	m_dividerLines.push_back(curr);
+
+	m_edgeLines[(int) LaneSide::LEFT] =
+		BiarcPair::CreateParallel(m_dividerLines.front(),
+		-m_input.group->GetLeftShoulderWidth(),
+		-m_output.group->GetLeftShoulderWidth());
+	m_edgeLines[(int) LaneSide::RIGHT] =
+		BiarcPair::CreateParallel(m_dividerLines.back(),
+		m_input.group->GetRightShoulderWidth(),
+		m_output.group->GetRightShoulderWidth());
 }
 

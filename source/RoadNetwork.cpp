@@ -54,6 +54,8 @@ NodeGroup* RoadNetwork::CreateNodeGroup(const Vector2f& position,
 	group->m_metrics = &m_metrics;
 	group->m_position = position;
 	group->m_direction = direction;
+	group->m_leftShoulderWidth = m_metrics.laneWidth * 0.25f;
+	group->m_rightShoulderWidth = m_metrics.laneWidth * 0.25f;
 	m_nodeGroups.insert(group);
 
 	// Create the left-most node

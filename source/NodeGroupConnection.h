@@ -55,7 +55,12 @@ public:
 	const RoadMetrics* m_metrics;
 
 public:
+	BiarcPair m_edgeLines[2];
 	std::vector<BiarcPair> m_dividerLines;
+	BiarcPair m_visualShoulderLines[2];
+	BiarcPair m_visualEdgeLines[2];
+	Vector2f m_laneIntersectionPoint;
+	Vector2f m_edgeIntersectionPoint;
 };
 
 

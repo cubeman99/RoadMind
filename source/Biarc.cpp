@@ -230,7 +230,7 @@ static Biarc ComputeArc(Vector2f a, Vector2f b, Vector2f q, float d)
 	return arc;
 }
 
-static void ComputeArcAngle(Biarc& arc, float d)
+void ComputeArcAngle(Biarc& arc, float d)
 {
 	Vector2f normal = arc.center - arc.start;
 	arc.angle = (arc.end - arc.center).Dot(arc.start - arc.center) / (arc.radius * arc.radius);
