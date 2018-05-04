@@ -65,36 +65,67 @@ struct Biarc
 
 	inline Vector2f GetStartTangent() const
 	{
-		Vector2f normal = (start - center) / radius;
-		normal = Vector2f(-normal.y, normal.x);
-		if (angle < 0.0f)
-			normal = -normal;
-		return normal;
+		if (IsStraight())
+		{
+			return ((end - start) / length);
+		}
+		else
+		{
+			Vector2f normal = (start - center) / radius;
+			normal = Vector2f(-normal.y, normal.x);
+			if (angle < 0.0f)
+				normal = -normal;
+			return normal;
+		}
 	}
 
 	inline Vector2f GetEndTangent() const
 	{
-		Vector2f normal = (end - center) / radius;
-		normal = Vector2f(-normal.y, normal.x);
-		if (angle < 0.0f)
-			normal = -normal;
-		return normal;
+		if (IsStraight())
+		{
+			return ((end - start) / length);
+		}
+		else
+		{
+			Vector2f normal = (end - center) / radius;
+			normal = Vector2f(-normal.y, normal.x);
+			if (angle < 0.0f)
+				normal = -normal;
+			return normal;
+		}
 	}
 
 	inline Vector2f GetStartNormal() const
 	{
-		return ((start - center) / radius);
+		if (IsStraight())
+		{
+			Vector2f direction = (end - start) / length;
+			return Vector2f(-direction.y, direction.x);
+		}
+		else
+		{
+			return ((start - center) / radius);
+		}
 	}
 
 	inline Vector2f GetEndNormal() const
 	{
-		return ((end - center) / radius);
+		if (IsStraight())
+			return GetStartNormal();
+		else
+			return ((end - center) / radius);
 	}
 
 	inline Vector2f GetPoint(float distance) const
 	{
-		if (radius == 0.0f)
-			return start + ((end - start) * (distance / length));
+		if (length == 0.0f)
+		{
+			return start;
+		}
+		else if (radius == 0.0f)
+		{
+			return Vector2f::Lerp(start, end, distance / length);
+		}
 		else
 		{
 			Vector2f point = start;
@@ -104,15 +135,23 @@ struct Biarc
 
 	inline void CalcAngleAndLength(bool shortWay)
 	{
-		Vector2f normal = center - start;
-		angle = (end - center).Dot(start - center) / (radius * radius);
-		angle = Math::ACos(angle);
-		if (!shortWay)
-			angle = Math::TWO_PI - Math::Abs(angle);
-		normal = Vector2f(-normal.y, normal.x);
-		if (end.Dot(normal) > center.Dot(normal))
-			angle = -angle;
-		length = Math::Abs(angle) * radius;
+		if (radius == 0.0f)
+		{
+			angle = 0.0f;
+			length = start.DistTo(end);
+		}
+		else
+		{
+			Vector2f normal = center - start;
+			angle = (end - center).Dot(start - center) / (radius * radius);
+			angle = Math::ACos(angle);
+			if (!shortWay)
+				angle = Math::TWO_PI - Math::Abs(angle);
+			normal = Vector2f(-normal.y, normal.x);
+			if (end.Dot(normal) > center.Dot(normal))
+				angle = -angle;
+			length = Math::Abs(angle) * radius;
+		}
 	}
 
 	inline Biarc Reverse() const

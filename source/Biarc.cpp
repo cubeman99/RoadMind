@@ -52,6 +52,8 @@ BiarcPair BiarcPair::Interpolate(
 	const Vector2f& p1, const Vector2f& t1,
 	const Vector2f& p2, const Vector2f& t2)
 {
+	const float epsilon = 0.001f;
+
 	BiarcPair result;
 	Vector2f pm, q1, q2;
 	Vector2f n1(-t1.y, t1.x);
@@ -61,11 +63,11 @@ BiarcPair BiarcPair::Interpolate(
 
 	float numer = -v.Dot(t) + Math::Sqrt(v.Dot(t) * v.Dot(t) +
 		2.0f * (1.0f - t1.Dot(t2)) * (v.Dot(v)));
-	float denom = 2.0f * (1.0f - t1.Dot(t2));
+	float denom = 2.0f * (1.0f - t1.Dot(t2));	
 
 	// Calculate the value of d2 such that d1 equals d2
 	float d2;
-	if (denom == 0.0f)
+	if (Math::Abs(denom) < epsilon)
 		d2 = v.LengthSquared() / (4.0f * v.Dot(t2));
 	else
 		d2 = numer / denom;
@@ -154,6 +156,15 @@ BiarcPair BiarcPair::CreateParallel(const BiarcPair& biarcs, float offset1, floa
 BiarcPair BiarcPair::CreateExpanding(const BiarcPair& base, float offset)
 {
 	BiarcPair result;
+
+	if (base.first.IsStraight() && base.second.IsStraight())
+	{
+		return BiarcPair::Interpolate(
+			base.first.start,
+			base.first.GetStartTangent(),
+			base.second.end + (base.second.GetEndNormal() * offset),
+			base.second.GetEndTangent());
+	}
 
 	Vector2f startTangent = base.first.GetStartTangent();
 	Vector2f midNormal = base.second.GetStartTangent();
@@ -372,16 +383,29 @@ Biarc CreateParallelBiarc(const Biarc& arc, float offset)
 {
 	Biarc result = arc;
 
-	Vector2f normal = arc.center - arc.start;
-	normal = Vector2f(-normal.y, normal.x);
-	if (arc.end.Dot(normal) < arc.center.Dot(normal))
-		offset = -offset;
+	if (arc.IsStraight())
+	{
+		Vector2f right = (arc.end - arc.start) / arc.length;
+		right = Vector2f(-right.y, right.x);
+		Vector2f move = right * offset;
+		result.start += move;
+		result.end += move;
+		result.center += move;
+	}
+	else
+	{
+		Vector2f normal = arc.center - arc.start;
+		normal = Vector2f(-normal.y, normal.x);
+		if (arc.end.Dot(normal) < arc.center.Dot(normal))
+			offset = -offset;
 
-	float scale = (arc.radius + offset) / arc.radius;
-	result.radius = arc.radius * scale;
-	result.start = arc.center + (arc.start - arc.center) * scale;
-	result.end = arc.center + (arc.end - arc.center) * scale;
-	result.length = result.radius * Math::Abs(result.angle);
+		float scale = (arc.radius + offset) / arc.radius;
+		result.radius = arc.radius * scale;
+		result.start = arc.center + (arc.start - arc.center) * scale;
+		result.end = arc.center + (arc.end - arc.center) * scale;
+		result.length = result.radius * Math::Abs(result.angle);
+	}
+
 	return result;
 }
 

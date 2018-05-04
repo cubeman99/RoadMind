@@ -180,6 +180,7 @@ void MainApp::UpdateDragging()
 		keyboard->IsKeyDown(Keys::right_shift);
 	int scroll = mouseState.z - mouse->GetPrevMouseState().z;
 	bool snapped = false;
+	bool snappedReverse = false;
 
 	if (m_dragInfo.state != DragState::NONE)
 	{
@@ -219,12 +220,27 @@ void MainApp::UpdateDragging()
 				// Attempt to snap to another node
 				if (m_hoverInfo.nodeGroup != nullptr)
 				{
+					snappedReverse = (m_hoverInfo.subGroup.group->GetDirection().Dot(
+						m_dragInfo.inputGroup->GetDirection()) < 0.0f);
 					snapped = true;
-					m_dragInfo.nodeGroup->SetDirection(
-						m_hoverInfo.nodeGroup->GetDirection());
+					if (snappedReverse)
+					{
+						m_snapInfo.subGroup.index = -(m_hoverInfo.startIndex + m_hoverInfo.count);
+						m_snapInfo.subGroup.index = Math::Max(0, m_snapInfo.subGroup.index);
+						m_snapInfo.subGroup.count = m_hoverInfo.count;
+						m_snapInfo.subGroup.group = m_dragInfo.nodeGroup;
+						m_dragInfo.nodeGroup->SetDirection(
+							-m_hoverInfo.nodeGroup->GetDirection());
+					}
+					else
+					{
+						m_snapInfo.subGroup = m_hoverInfo.subGroup;
+						m_dragInfo.nodeGroup->SetDirection(
+							m_hoverInfo.nodeGroup->GetDirection());
+					}
 					float w = m_network->GetMetrics().laneWidth;
 					m_dragInfo.nodeGroup->SetPosition(m_hoverInfo.nodeGroup->GetPosition() +
-						(right * w * (float) m_hoverInfo.startIndex));
+						(right * w * (float) m_snapInfo.subGroup.index));
 				}
 			}
 
@@ -242,21 +258,37 @@ void MainApp::UpdateDragging()
 			{
 				if (snapped)
 				{
-					// Connect to an existing node groups
-					m_network->GrowNodeGroup(m_hoverInfo.subGroup);
-					m_network->ConnectNodeSubGroups(
-						m_dragInfo.connection->GetInput(),
-						m_hoverInfo.subGroup);
-					m_network->DeleteNodeGroup(m_dragInfo.nodeGroup);
-					m_dragInfo.nodeGroup = nullptr;
-					m_dragInfo.state = DragState::NONE;
+					if (snappedReverse)
+					{
+						m_network->GrowNodeGroup(m_snapInfo.subGroup);
+						m_dragInfo.connection->m_output = m_snapInfo.subGroup;
+						m_network->TieNodeGroups(m_dragInfo.nodeGroup, m_hoverInfo.nodeGroup);
+						
+						m_dragInfo.inputGroup = m_dragInfo.nodeGroup;
+						m_dragInfo.nodeGroup = m_network->CreateNodeGroup(m_mousePosition,
+							Vector2f::UNITX, m_snapInfo.subGroup.count);
+						m_dragInfo.connection = m_network->ConnectNodeGroups(
+							m_dragInfo.inputGroup, m_dragInfo.nodeGroup);
+						m_dragInfo.state = DragState::POSITION;
+					}
+					else
+					{
+						// Connect to an existing node groups
+						m_network->GrowNodeGroup(m_hoverInfo.subGroup);
+						m_network->ConnectNodeSubGroups(
+							m_dragInfo.connection->GetInput(),
+							m_hoverInfo.subGroup);
+						m_network->DeleteNodeGroup(m_dragInfo.nodeGroup);
+						m_dragInfo.nodeGroup = nullptr;
+						m_dragInfo.state = DragState::NONE;
+					}
 				}
 				else
 				{
 					// Place the created node group and begin extending it
 					m_dragInfo.inputGroup = m_dragInfo.nodeGroup;
 					m_dragInfo.nodeGroup = m_network->CreateNodeGroup(m_mousePosition,
-						Vector2f::UNITX, m_rightLaneCount);
+						Vector2f::UNITX, m_dragInfo.inputGroup->GetNumNodes());
 					m_dragInfo.connection = m_network->ConnectNodeGroups(
 						m_dragInfo.inputGroup, m_dragInfo.nodeGroup);
 					m_dragInfo.state = DragState::POSITION;
@@ -1165,14 +1197,14 @@ void MainApp::OnRender()
 			DrawArcs(g, connection->m_dividerLines[i], Color::WHITE);
 		DrawArcs(g, connection->m_visualEdgeLines[1], Color::WHITE);
 	}
-
-	// Draw node groups
+	
 	float r = 0.2f;
 	float r2 = 0.4f;
+
+	// Draw node groups
 	for (NodeGroup* group : m_network->GetNodeGroups())
 	{
 		Vector2f center = group->GetPosition();
-		//g.FillCircle(center, r * 2.0f, Color::RED);
 		if (m_showDebug)
 			g.DrawLine(center, center + (group->GetDirection() * r * 3), Color::WHITE);
 
@@ -1188,8 +1220,19 @@ void MainApp::OnRender()
 				//i < m_hoverInfo.startIndex + m_rightLaneCount)
 				//g.FillCircle(node->GetCenter(), node->GetWidth() * 0.5f, Color::GRAY);
 				g.DrawCircle(node->GetCenter(), node->GetWidth() * 0.5f, Color::WHITE);
-				g.DrawLine(node->GetCenter(), node->GetCenter() + node->GetEndNormal() * r2, Color::WHITE);
+				g.DrawLine(node->GetCenter(), node->GetCenter() +
+					node->GetEndNormal() * node->GetWidth() * 0.5f,
+					Color::WHITE);
 			}
+		}
+	}
+
+	// Draw node ties
+	for (NodeGroupTie* tie : m_network->GetNodeGroupTies())
+	{
+		if (m_showDebug)
+		{
+			g.FillCircle(tie->GetPosition(), r * 2.0f, Color::RED);
 		}
 	}
 

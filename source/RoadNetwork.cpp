@@ -147,6 +147,13 @@ void RoadNetwork::AddNodesToLeftOfGroup(NodeGroup* group, int count)
 
 void RoadNetwork::RemoveNodeFromGroup(NodeGroup* group, int count)
 {
+	// Check if this deletes the entire group
+	if (count >= (int) group->m_nodes.size())
+	{
+		DeleteNodeGroup(group);
+		return;
+	}
+
 	// Adjust or remove group connections involving this node
 	int end = group->m_nodes.size() - count;
 	for (int k = 0; k < 2; k++)
@@ -180,14 +187,6 @@ void RoadNetwork::RemoveNodeFromGroup(NodeGroup* group, int count)
 		group->m_nodes.pop_back();
 		delete node;
 	}
-
-	if (group->m_nodes.empty())
-	{
-		// TODO: deleted all nodes from the group!
-	}
-	else
-	{
-	}
 }
 
 NodeGroupConnection* RoadNetwork::ConnectNodeGroups(NodeGroup* from, NodeGroup* to)
@@ -209,7 +208,7 @@ NodeGroupConnection* RoadNetwork::ConnectNodeSubGroups(
 NodeGroupConnection* RoadNetwork::ConnectNodeSubGroups(
 	const NodeSubGroup& from, const NodeSubGroup& to)
 {
-	// Check if there is an existing node group connection can be
+	// Check if there is an existing node group connection which can be
 	// combined with this one
 	for (NodeGroupConnection* connection : from.group->GetOutputs())
 	{
@@ -241,18 +240,6 @@ NodeGroupConnection* RoadNetwork::ConnectNodeSubGroups(
 
 	from.group->InsertOutput(connection);
 	to.group->InsertInput(connection);
-
-	// Connect the individual nodes
-	//Node* nodes[2];
-	//int maxCount = Math::Max(from.count, to.count);
-	//for (int i = 0; i < maxCount; i++)
-	//{
-		//nodes[0] = from.group->GetNode(
-			//from.index + Math::Min(from.count - 1, i));
-		//nodes[1] = to.group->GetNode(
-			//to.index + Math::Min(to.count - 1, i));
-		//Connect(nodes[0], nodes[1]);
-	//}
 
 	return connection;
 }

@@ -122,6 +122,7 @@ private:
 		LaneSide side;
 		bool reverse;
 		Vector2f center;
+		NodeSubGroup subGroup;
 	} m_snapInfo;
 
 	CameraState m_camera;
