@@ -123,9 +123,6 @@ Node* MainApp::BeginExtending(Node* node, LaneSide side, bool reverse)
 	m_dragNode->SetLeftPosition(node->GetLeftEdge());
 	m_dragNode->SetEndNormal(node->GetEndNormal());
 	m_dragNode->SetWidth(node->GetWidth());
-	m_dragNode->SetLeftEdgeTangent(node->GetLeftEdgeTangent());
-	m_dragNode->SetRightEdgeTangent(node->GetRightEdgeTangent());
-	m_network->Connect(node, m_dragNode);
 
 	m_dragState = DragState::POSITION;
 	BeginDragging(m_dragNode, node);
@@ -206,6 +203,7 @@ void MainApp::UpdateDragging()
 			{
 				m_dragInfo.position = m_mousePosition;
 
+				// Automatically set the direction of the dragged node
 				if (m_dragInfo.inputGroup != nullptr)
 				{
 					Vector2f startCenter =
@@ -213,14 +211,14 @@ void MainApp::UpdateDragging()
 					Vector2f startRight = m_dragInfo.connection->GetInput().group->GetDirection();
 					startRight = Vector2f(-startRight.y, startRight.x);
 					startCenter += startRight * width * 0.5f;
-					Vector2f autoNormal = GetAutoNormal(startCenter,
+					Vector2f autoDirection = GetAutoNormal(startCenter,
 						m_dragInfo.inputGroup->GetDirection(), m_mousePosition);
-					m_dragInfo.nodeGroup->SetDirection(autoNormal);
+					m_dragInfo.nodeGroup->SetDirection(autoDirection);
 				}
 
+				// Attempt to snap to another node
 				if (m_hoverInfo.nodeGroup != nullptr)
 				{
-					// Snap
 					snapped = true;
 					m_dragInfo.nodeGroup->SetDirection(
 						m_hoverInfo.nodeGroup->GetDirection());
@@ -237,15 +235,32 @@ void MainApp::UpdateDragging()
 			}
 
 			if (mouse->IsButtonPressed(MouseButtons::right))
+			{
 				CancelDragging();
+			}
 			else if (mouse->IsButtonPressed(MouseButtons::left))
 			{
-				m_dragInfo.inputGroup = m_dragInfo.nodeGroup;
-				m_dragInfo.nodeGroup = m_network->CreateNodeGroup(m_mousePosition,
-					Vector2f::UNITX, m_rightLaneCount);
-				m_dragInfo.connection = m_network->ConnectNodeGroups(
-					m_dragInfo.inputGroup, m_dragInfo.nodeGroup);
-				m_dragInfo.state = DragState::POSITION;
+				if (snapped)
+				{
+					// Connect to an existing node groups
+					m_network->GrowNodeGroup(m_hoverInfo.subGroup);
+					m_network->ConnectNodeSubGroups(
+						m_dragInfo.connection->GetInput(),
+						m_hoverInfo.subGroup);
+					m_network->DeleteNodeGroup(m_dragInfo.nodeGroup);
+					m_dragInfo.nodeGroup = nullptr;
+					m_dragInfo.state = DragState::NONE;
+				}
+				else
+				{
+					// Place the created node group and begin extending it
+					m_dragInfo.inputGroup = m_dragInfo.nodeGroup;
+					m_dragInfo.nodeGroup = m_network->CreateNodeGroup(m_mousePosition,
+						Vector2f::UNITX, m_rightLaneCount);
+					m_dragInfo.connection = m_network->ConnectNodeGroups(
+						m_dragInfo.inputGroup, m_dragInfo.nodeGroup);
+					m_dragInfo.state = DragState::POSITION;
+				}
 			}
 		}
 	}
@@ -260,28 +275,8 @@ void MainApp::UpdateDragging()
 
 			if (m_hoverInfo.nodeGroup != nullptr)
 			{
-				int deltaCount = m_hoverInfo.startIndex + m_rightLaneCount -
-					m_hoverInfo.nodeGroup->GetNumNodes();
-
-				if (deltaCount > 0)
-				{
-					// Add new nodes to the right
-					m_network->AddNodesToGroup(m_hoverInfo.nodeGroup, deltaCount);
-				}
-				if (m_hoverInfo.startIndex < 0)
-				{
-					// Add new nodes to the left
-					m_network->AddNodesToLeftOfGroup(
-						m_hoverInfo.nodeGroup, -m_hoverInfo.startIndex);
-					m_hoverInfo.startIndex = 0;
-				}
-
-				NodeSubGroup startSubGroup;
-				startSubGroup.group = m_hoverInfo.nodeGroup;
-				startSubGroup.index = m_hoverInfo.startIndex;
-				startSubGroup.count = m_rightLaneCount;
-				//Math::Min(m_rightLaneCount,
-				//m_hoverInfo.nodeGroup->GetNumNodes() - m_hoverInfo.startIndex);
+				NodeSubGroup startSubGroup = m_hoverInfo.subGroup;
+				m_network->GrowNodeGroup(startSubGroup);
 				NodeSubGroup endSubGroup(m_dragInfo.nodeGroup, 0, m_rightLaneCount);
 				m_dragInfo.inputGroup = m_hoverInfo.nodeGroup;
 				m_dragInfo.connection = m_network->ConnectNodeSubGroups(
@@ -311,6 +306,7 @@ void MainApp::UpdateHoverInfo()
 		m_hoverInfo.nodePartialIndex = 0.0f;
 		m_hoverInfo.side = LaneSide::NONE;
 		m_hoverInfo.reverse = false;
+		m_hoverInfo.subGroup.group = nullptr;
 
 		// Check which node is being hovered over
 		for (NodeGroup* group : m_network->GetNodeGroups())
@@ -385,23 +381,22 @@ void MainApp::UpdateHoverInfo()
 
 		m_hoverInfo.side = LaneSide::NONE;
 		m_hoverInfo.reverse = false;
-		m_hoverInfo.startIndex = (int) Math::Floor(
-			(m_hoverInfo.nodePartialIndex - (m_rightLaneCount - 1) * 0.5f));
-		NodeSubGroup hoverSubGroup(m_hoverInfo.nodeGroup,
-			m_hoverInfo.startIndex, m_rightLaneCount);
+		m_hoverInfo.subGroup.count = m_rightLaneCount;
+		m_hoverInfo.subGroup.index = (int) Math::Floor(
+			(m_hoverInfo.nodePartialIndex -
+			(m_hoverInfo.subGroup.count - 1) * 0.5f));
 
 		m_hoverInfo.isValidSubGroup = true;
 		for (auto connection : m_hoverInfo.nodeGroup->GetOutputs())
 		{
 			int overlap = NodeSubGroup::GetOverlap(
-				hoverSubGroup, connection->GetInput());
+				m_hoverInfo.subGroup, connection->GetInput());
 			if (overlap > 1)
 			{
 				m_hoverInfo.isValidSubGroup = false;
 				break;
 			}
 		}
-
 	}
 }
 
@@ -497,13 +492,16 @@ static void DrawArc(Graphics2D& g, const Biarc& arc, const Color& color)
 	}
 }
 
-static void DrawArcs(Graphics2D& g, const BiarcPair& arcs, const Color& color)
+void MainApp::DrawArcs(Graphics2D& g, const BiarcPair& arcs, const Color& color)
 {
 	DrawArc(g, arcs.first, color);
 	DrawArc(g, arcs.second, color);
-	g.FillCircle(arcs.first.start, 0.15f, color);
-	g.FillCircle(arcs.first.end, 0.15f, color);
-	g.FillCircle(arcs.second.end, 0.15f, color);
+	if (m_showDebug)
+	{
+		g.FillCircle(arcs.first.start, 0.15f, color);
+		g.FillCircle(arcs.first.end, 0.15f, color);
+		g.FillCircle(arcs.second.end, 0.15f, color);
+	}
 }
 
 void MainApp::DrawNode(Graphics2D& g, Node* node)
@@ -1123,183 +1121,6 @@ void MainApp::OnRender()
 		glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 	else
 		glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-	//for (Connection* connection : m_network->GetConnections())
-	//	DrawNodeGroupConnection(g, connection);
-	//for (Connection* connection : m_network->GetConnections())
-	//	DrawRoadMarkings(g, connection);
-	//for (Node* node : m_network->GetNodes())
-	//DrawNode(g, node);
-
-	//Biarc arc1, arc2;
-	//Vector2f p1 = m_p1;
-	//Vector2f t1 = m_t1;
-	//Vector2f p2 = m_p2;
-	//Vector2f t2 = m_t2;
-	//Vector2f pm, q1, q2;
-	//BiarcType type;
-	//ComputeBiarcs(p1, t1, p2, t2, pm, q1, q2, arc1, arc2, type);
-	//DrawArc(g, arc1, Color::GREEN);
-	//DrawArc(g, arc2, Color::GREEN);
-	//float width = m_magic;
-	//float halfWidth = width * 0.5f;
-	////DrawArc(g, CreateParallelBiarc(arc1, halfWidth), Color::DARK_GREEN);
-	////DrawArc(g, CreateParallelBiarc(arc2, halfWidth), Color::DARK_YELLOW);
-	//float t = arc1.length / (arc1.length + arc2.length);
-
-
-	/*
-	t = 0.9f;
-	DrawArc(g, CreateParallelBiarc(arc1, 0.0f, (2 * -halfWidth) * t), Color::DARK_GREEN);
-	//DrawArc(g, CreateParallelBiarc(arc2, (2 * -halfWidth) * t, (2 * -halfWidth)), Color::DARK_YELLOW);
-	DrawArc(g, CreateParallelBiarc(arc2.Reverse(), (2 * halfWidth), (2 * halfWidth) * t), Color::DARK_YELLOW);
-
-	DrawArc(g, CreateParallelBiarc(arc1, 0.0f, (2 * halfWidth) * t), Color::DARK_GREEN);
-	//DrawArc(g, CreateParallelBiarc(arc2, (2 * -halfWidth) * t, (2 * -halfWidth)), Color::DARK_YELLOW);
-	DrawArc(g, CreateParallelBiarc(arc2.Reverse(), (2 * -halfWidth), (2 * -halfWidth) * t), Color::DARK_YELLOW);
-
-	{
-	glBegin(GL_LINE_STRIP);
-	glColor4ubv(Color::GREEN.data());
-	float t = arc1.length / (arc1.length + arc2.length);
-	t = 0.9f;
-	//DrawArc(g, CreateParallelBiarc(arc1, 0.0f, (2 * -halfWidth) * t), Color::DARK_GREEN);
-	////DrawArc(g, CreateParallelBiarc(arc2, (2 * -halfWidth) * t, (2 * -halfWidth)), Color::DARK_YELLOW);
-	//DrawArc(g, CreateParallelBiarc(arc2.Reverse(), (2 * halfWidth), (2 * halfWidth) * t), Color::DARK_YELLOW);
-	//DrawArc(g, CreateParallelBiarc(arc1, 0.0f, (2 * halfWidth) * t), Color::DARK_GREEN);
-	////DrawArc(g, CreateParallelBiarc(arc2, (2 * -halfWidth) * t, (2 * -halfWidth)), Color::DARK_YELLOW);
-	//DrawArc(g, CreateParallelBiarc(arc2.Reverse(), (2 * -halfWidth), (2 * -halfWidth) * t), Color::DARK_YELLOW);
-
-	glEnd();
-	}
-	*/
-
-
-	//DrawPoint(g, arc1.start, Color::RED);
-	//DrawPoint(g, arc1.end, Color::RED);
-	//DrawPoint(g, arc2.end, Color::RED);
-	//DrawPoint(g, arc1.center, Color::CYAN);
-	//DrawPoint(g, arc2.center, Color::CYAN);
-	//g.DrawLine(arc1.start, arc1.center, Color::CYAN);
-	//g.DrawLine(arc1.end, arc1.center, Color::CYAN);
-	//g.DrawLine(arc2.start, arc2.center, Color::CYAN);
-	//g.DrawLine(arc2.end, arc2.center, Color::CYAN);
-	//DrawPoint(g, q1, Color::BLUE);
-	//DrawPoint(g, q2, Color::BLUE);
-	//g.DrawLine(q1, p1, Color::BLUE);
-	//g.DrawLine(q1, pm, Color::BLUE);
-	//g.DrawLine(q2, p2, Color::BLUE);
-	//g.DrawLine(q2, pm, Color::BLUE);
-	////DrawPoint(g, pm, Color::RED);
-	//halfWidth = m_magic;
-	//halfWidth = m_w;
-
-	////for (halfWidth = 1.0f; halfWidth < 400.0f; halfWidth += 2)
-	//{
-	//	Vector2f n2(-t2.y, t2.x);
-	//	Vector2f p3 = p2 - (halfWidth * n2);
-	//	float w = 32.0f;
-	//	//t = (m_magic / window->GetWidth());
-	//	
-	//	Vector2f midPointLeftNormal = (arc1.end - arc1.center) / arc1.radius;
-	//	if (arc1.angle < 0.0f)
-	//		midPointLeftNormal = -midPointLeftNormal;
-	//	Biarc testArc1, testArc2;
-	//	ComputeExpandingBiarcs(p1, t1, p2, t2, arc1.end,
-	//		midPointLeftNormal, halfWidth, testArc1, testArc2);
-	//	//Vector2f passThrough = arc1.end + midPointLeftNormal * m_offset;
-	//	//DrawPoint(g, passThrough, Color::YELLOW);
-	//	//Biarc testArc1 = ComputeArc(p1, t1, passThrough);
-	//	//Biarc testArc2 = ComputeArc(p3, -t2, passThrough);
-	//	DrawArc(g, testArc1, Color::YELLOW);
-	//	DrawArc(g, testArc2, Color::YELLOW);
-	//	g.DrawLine(testArc1.center, testArc1.end, Color::MAGENTA);
-	//	g.DrawLine(testArc2.center, testArc1.end, Color::MAGENTA);
-
-	//	float bestT = 0.0f;
-	//	float bestDot = -99;
-	//	for (float t = 0.0f; t <= 1.0f; t += 0.01f)
-	//	{
-	//		w = t * halfWidth;
-	//		Vector2f midpoint = arc1.end + Vector2f::Normalize(arc1.center - arc2.center) * w;
-	//		//DrawPoint(g, midpoint, Color::GREEN);
-	//		//DrawPoint(g, p3, Color::GREEN);
-
-	//		Vector2f c1 = ComputeCircleCenter(p1, t1, midpoint);
-	//		float r1 = c1.DistTo(p1);
-	//		//DrawPoint(g, c1, Color::YELLOW);
-	//		//g.DrawCircle(c1, r1, Color::YELLOW);
-
-	//		Vector2f c2 = ComputeCircleCenter(p3, -t2, midpoint);
-	//		float r2 = c2.DistTo(p3);
-	//		//DrawPoint(g, c2, Color::YELLOW);
-	//		//g.DrawCircle(c2, r2, Color::YELLOW);
-
-	//		//g.DrawLine(c1, midpoint, Color::YELLOW);
-	//		//g.DrawLine(c2, midpoint, Color::YELLOW);
-
-	//		float dot = Vector2f::Normalize(c1 - midpoint).Dot(Vector2f::Normalize(midpoint - c2));
-	//		if (dot > bestDot)
-	//		{
-	//			bestDot = dot;
-	//			bestT = t;
-	//		}
-	//	}
-	//	t = bestT;
-
-
-	//	{
-	//		w = t * halfWidth;
-	//		Vector2f midpoint = arc1.end + Vector2f::Normalize(arc1.center - arc2.center) * w;
-
-	//		//DrawPoint(g, Vector2f(halfWidth, window->GetHeight() - w * 3), Color::MAGENTA);
-	//		//DrawPoint(g, Vector2f(halfWidth, window->GetHeight() - t * 400), Color::GREEN);
-	//		//DrawPoint(g, Vector2f(halfWidth, window->GetHeight() - 400), Color::GREEN);
-
-	//		if (m_showDebug)
-	//		{
-	//			DrawPoint(g, midpoint, Color::GREEN);
-	//			DrawPoint(g, p3, Color::GREEN);
-
-	//			Vector2f c1 = ComputeCircleCenter(p1, t1, midpoint);
-	//			float r1 = c1.DistTo(p1);
-	//			DrawPoint(g, c1, Color::YELLOW);
-	//			//g.DrawCircle(c1, r1, Color::YELLOW);
-	//			DrawArc(g, ComputeArc(p1, t1, midpoint), Color::YELLOW);
-
-	//			Vector2f c2 = ComputeCircleCenter(p3, -t2, midpoint);
-	//			float r2 = c2.DistTo(p3);
-	//			DrawPoint(g, c2, Color::YELLOW);
-	//			//g.DrawCircle(c2, r2, Color::YELLOW);
-	//			DrawArc(g, ComputeArc(p3, -t2, midpoint), Color::YELLOW);
-	//			g.DrawLine(p1, c1, Color::MAGENTA);
-	//			g.DrawLine(p3, c2, Color::MAGENTA);
-
-	//			float xx = c2.DistTo(arc2.center);
-	//			float yy = p3.DistTo(arc2.center) - arc2.radius;
-
-	//			Vector2f midpointNormal = midpoint - c2;
-	//			midpointNormal = Vector2f(-midpointNormal.y, midpointNormal.x);
-	//			q2 = Line2f::GetLineIntersection(p3, p3 + t2, midpoint, midpoint + midpointNormal);
-	//			q1 = Line2f::GetLineIntersection(p1, p1 + t1, midpoint, midpoint + midpointNormal);
-	//			DrawPoint(g, q2, Color::MAGENTA);
-	//			DrawPoint(g, q1, Color::MAGENTA);
-	//			g.DrawLine(q1, p1, Color::MAGENTA);
-	//			g.DrawLine(q1, midpoint, Color::MAGENTA);
-	//			g.DrawLine(q2, p3, Color::MAGENTA);
-	//			g.DrawLine(q2, midpoint, Color::MAGENTA);
-	//				
-
-	//			g.DrawLine(c1, midpoint, Color::MAGENTA);
-	//			g.DrawLine(c2, midpoint, Color::MAGENTA);
-	//		}
-	//	}
-	//}
-
-	//halfWidth = 200;
-	//p2.x += halfWidth;
-	//ComputeBiarcs(p1, t1, p2, t2, arc1, arc2);
-	//DrawArc(g, arc1, Color::MAGENTA);
-	//DrawArc(g, arc2, Color::CYAN);
 
 	RoadMetrics metrics = m_network->GetMetrics();
 
@@ -1309,9 +1130,10 @@ void MainApp::OnRender()
 	{
 		BiarcPair leftEdge = surface->GetLeftEdgeLine();
 		BiarcPair rightEdge = surface->GetRightEdgeLine();
+		float maxLength = Math::Max(leftEdge.Length(), rightEdge.Length());
 		int count = 10;
 		float interval = 1.5f;
-		count = (int) ((leftEdge.Length() / interval) + 0.5f);
+		count = (int) ((maxLength / interval) + 0.5f);
 		count = Math::Max(2, count);
 		glBegin(GL_TRIANGLE_STRIP);
 		glColor3ubv(colorReadFill.data());
@@ -1332,8 +1154,11 @@ void MainApp::OnRender()
 			//DrawArcs(g, connection->m_dividerLines.front(), Color::YELLOW * Vector4f(Vector3f::ONE, 0.3f));
 			//DrawArcs(g, connection->m_dividerLines.back(), Color::WHITE * Vector4f(Vector3f::ONE, 0.3f));
 		}
-		DrawArcs(g, connection->m_visualShoulderLines[0], Color::GREEN * Vector4f(Vector3f::ONE, 0.3f));
-		DrawArcs(g, connection->m_visualShoulderLines[1], Color::GREEN * Vector4f(Vector3f::ONE, 0.3f));
+		if (m_showDebug)
+		{
+			DrawArcs(g, connection->m_visualShoulderLines[0], Color::GREEN * Vector4f(Vector3f::ONE, 0.3f));
+			DrawArcs(g, connection->m_visualShoulderLines[1], Color::GREEN * Vector4f(Vector3f::ONE, 0.3f));
+		}
 
 		DrawArcs(g, connection->m_visualEdgeLines[0], Color::YELLOW);
 		for (unsigned int i = 1; i < connection->m_dividerLines.size() - 1; i++)
@@ -1348,28 +1173,24 @@ void MainApp::OnRender()
 	{
 		Vector2f center = group->GetPosition();
 		//g.FillCircle(center, r * 2.0f, Color::RED);
-		g.DrawLine(center, center + (group->GetDirection() * r * 3), Color::WHITE);
+		if (m_showDebug)
+			g.DrawLine(center, center + (group->GetDirection() * r * 3), Color::WHITE);
 
 		for (int i = 0; i < group->GetNumNodes(); i++)
 		{
 			Node* node = group->GetNode(i);
-			g.DrawLine(node->GetLeftEdge(), node->GetRightEdge(), Color::WHITE);
-			g.FillCircle(node->GetRightEdge(), r, Color::WHITE);
-			//if (m_hoverInfo.nodeGroup == group &&
-			//i >= m_hoverInfo.startIndex &&
-			//i < m_hoverInfo.startIndex + m_rightLaneCount)
-			//g.FillCircle(node->GetCenter(), node->GetWidth() * 0.5f, Color::GRAY);
-			g.DrawCircle(node->GetCenter(), node->GetWidth() * 0.5f, Color::WHITE);
-			g.DrawLine(node->GetCenter(), node->GetCenter() + node->GetEndNormal() * r2, Color::WHITE);
+			if (m_showDebug)
+			{
+				g.DrawLine(node->GetLeftEdge(), node->GetRightEdge(), Color::WHITE);
+				g.FillCircle(node->GetRightEdge(), r, Color::WHITE);
+				//if (m_hoverInfo.nodeGroup == group &&
+				//i >= m_hoverInfo.startIndex &&
+				//i < m_hoverInfo.startIndex + m_rightLaneCount)
+				//g.FillCircle(node->GetCenter(), node->GetWidth() * 0.5f, Color::GRAY);
+				g.DrawCircle(node->GetCenter(), node->GetWidth() * 0.5f, Color::WHITE);
+				g.DrawLine(node->GetCenter(), node->GetCenter() + node->GetEndNormal() * r2, Color::WHITE);
+			}
 		}
-	}
-
-	for (Connection* connection : m_network->GetConnections())
-	{
-		//g.DrawLine(connection->GetInput()->GetCenter(),
-		//	connection->GetOutput()->GetCenter(), Color::WHITE);
-		//DrawArrowHead(g, connection->GetOutput()->GetCenter(),
-		//	connection->GetOutput()->GetEndNormal(), r2 * 2, Color::WHITE);
 	}
 
 	for (Driver* driver : m_drivers)

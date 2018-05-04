@@ -58,6 +58,10 @@ public:
 	void UpdateCameraControls(float dt);
 
 private:
+
+	void DrawArcs(Graphics2D& g, const BiarcPair& arcs, const Color& color);
+
+
 	RoadNetwork* m_network;
 
 	Vector2f m_mousePosition;
@@ -94,11 +98,22 @@ private:
 		LaneSide side;
 		bool reverse;
 		Vector2f center;
-		NodeGroup* nodeGroup;
 		int nodeIndex;
 		float nodePartialIndex;
-		int startIndex;
 		bool isValidSubGroup;
+		union
+		{
+			struct
+			{
+				NodeSubGroup subGroup;
+			};
+			struct
+			{
+				NodeGroup* nodeGroup;
+				int startIndex;
+				int count;
+			};
+		};
 	} m_hoverInfo;
 
 	struct

@@ -41,6 +41,10 @@ NodeGroup::NodeGroup()
 
 NodeGroup::~NodeGroup()
 {
+	// Delete all nodes in the node group
+	for (unsigned int i = 0; i < m_nodes.size(); i++)
+		delete m_nodes[i];
+	m_nodes.clear();
 }
 
 
@@ -221,8 +225,18 @@ static bool IntersectArcs(Biarc& a, Biarc& b)
 	return true;
 }
 
-static bool IntersectArcPairs(BiarcPair& pair1, BiarcPair& pair2)
+static bool IntersectArcPairs(BiarcPair& pair1, BiarcPair& pair2, bool reverse)
 {
+	if (reverse)
+	{
+		pair1 = pair1.Reverse();
+		pair2 = pair2.Reverse();
+		bool result = IntersectArcPairs(pair1, pair2, false);
+		pair1 = pair1.Reverse();
+		pair2 = pair2.Reverse();
+		return result;
+	}
+
 	if (IntersectArcs(pair1.second, pair2.second))
 	{
 		pair1.first = Biarc::CreatePoint(pair1.second.start);
@@ -245,22 +259,6 @@ static bool IntersectArcPairs(BiarcPair& pair1, BiarcPair& pair2)
 	}
 }
 
-static bool IntersectConnections(NodeGroupConnection* a,
-	NodeGroupConnection* b)
-{
-	if (IntersectArcPairs(a->m_visualEdgeLines[0],
-		b->m_visualEdgeLines[1]))
-	{
-		IntersectArcPairs(a->m_visualShoulderLines[0],
-			b->m_visualShoulderLines[1]);
-		return true;
-	}
-	else
-	{
-		return false;
-	}
-}
-
 void NodeGroup::UpdateGeometry()
 {
 	// Adjust the node positions relative to the node group's center
@@ -271,74 +269,75 @@ void NodeGroup::UpdateGeometry()
 		Node* node = m_nodes[i];
 		node->m_position = nodePosition;
 		node->m_endNormal = m_direction;
-		node->m_leftTangent = node->m_endNormal;
-		node->m_rightTangent = node->m_endNormal;
 		nodePosition += node->m_width * right;
 	}
+}
 
-	for (unsigned int i = 0; i < m_outputs.size(); i++)
-	{
-		if (m_outputs[i]->m_dividerLines.empty())
-			continue;
-		m_outputs[i]->m_visualEdgeLines[0] = m_outputs[i]->m_dividerLines.front();
-		m_outputs[i]->m_visualEdgeLines[1] = m_outputs[i]->m_dividerLines.back();
-		m_outputs[i]->m_visualShoulderLines[0] = m_outputs[i]->m_edgeLines[0];
-		m_outputs[i]->m_visualShoulderLines[1] = m_outputs[i]->m_edgeLines[1];
-	}
-
+void NodeGroup::UpdateIntersectionGeometry()
+{
 	// Check for overlap between connections
-	unsigned int last;
-	for (unsigned int first = 0; first < m_outputs.size(); first = last)
+	for (int inOut = 0; inOut < 2; inOut++)
 	{
-		// Find the group of connections that overlap this one
-		for (last = first + 1; last < m_outputs.size(); last++)
-		{
-			if (NodeSubGroup::GetOverlap(
-				m_outputs[first]->GetInput(),
-				m_outputs[last]->GetInput()) < 1)
-				break;
-		}
+		Array<NodeGroupConnection*>& connections = m_connections[inOut];
+		bool reverse = (inOut == 0);
 
-		// Intersect the lane-edge arc geometry for the overlapping connections
-		for (unsigned int i = first; i < last; i++)
+		unsigned int last;
+		for (unsigned int first = 0; first < connections.size(); first = last)
 		{
-			for (unsigned int j = i + 1; j < last; j++)
+			// Find the group of connections that overlap this one
+			for (last = first + 1; last < connections.size(); last++)
 			{
-				if (m_outputs[i]->m_dividerLines.empty() ||
-					m_outputs[j]->m_dividerLines.empty())
-					continue;
-				NodeGroupConnection* a = m_outputs[i];
-				NodeGroupConnection* b = m_outputs[j];
-				if (!IntersectArcPairs(a->m_visualEdgeLines[0],
-					b->m_visualEdgeLines[1]))
-					IntersectArcPairs(b->m_visualEdgeLines[0],
-						a->m_visualEdgeLines[1]);
+				if (NodeSubGroup::GetOverlap(
+					connections[first]->GetInput(),
+					connections[last]->GetInput()) < 1)
+					break;
+			}
+
+			// Intersect the lane-edge arc geometry for the overlapping
+			// connections
+			for (unsigned int i = first; i < last; i++)
+			{
+				for (unsigned int j = i + 1; j < last; j++)
+				{
+					if (connections[i]->m_dividerLines.empty() ||
+						connections[j]->m_dividerLines.empty())
+						continue;
+					NodeGroupConnection* a = connections[i];
+					NodeGroupConnection* b = connections[j];
+					if (!IntersectArcPairs(a->m_visualEdgeLines[0],
+						b->m_visualEdgeLines[1], reverse))
+						IntersectArcPairs(b->m_visualEdgeLines[0],
+						a->m_visualEdgeLines[1], reverse);
+				}
 			}
 		}
-		
-		// Find the group of connections that are touching or overlapping
-		for (last = first + 1; last < m_outputs.size(); last++)
-		{
-			if (NodeSubGroup::GetOverlap(
-				m_outputs[first]->GetInput(),
-				m_outputs[last]->GetInput()) < 0)
-				break;
-		}
 
-		// Intersect the shoulder-edge arc geometry for the touching connections
-		for (unsigned int i = first; i < last; i++)
+		for (unsigned int first = 0; first < connections.size(); first = last)
 		{
-			for (unsigned int j = i + 1; j < last; j++)
+			// Intersect the shoulder-edge arc geometry for the touching connections
+			for (unsigned int i = first; i < last; i++)
 			{
-				if (m_outputs[i]->m_dividerLines.empty() ||
-					m_outputs[j]->m_dividerLines.empty())
-					continue;
-				NodeGroupConnection* a = m_outputs[i];
-				NodeGroupConnection* b = m_outputs[j];
-				if (!IntersectArcPairs(a->m_visualShoulderLines[0],
-					b->m_visualShoulderLines[1]))
-					IntersectArcPairs(b->m_visualShoulderLines[0],
-						a->m_visualShoulderLines[1]);
+				for (unsigned int j = i + 1; j < last; j++)
+				{
+					if (connections[i]->m_dividerLines.empty() ||
+						connections[j]->m_dividerLines.empty())
+						continue;
+					NodeGroupConnection* a = connections[i];
+					NodeGroupConnection* b = connections[j];
+					if (!IntersectArcPairs(a->m_visualShoulderLines[0],
+						b->m_visualShoulderLines[1], reverse))
+						IntersectArcPairs(b->m_visualShoulderLines[0],
+						a->m_visualShoulderLines[1], reverse);
+				}
+			}
+
+			// Find the group of connections that are touching or overlapping
+			for (last = first + 1; last < connections.size(); last++)
+			{
+				if (NodeSubGroup::GetOverlap(
+					connections[first]->GetInput(),
+					connections[last]->GetInput()) < 0)
+					break;
 			}
 		}
 	}

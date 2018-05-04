@@ -103,5 +103,10 @@ void NodeGroupConnection::UpdateGeometry()
 		BiarcPair::CreateParallel(m_dividerLines.back(),
 		m_input.group->GetRightShoulderWidth(),
 		m_output.group->GetRightShoulderWidth());
+	
+	m_visualEdgeLines[0] = m_dividerLines.front();
+	m_visualEdgeLines[1] = m_dividerLines.back();
+	m_visualShoulderLines[0] = m_edgeLines[0];
+	m_visualShoulderLines[1] = m_edgeLines[1];
 }
 

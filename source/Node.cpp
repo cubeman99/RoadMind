@@ -10,8 +10,6 @@
 Node::Node()
 	: m_position(Vector2f::ZERO)
 	, m_endNormal(Vector2f::UNITX)
-	, m_leftTangent(Vector2f::UNITX)
-	, m_rightTangent(Vector2f::UNITX)
 	, m_width(1.0f)
 	, m_leftDivider(LaneDivider::DASHED)
 	, m_nodeGroup(nullptr)
@@ -76,12 +74,12 @@ Vector2f Node::GetRightEdge() const
 
 Vector2f Node::GetLeftEdgeTangent() const
 {
-	return m_leftTangent;
+	return m_endNormal;
 }
 
 Vector2f Node::GetRightEdgeTangent() const
 {
-	return m_rightTangent;
+	return m_endNormal;
 }
 
 Vector2f Node::GetCenter() const
@@ -216,18 +214,6 @@ void Node::SetCenterPosition(const Vector2f& center)
 void Node::SetEndNormal(const Vector2f& normal)
 {
 	m_endNormal = normal;
-	m_leftTangent = normal;
-	m_rightTangent = normal;
-}
-
-void Node::SetLeftEdgeTangent(const Vector2f& tangent)
-{
-	m_leftTangent = tangent;
-}
-
-void Node::SetRightEdgeTangent(const Vector2f& tangent)
-{
-	m_rightTangent = tangent;
 }
 
 
@@ -237,8 +223,6 @@ void Node::SetRightEdgeTangent(const Vector2f& tangent)
 
 void Node::UpdateGeometry()
 {
-	m_leftTangent = m_endNormal;
-	m_rightTangent = m_endNormal;
 	//if (m_leftNode != nullptr)
 	//{
 	//	if (m_leftNode->m_leftNode == this)
@@ -254,8 +238,5 @@ void Node::UpdateGeometry()
 	//		m_position = m_leftNode->GetRightEdge();
 	//		m_endNormal = m_leftNode->m_endNormal;
 	//	}
-
-	//	m_leftTangent = m_endNormal;
-	//	m_rightTangent = m_endNormal;
 	//}
 }

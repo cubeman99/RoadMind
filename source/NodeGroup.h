@@ -49,9 +49,9 @@ public:
 
 	static int GetOverlap(const NodeSubGroup& a, const NodeSubGroup& b)
 	{
-		return Math::Max(0, Math::Min(
+		return Math::Min(
 			a.index + a.count - b.index, 
-			b.index + b.count - a.index));
+			b.index + b.count - a.index);
 	}
 };
 
@@ -98,6 +98,7 @@ public:
 	// Geometry
 
 	void UpdateGeometry();
+	void UpdateIntersectionGeometry();
 
 private:
 

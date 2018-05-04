@@ -6,7 +6,6 @@
 #include <cmgApplication/cmg_application.h>
 #include <gl/GL.h>
 #include <ctime>
-
 #include <stdio.h>
 #include "MainApp.h"
 

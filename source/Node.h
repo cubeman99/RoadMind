@@ -67,8 +67,6 @@ public:
 	void SetLeftPosition(const Vector2f& position);
 	void SetCenterPosition(const Vector2f& center);
 	void SetEndNormal(const Vector2f& normal);
-	void SetLeftEdgeTangent(const Vector2f& tangent);
-	void SetRightEdgeTangent(const Vector2f& tangent);
 	
 	// Geometry
 
@@ -79,8 +77,6 @@ private:
 	Meters m_width;
 	Vector2f m_position;
 	Vector2f m_endNormal;
-	Vector2f m_rightTangent;
-	Vector2f m_leftTangent;
 	LaneDivider m_leftDivider;
 
 	int m_index;
