@@ -268,7 +268,7 @@ void NodeGroup::UpdateGeometry()
 	{
 		Node* node = m_nodes[i];
 		node->m_position = nodePosition;
-		node->m_endNormal = m_direction;
+		node->m_direction = m_direction;
 		nodePosition += node->m_width * right;
 	}
 }

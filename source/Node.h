@@ -34,7 +34,7 @@ public:
 	const RoadMetrics* GetMetrics() const;
 	float GetWidth() const;
 	unsigned int GetNodeId() const;
-	Vector2f GetEndNormal() const;
+	Vector2f GetDirection() const;
 	Vector2f GetEndTangent() const;
 	Vector2f GetPosition() const;
 	Vector2f GetLeftEdge() const;
@@ -76,7 +76,7 @@ private:
 	unsigned int m_nodeId;
 	Meters m_width;
 	Vector2f m_position;
-	Vector2f m_endNormal;
+	Vector2f m_direction;
 	LaneDivider m_leftDivider;
 
 	int m_index;

@@ -108,7 +108,7 @@ struct Biarc
 		}
 	}
 
-	inline Vector2f GetEndNormal() const
+	inline Vector2f GetDirection() const
 	{
 		if (IsStraight())
 			return GetStartNormal();

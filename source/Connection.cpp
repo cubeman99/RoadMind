@@ -241,8 +241,8 @@ void Connection::CalcVertices()
 			Vector2f p1, p2, t1, t2;
 			p1 = node1->m_position;
 			p2 = node2->m_position;
-			t1 = node1->m_endNormal;
-			t2 = node2->m_endNormal;
+			t1 = node1->m_direction;
+			t2 = node2->m_direction;
 			ComputeBiarcs(p1, t1, p2, t2, m_leftArc1, m_leftArc2);
 			AddArcVertices(m_leftArc1, &m_vertices[(int) LaneSide::LEFT]);
 			AddArcVertices(m_leftArc2, &m_vertices[(int) LaneSide::LEFT]);
@@ -373,8 +373,8 @@ Vector2f p1, p2, t1, t2;
 // Compute biarcs which pass through the lane center
 p1 = node1->GetCenter();
 p2 = node2->GetCenter();
-t1 = node1->GetEndNormal();
-t2 = node2->GetEndNormal();
+t1 = node1->GetDirection();
+t2 = node2->GetDirection();
 if (flip)
 {
 t1 = -t1;

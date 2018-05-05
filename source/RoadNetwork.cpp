@@ -29,6 +29,9 @@ RoadNetwork::~RoadNetwork()
 
 void RoadNetwork::ClearNodes()
 {
+	for (RoadIntersection* intersection : m_intersections)
+		delete intersection;
+	m_intersections.clear();
 	for (NodeGroupConnection* surface : m_nodeGroupConnections)
 		delete surface;
 	m_nodeGroupConnections.clear();
@@ -328,19 +331,24 @@ const RoadMetrics& RoadNetwork::GetMetrics() const
 	return m_metrics;
 }
 
-std::set<NodeGroup*>& RoadNetwork::GetNodeGroups()
+Set<NodeGroup*>& RoadNetwork::GetNodeGroups()
 {
 	return m_nodeGroups;
 }
 
-std::set<NodeGroupTie*>& RoadNetwork::GetNodeGroupTies()
+Set<NodeGroupTie*>& RoadNetwork::GetNodeGroupTies()
 {
 	return m_nodeGroupTies;
 }
 
-std::set<NodeGroupConnection*>& RoadNetwork::GetNodeGroupConnections()
+Set<NodeGroupConnection*>& RoadNetwork::GetNodeGroupConnections()
 {
 	return m_nodeGroupConnections;
+}
+
+Set<RoadIntersection*>& RoadNetwork::GetIntersections()
+{
+	return m_intersections;
 }
 
 Node* RoadNetwork::CreateNode()
@@ -363,4 +371,6 @@ void RoadNetwork::UpdateNodeGeometry()
 		surface->UpdateGeometry();
 	for (NodeGroup* group : m_nodeGroups)
 		group->UpdateIntersectionGeometry();
+	for (RoadIntersection* intersection : m_intersections)
+		intersection->UpdateGeometry();
 }

@@ -162,7 +162,7 @@ BiarcPair BiarcPair::CreateExpanding(const BiarcPair& base, float offset)
 		return BiarcPair::Interpolate(
 			base.first.start,
 			base.first.GetStartTangent(),
-			base.second.end + (base.second.GetEndNormal() * offset),
+			base.second.end + (base.second.GetDirection() * offset),
 			base.second.GetEndTangent());
 	}
 

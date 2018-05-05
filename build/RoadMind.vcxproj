@@ -81,7 +81,11 @@
     <ClInclude Include="..\source\NodeGroup.h" />
     <ClInclude Include="..\source\NodeGroupConnection.h" />
     <ClInclude Include="..\source\NodeGroupTie.h" />
+    <ClInclude Include="..\source\RoadIntersection.h" />
     <ClInclude Include="..\source\RoadNetwork.h" />
+    <ClInclude Include="..\source\EditorTool.h" />
+    <ClInclude Include="..\source\ToolDraw.h" />
+    <ClInclude Include="..\source\ToolSelection.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\source\Biarc.cpp" />
@@ -94,7 +98,11 @@
     <ClCompile Include="..\source\NodeGroup.cpp" />
     <ClCompile Include="..\source\NodeGroupConnection.cpp" />
     <ClCompile Include="..\source\NodeGroupTie.cpp" />
+    <ClCompile Include="..\source\RoadIntersection.cpp" />
     <ClCompile Include="..\source\RoadNetwork.cpp" />
+    <ClCompile Include="..\source\EditorTool.cpp" />
+    <ClCompile Include="..\source\ToolDraw.cpp" />
+    <ClCompile Include="..\source\ToolSelection.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

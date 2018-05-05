@@ -9,7 +9,7 @@
 
 Node::Node()
 	: m_position(Vector2f::ZERO)
-	, m_endNormal(Vector2f::UNITX)
+	, m_direction(Vector2f::UNITX)
 	, m_width(1.0f)
 	, m_leftDivider(LaneDivider::DASHED)
 	, m_nodeGroup(nullptr)
@@ -47,14 +47,14 @@ unsigned int Node::GetNodeId() const
 	return m_nodeId;
 }
 
-Vector2f Node::GetEndNormal() const
+Vector2f Node::GetDirection() const
 {
-	return m_endNormal;
+	return m_direction;
 }
 
 Vector2f Node::GetEndTangent() const
 {
-	return Vector2f(-m_endNormal.y, m_endNormal.x);
+	return Vector2f(-m_direction.y, m_direction.x);
 }
 
 Vector2f Node::GetPosition() const
@@ -74,12 +74,12 @@ Vector2f Node::GetRightEdge() const
 
 Vector2f Node::GetLeftEdgeTangent() const
 {
-	return m_endNormal;
+	return m_direction;
 }
 
 Vector2f Node::GetRightEdgeTangent() const
 {
-	return m_endNormal;
+	return m_direction;
 }
 
 Vector2f Node::GetCenter() const
@@ -213,7 +213,7 @@ void Node::SetCenterPosition(const Vector2f& center)
 
 void Node::SetEndNormal(const Vector2f& normal)
 {
-	m_endNormal = normal;
+	m_direction = normal;
 }
 
 
@@ -230,13 +230,13 @@ void Node::UpdateGeometry()
 	//		if (m_nodeId > m_leftNode->m_nodeId)
 	//		{
 	//			m_position = m_leftNode->m_position;
-	//			m_endNormal = -m_leftNode->m_endNormal;
+	//			m_direction = -m_leftNode->m_direction;
 	//		}
 	//	}
 	//	else
 	//	{
 	//		m_position = m_leftNode->GetRightEdge();
-	//		m_endNormal = m_leftNode->m_endNormal;
+	//		m_direction = m_leftNode->m_direction;
 	//	}
 	//}
 }

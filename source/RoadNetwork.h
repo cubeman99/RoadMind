@@ -5,7 +5,7 @@
 #include "NodeGroupTie.h"
 #include "NodeGroupConnection.h"
 #include "Connection.h"
-#include <set>
+#include "RoadIntersection.h"
 
 
 class RoadNetwork
@@ -16,9 +16,10 @@ public:
 	~RoadNetwork();
 
 	// Getters
-	std::set<NodeGroup*>& GetNodeGroups();
-	std::set<NodeGroupConnection*>& GetNodeGroupConnections();
-	std::set<NodeGroupTie*>& GetNodeGroupTies();
+	Set<NodeGroup*>& GetNodeGroups();
+	Set<NodeGroupConnection*>& GetNodeGroupConnections();
+	Set<NodeGroupTie*>& GetNodeGroupTies();
+	Set<RoadIntersection*>& GetIntersections();
 	const RoadMetrics& GetMetrics() const;
 
 	// Topology Modification
@@ -48,11 +49,13 @@ public:
 	// Geometry
 	void UpdateNodeGeometry();
 
+
 private:
 	RoadMetrics m_metrics;
-	std::set<NodeGroupTie*> m_nodeGroupTies;
-	std::set<NodeGroup*> m_nodeGroups;
-	std::set<NodeGroupConnection*> m_nodeGroupConnections;
+	Set<NodeGroupTie*> m_nodeGroupTies;
+	Set<NodeGroup*> m_nodeGroups;
+	Set<NodeGroupConnection*> m_nodeGroupConnections;
+	Set<RoadIntersection*> m_intersections;
 	unsigned int m_nodeIdCounter;
 };
 

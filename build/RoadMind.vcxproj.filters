@@ -13,6 +13,12 @@
       <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
     </Filter>
+    <Filter Include="Source Files\Topology">
+      <UniqueIdentifier>{02838e82-a865-4f90-ac9b-120842d3ade7}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\Tools">
+      <UniqueIdentifier>{830bbd2c-b280-49eb-ab1c-9f2717752882}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\source\MainApp.h">
@@ -21,16 +27,7 @@
     <ClInclude Include="..\source\CommonTypes.h">
       <Filter>Source Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\source\RoadNetwork.h">
-      <Filter>Source Files</Filter>
-    </ClInclude>
     <ClInclude Include="..\source\Biarc.h">
-      <Filter>Source Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\source\Connection.h">
-      <Filter>Source Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\source\Node.h">
       <Filter>Source Files</Filter>
     </ClInclude>
     <ClInclude Include="..\source\Camera.h">
@@ -39,14 +36,35 @@
     <ClInclude Include="..\source\Driver.h">
       <Filter>Source Files</Filter>
     </ClInclude>
+    <ClInclude Include="..\source\Node.h">
+      <Filter>Source Files\Topology</Filter>
+    </ClInclude>
     <ClInclude Include="..\source\NodeGroup.h">
-      <Filter>Source Files</Filter>
+      <Filter>Source Files\Topology</Filter>
     </ClInclude>
     <ClInclude Include="..\source\NodeGroupConnection.h">
-      <Filter>Source Files</Filter>
+      <Filter>Source Files\Topology</Filter>
     </ClInclude>
     <ClInclude Include="..\source\NodeGroupTie.h">
-      <Filter>Source Files</Filter>
+      <Filter>Source Files\Topology</Filter>
+    </ClInclude>
+    <ClInclude Include="..\source\RoadIntersection.h">
+      <Filter>Source Files\Topology</Filter>
+    </ClInclude>
+    <ClInclude Include="..\source\RoadNetwork.h">
+      <Filter>Source Files\Topology</Filter>
+    </ClInclude>
+    <ClInclude Include="..\source\Connection.h">
+      <Filter>Source Files\Topology</Filter>
+    </ClInclude>
+    <ClInclude Include="..\source\ToolDraw.h">
+      <Filter>Source Files\Tools</Filter>
+    </ClInclude>
+    <ClInclude Include="..\source\ToolSelection.h">
+      <Filter>Source Files\Tools</Filter>
+    </ClInclude>
+    <ClInclude Include="..\source\EditorTool.h">
+      <Filter>Source Files\Tools</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -56,16 +74,7 @@
     <ClCompile Include="..\source\MainApp.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\source\RoadNetwork.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="..\source\Biarc.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="..\source\Connection.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="..\source\Node.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="..\source\Camera.cpp">
@@ -74,14 +83,35 @@
     <ClCompile Include="..\source\Driver.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="..\source\Node.cpp">
+      <Filter>Source Files\Topology</Filter>
+    </ClCompile>
     <ClCompile Include="..\source\NodeGroup.cpp">
-      <Filter>Source Files</Filter>
+      <Filter>Source Files\Topology</Filter>
     </ClCompile>
     <ClCompile Include="..\source\NodeGroupConnection.cpp">
-      <Filter>Source Files</Filter>
+      <Filter>Source Files\Topology</Filter>
     </ClCompile>
     <ClCompile Include="..\source\NodeGroupTie.cpp">
-      <Filter>Source Files</Filter>
+      <Filter>Source Files\Topology</Filter>
+    </ClCompile>
+    <ClCompile Include="..\source\RoadIntersection.cpp">
+      <Filter>Source Files\Topology</Filter>
+    </ClCompile>
+    <ClCompile Include="..\source\RoadNetwork.cpp">
+      <Filter>Source Files\Topology</Filter>
+    </ClCompile>
+    <ClCompile Include="..\source\Connection.cpp">
+      <Filter>Source Files\Topology</Filter>
+    </ClCompile>
+    <ClCompile Include="..\source\ToolDraw.cpp">
+      <Filter>Source Files\Tools</Filter>
+    </ClCompile>
+    <ClCompile Include="..\source\ToolSelection.cpp">
+      <Filter>Source Files\Tools</Filter>
+    </ClCompile>
+    <ClCompile Include="..\source\EditorTool.cpp">
+      <Filter>Source Files\Tools</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>

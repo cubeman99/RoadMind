@@ -10,13 +10,9 @@
 #include "RoadNetwork.h"
 #include "Camera.h"
 #include "Driver.h"
+#include "ToolSelection.h"
+#include "ToolDraw.h"
 
-enum class DragState
-{
-	NONE,
-	POSITION,
-	DIRECTION,
-};
 
 enum class EditMode
 {
@@ -47,83 +43,30 @@ public:
 	void DrawRoadMarkings(Graphics2D& g, Connection* connection);
 	void DrawNode(Graphics2D& g, Node* node);
 
-	Node* BeginDraggingNewNode(const Vector2f& position);
-	void BeginDragging(Node* node, Node* input = nullptr);
-	Node* BeginExtending(Node* node, LaneSide side = LaneSide::NONE, bool reverse = false);
-	void UpdateDragging();
-	void CancelDragging();
-	void StopDragging();
+	void SetTool(EditorTool* tool);
 
-	void UpdateHoverInfo();
+	//void UpdateHoverInfo();
 	void UpdateCameraControls(float dt);
 
 private:
 
 	void DrawArcs(Graphics2D& g, const BiarcPair& arcs, const Color& color);
 
-
+	SpriteFont* m_font;
 	RoadNetwork* m_network;
 
 	Vector2f m_mousePosition;
 
-	Node* m_dragNode;
-	Node* m_dragInput;
 	bool m_showDebug;
+	bool m_wireframeMode;
 
-	DragState m_dragState;
-
-	struct DragInfo
-	{
-		DragState state;
-		NodeGroup* inputGroup;
-		NodeGroup* nodeGroup;
-		NodeGroupConnection* connection;
-		Vector2f position;
-	};
-
-	DragInfo m_dragInfo;
 	EditMode m_editMode;
 
+	EditorTool* m_currentTool;
+	ToolSelection* m_toolSelection;
+	ToolDraw* m_toolDraw;
+	Array<EditorTool*> m_tools;
 	Array<Driver*> m_drivers;
-
-	NodeGroup* m_lastNodeGroup;
-
-	bool m_wireframeMode;
-	int m_rightLaneCount;
-	int m_leftLaneCount;
-
-	struct
-	{
-		Node* node;
-		LaneSide side;
-		bool reverse;
-		Vector2f center;
-		int nodeIndex;
-		float nodePartialIndex;
-		bool isValidSubGroup;
-		union
-		{
-			struct
-			{
-				NodeSubGroup subGroup;
-			};
-			struct
-			{
-				NodeGroup* nodeGroup;
-				int startIndex;
-				int count;
-			};
-		};
-	} m_hoverInfo;
-
-	struct
-	{
-		Node* node;
-		LaneSide side;
-		bool reverse;
-		Vector2f center;
-		NodeSubGroup subGroup;
-	} m_snapInfo;
 
 	CameraState m_camera;
 	CameraState m_defaultCameraState;
@@ -131,13 +74,6 @@ private:
 	Texture* m_backgroundTexture;
 	Vector2f m_backgroundPosition;
 	Vector2f m_backgroundSize;
-
-	Vector2f m_p1;
-	Vector2f m_p2;
-	Vector2f m_t1;
-	Vector2f m_t2;
-	float m_w;
-	float m_offset;
 };
 
 

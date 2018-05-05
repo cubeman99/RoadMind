@@ -4,9 +4,6 @@
 #include <process.h>
 #include <sstream>
 
-static HCURSOR  hCursorHand;
-static HCURSOR  hCursorArrow;
-
 
 MainApp::MainApp()
 {
@@ -24,24 +21,9 @@ void MainApp::OnInitialize()
 	m_network = new RoadNetwork();
 
 	m_showDebug = true;
-	m_dragNode = nullptr;
-	m_hoverInfo.node = nullptr;
-	m_dragState = DragState::NONE;
 	m_wireframeMode = false;
 
 	m_backgroundTexture = nullptr;
-	m_lastNodeGroup = nullptr;
-	//Texture::LoadTexture(
-
-	m_rightLaneCount = 1;
-	m_leftLaneCount = 1;
-
-	m_p1 = Vector2f(100, 400);
-	m_t1 = Vector2f(1, 0);
-	m_p2 = Vector2f(300, 390);
-	m_t2 = Vector2f(0, 1);
-	m_w = 200;
-	m_offset = 20;
 
 	m_defaultCameraState.m_viewHeight = 50.0f;
 	m_defaultCameraState.m_position = Vector2f::ZERO;
@@ -49,13 +31,18 @@ void MainApp::OnInitialize()
 	m_defaultCameraState.m_aspectRatio = GetWindow()->GetAspectRatio();
 	m_camera = m_defaultCameraState;
 
-	hCursorHand = LoadCursor(NULL, IDC_SIZEALL);
-	hCursorArrow = LoadCursor(NULL, IDC_ARROW);
+	m_font = SpriteFont::LoadBuiltInFont(BuiltInFonts::FONT_CONSOLE);
 
 	m_editMode = EditMode::CREATE;
-	m_dragInfo.state = DragState::NONE;
-	m_dragInfo.inputGroup = nullptr;
-	m_dragInfo.nodeGroup = nullptr;
+
+	// Create the editor tools
+	m_toolSelection = new ToolSelection();
+	m_toolDraw = new ToolDraw();
+	m_tools.push_back(m_toolDraw);
+	m_tools.push_back(m_toolSelection);
+	m_currentTool = nullptr;
+
+	SetTool(m_toolDraw);
 
 	//Vector2f screenSize(
 	//	(float) GetWindow()->GetWidth(),
@@ -76,360 +63,13 @@ void MainApp::CreateTestNetwork()
 // Selection
 //-----------------------------------------------------------------------------
 
-Node* MainApp::BeginDraggingNewNode(const Vector2f& position)
+void MainApp::SetTool(EditorTool* tool)
 {
-	m_dragNode = m_network->CreateNode();
-	m_dragNode->SetCenterPosition(position);
-	BeginDragging(m_dragNode, nullptr);
-	m_dragState = DragState::DIRECTION;
-	return m_dragNode;
-}
-
-void MainApp::BeginDragging(Node* node, Node* input)
-{
-	m_dragInput = input;
-	m_dragNode = node;
-	m_dragState = DragState::POSITION;
-	m_snapInfo.node = nullptr;
-	m_snapInfo.reverse = false;
-	m_snapInfo.side = LaneSide::NONE;
-}
-
-Node* MainApp::BeginExtending(Node* node, LaneSide side, bool reverse)
-{
-	if (side != LaneSide::NONE)
-	{
-		float offset = node->GetWidth();
-		if (side == LaneSide::LEFT)
-			offset = -offset;
-		m_dragNode = m_network->CreateNode();
-		m_dragNode->SetWidth(node->GetWidth());
-		Vector2f direction = node->GetEndNormal();
-		if (reverse)
-			direction = -direction;
-		m_dragNode->SetEndNormal(direction);
-		m_dragNode->SetCenterPosition(node->GetCenter() + offset * node->GetEndTangent());
-
-		/*	if (reverse)
-				m_network->SewOpposite(node, m_dragNode);
-				else if (side == LaneSide::LEFT)
-				m_network->SewNode(node, m_dragNode);
-				else if (side == LaneSide::RIGHT)
-				m_network->SewNode(m_dragNode, node);*/
-		node = m_dragNode;
-	}
-
-	m_dragNode = m_network->CreateNode();
-	m_dragNode->SetLeftPosition(node->GetLeftEdge());
-	m_dragNode->SetEndNormal(node->GetEndNormal());
-	m_dragNode->SetWidth(node->GetWidth());
-
-	m_dragState = DragState::POSITION;
-	BeginDragging(m_dragNode, node);
-	return m_dragNode;
-}
-
-void MainApp::CancelDragging()
-{
-	if (m_dragInfo.state != DragState::NONE)
-	{
-		m_network->DeleteNodeGroupConnection(m_dragInfo.connection);
-		m_network->DeleteNodeGroup(m_dragInfo.nodeGroup);
-		m_dragInfo.nodeGroup = nullptr;
-		m_dragInfo.inputGroup = nullptr;
-		m_dragInfo.connection = nullptr;
-		m_dragInfo.state = DragState::NONE;
-	}
-}
-
-void MainApp::StopDragging()
-{
-	m_dragInfo.nodeGroup = nullptr;
-	m_dragInfo.inputGroup = nullptr;
-	m_dragInfo.connection = nullptr;
-	m_dragInfo.state = DragState::NONE;
-}
-
-static Vector2f GetAutoNormal(const Vector2f& from,
-	const Vector2f& direction, const Vector2f& to)
-{
-	Vector2f tangent = (to - from).Normalize();
-	Vector2f normal(-tangent.y, tangent.x);
-	Vector2f middle = (from + to) * 0.5f;
-	Vector2f intersection = Line2f::GetLineIntersection(from, from + direction,
-		middle, middle + normal);
-	Vector2f autoNormal = Vector2f::Normalize(to - intersection);
-	float dot = to.Dot(direction) - from.Dot(direction);
-	if (Math::Abs(dot) < 0.001f)
-		return -direction;
-	else if (dot < 0)
-		return -autoNormal;
-	else
-		return autoNormal;
-}
-
-void MainApp::UpdateDragging()
-{
-	Window* window = GetWindow();
-	Keyboard* keyboard = GetKeyboard();
-	Mouse* mouse = GetMouse();
-	MouseState mouseState = mouse->GetMouseState();
-	bool ctrl = keyboard->IsKeyDown(Keys::left_control) ||
-		keyboard->IsKeyDown(Keys::right_control);
-	bool shift = keyboard->IsKeyDown(Keys::left_shift) ||
-		keyboard->IsKeyDown(Keys::right_shift);
-	int scroll = mouseState.z - mouse->GetPrevMouseState().z;
-	bool snapped = false;
-	bool snappedReverse = false;
-
-	if (m_dragInfo.state != DragState::NONE)
-	{
-		if (m_dragInfo.state == DragState::POSITION)
-		{
-			float width = m_dragInfo.nodeGroup->GetWidth();
-			Vector2f right = m_dragInfo.nodeGroup->GetDirection();
-			right = Vector2f(-right.y, right.x);
-
-			if (ctrl)
-			{
-				Vector2f v = m_mousePosition - m_dragInfo.position;
-				if (v.Length() > 0.00001f)
-				{
-					m_dragInfo.nodeGroup->SetDirection(Vector2f::Normalize(v));
-					right = m_dragInfo.nodeGroup->GetDirection();
-					right = Vector2f(-right.y, right.x);
-				}
-			}
-			else
-			{
-				m_dragInfo.position = m_mousePosition;
-
-				// Automatically set the direction of the dragged node
-				if (m_dragInfo.inputGroup != nullptr)
-				{
-					Vector2f startCenter =
-						m_dragInfo.connection->GetInput().GetLeftPosition();
-					Vector2f startRight = m_dragInfo.connection->GetInput().group->GetDirection();
-					startRight = Vector2f(-startRight.y, startRight.x);
-					startCenter += startRight * width * 0.5f;
-					Vector2f autoDirection = GetAutoNormal(startCenter,
-						m_dragInfo.inputGroup->GetDirection(), m_mousePosition);
-					m_dragInfo.nodeGroup->SetDirection(autoDirection);
-				}
-
-				// Attempt to snap to another node
-				if (m_hoverInfo.nodeGroup != nullptr)
-				{
-					snappedReverse = (m_hoverInfo.subGroup.group->GetDirection().Dot(
-						m_dragInfo.inputGroup->GetDirection()) < 0.0f);
-					snapped = true;
-					if (snappedReverse)
-					{
-						m_snapInfo.subGroup.index = -(m_hoverInfo.startIndex + m_hoverInfo.count);
-						m_snapInfo.subGroup.index = Math::Max(0, m_snapInfo.subGroup.index);
-						m_snapInfo.subGroup.count = m_hoverInfo.count;
-						m_snapInfo.subGroup.group = m_dragInfo.nodeGroup;
-						m_dragInfo.nodeGroup->SetDirection(
-							-m_hoverInfo.nodeGroup->GetDirection());
-					}
-					else
-					{
-						m_snapInfo.subGroup = m_hoverInfo.subGroup;
-						m_dragInfo.nodeGroup->SetDirection(
-							m_hoverInfo.nodeGroup->GetDirection());
-					}
-					float w = m_network->GetMetrics().laneWidth;
-					m_dragInfo.nodeGroup->SetPosition(m_hoverInfo.nodeGroup->GetPosition() +
-						(right * w * (float) m_snapInfo.subGroup.index));
-				}
-			}
-
-			if (!snapped)
-			{
-				m_dragInfo.nodeGroup->SetPosition(
-					m_dragInfo.position - (right * width * 0.5f));
-			}
-
-			if (mouse->IsButtonPressed(MouseButtons::right))
-			{
-				CancelDragging();
-			}
-			else if (mouse->IsButtonPressed(MouseButtons::left))
-			{
-				if (snapped)
-				{
-					if (snappedReverse)
-					{
-						m_network->GrowNodeGroup(m_snapInfo.subGroup);
-						m_dragInfo.connection->m_output = m_snapInfo.subGroup;
-						m_network->TieNodeGroups(m_dragInfo.nodeGroup, m_hoverInfo.nodeGroup);
-						
-						m_dragInfo.inputGroup = m_dragInfo.nodeGroup;
-						m_dragInfo.nodeGroup = m_network->CreateNodeGroup(m_mousePosition,
-							Vector2f::UNITX, m_snapInfo.subGroup.count);
-						m_dragInfo.connection = m_network->ConnectNodeGroups(
-							m_dragInfo.inputGroup, m_dragInfo.nodeGroup);
-						m_dragInfo.state = DragState::POSITION;
-					}
-					else
-					{
-						// Connect to an existing node groups
-						m_network->GrowNodeGroup(m_hoverInfo.subGroup);
-						m_network->ConnectNodeSubGroups(
-							m_dragInfo.connection->GetInput(),
-							m_hoverInfo.subGroup);
-						m_network->DeleteNodeGroup(m_dragInfo.nodeGroup);
-						m_dragInfo.nodeGroup = nullptr;
-						m_dragInfo.state = DragState::NONE;
-					}
-				}
-				else
-				{
-					// Place the created node group and begin extending it
-					m_dragInfo.inputGroup = m_dragInfo.nodeGroup;
-					m_dragInfo.nodeGroup = m_network->CreateNodeGroup(m_mousePosition,
-						Vector2f::UNITX, m_dragInfo.inputGroup->GetNumNodes());
-					m_dragInfo.connection = m_network->ConnectNodeGroups(
-						m_dragInfo.inputGroup, m_dragInfo.nodeGroup);
-					m_dragInfo.state = DragState::POSITION;
-				}
-			}
-		}
-	}
-	else
-	{
-		if (mouse->IsButtonPressed(MouseButtons::left))
-		{
-			m_dragInfo.nodeGroup = m_network->CreateNodeGroup(m_mousePosition,
-				Vector2f::UNITX, m_rightLaneCount);
-			m_dragInfo.inputGroup = nullptr;
-			m_dragInfo.connection = nullptr;
-
-			if (m_hoverInfo.nodeGroup != nullptr)
-			{
-				NodeSubGroup startSubGroup = m_hoverInfo.subGroup;
-				m_network->GrowNodeGroup(startSubGroup);
-				NodeSubGroup endSubGroup(m_dragInfo.nodeGroup, 0, m_rightLaneCount);
-				m_dragInfo.inputGroup = m_hoverInfo.nodeGroup;
-				m_dragInfo.connection = m_network->ConnectNodeSubGroups(
-					startSubGroup, endSubGroup);
-			}
-			else
-			{
-				m_dragInfo.inputGroup = m_dragInfo.nodeGroup;
-				m_dragInfo.nodeGroup = m_network->CreateNodeGroup(m_mousePosition,
-					Vector2f::UNITX, m_rightLaneCount);
-				m_dragInfo.connection = m_network->ConnectNodeGroups(
-					m_dragInfo.inputGroup, m_dragInfo.nodeGroup);
-			}
-
-			m_dragInfo.state = DragState::POSITION;
-		}
-	}
-}
-
-void MainApp::UpdateHoverInfo()
-{
-	if (!GetKeyboard()->IsKeyDown(Keys::left_shift))
-	{
-		m_hoverInfo.node = nullptr;
-		m_hoverInfo.nodeGroup = nullptr;
-		m_hoverInfo.nodeIndex = 0;
-		m_hoverInfo.nodePartialIndex = 0.0f;
-		m_hoverInfo.side = LaneSide::NONE;
-		m_hoverInfo.reverse = false;
-		m_hoverInfo.subGroup.group = nullptr;
-
-		// Check which node is being hovered over
-		for (NodeGroup* group : m_network->GetNodeGroups())
-		{
-			if (m_dragInfo.state != DragState::NONE &&
-				m_dragInfo.nodeGroup == group)
-				continue;
-			for (int index = 0; index < group->GetNumNodes(); index++)
-			{
-				Node* node = group->GetNode(index);
-				float radius = node->GetWidth() * 0.5f;
-				Vector2f center = node->GetCenter();
-				if (m_mousePosition.DistTo(center) <= radius)
-				{
-					m_hoverInfo.nodeGroup = group;
-					break;
-				}
-			}
-			if (m_hoverInfo.nodeGroup != nullptr)
-				break;
-		}
-	}
-
-	if (m_hoverInfo.nodeGroup != nullptr)
-	{
-		float groupWidth = m_hoverInfo.nodeGroup->GetWidth();
-		Vector2f leftEdge = m_hoverInfo.nodeGroup->GetPosition();
-		Vector2f rightEdge = m_hoverInfo.nodeGroup->GetRightPosition();
-		Vector2f right = m_hoverInfo.nodeGroup->GetDirection();
-		right = Vector2f(-right.y, right.x);
-		float w = m_network->GetMetrics().laneWidth;
-		float offset = (m_mousePosition.Dot(right) - leftEdge.Dot(right));
-
-		if (offset <= 0.0f)
-		{
-			m_hoverInfo.node = nullptr;
-			m_hoverInfo.nodePartialIndex = offset / w;
-			m_hoverInfo.nodeIndex = (int) (offset / w) - 1;
-			m_hoverInfo.center = leftEdge +
-				(right * w * (m_hoverInfo.nodePartialIndex + 0.5f));
-		}
-		else if (offset >= groupWidth)
-		{
-			m_hoverInfo.node = nullptr;
-			m_hoverInfo.nodePartialIndex =
-				m_hoverInfo.nodeGroup->GetNumNodes() +
-				(offset - groupWidth) / w;
-			m_hoverInfo.nodeIndex = m_hoverInfo.nodeGroup->GetNumNodes() +
-				(int) m_hoverInfo.nodePartialIndex;
-			m_hoverInfo.center = leftEdge +
-				(right * w * (m_hoverInfo.nodePartialIndex + 0.5f));
-		}
-		else
-		{
-			float o = 0.0f;
-			for (int index = 0;
-				index < m_hoverInfo.nodeGroup->GetNumNodes(); index++)
-			{
-				Node* node = m_hoverInfo.nodeGroup->GetNode(index);
-				if (offset >= o && offset <= o + node->GetWidth())
-				{
-					m_hoverInfo.nodeIndex = index;
-					m_hoverInfo.nodePartialIndex =
-						index + ((offset - o) / node->GetWidth());
-					m_hoverInfo.center = node->GetCenter();
-					m_hoverInfo.node = node;
-					break;
-				}
-				o += node->GetWidth();
-			}
-		}
-
-		m_hoverInfo.side = LaneSide::NONE;
-		m_hoverInfo.reverse = false;
-		m_hoverInfo.subGroup.count = m_rightLaneCount;
-		m_hoverInfo.subGroup.index = (int) Math::Floor(
-			(m_hoverInfo.nodePartialIndex -
-			(m_hoverInfo.subGroup.count - 1) * 0.5f));
-
-		m_hoverInfo.isValidSubGroup = true;
-		for (auto connection : m_hoverInfo.nodeGroup->GetOutputs())
-		{
-			int overlap = NodeSubGroup::GetOverlap(
-				m_hoverInfo.subGroup, connection->GetInput());
-			if (overlap > 1)
-			{
-				m_hoverInfo.isValidSubGroup = false;
-				break;
-			}
-		}
-	}
+	if (m_currentTool != nullptr)
+		m_currentTool->OnEnd();
+	m_currentTool = tool;
+	if (m_currentTool != nullptr)
+		m_currentTool->OnBegin();
 }
 
 void MainApp::UpdateCameraControls(float dt)
@@ -533,148 +173,6 @@ void MainApp::DrawArcs(Graphics2D& g, const BiarcPair& arcs, const Color& color)
 		g.FillCircle(arcs.first.start, 0.15f, color);
 		g.FillCircle(arcs.first.end, 0.15f, color);
 		g.FillCircle(arcs.second.end, 0.15f, color);
-	}
-}
-
-void MainApp::DrawNode(Graphics2D& g, Node* node)
-{
-	Vector2f leftEdge = node->GetLeftEdge();
-	Vector2f rightEdge = node->GetRightEdge();
-	Color laneEdgeColor = Color::BLACK;
-	Vector2f direction = node->GetEndNormal();
-	RoadMetrics metrics = *node->GetMetrics();
-
-	Color lineColor = Color::WHITE;
-	Color fillColor(255, 128, 32);
-	Color outputColor(255, 128, 32);
-	Color inputColor(32, 128, 255);
-
-	bool laneEnd = (node->GetNumInputs() == 0 ||
-		node->GetNumOutputs() == 0);
-	if (laneEnd)
-	{
-		if (node->GetNumInputs() == 0)
-			fillColor = outputColor;
-		else
-			fillColor = inputColor;
-
-		if (m_hoverInfo.node == node)
-			fillColor = Color::Lerp(fillColor, Color::WHITE, 0.5f);
-		if (!laneEnd)
-			g.DrawLine(leftEdge, rightEdge, Color::BLACK);
-
-		RoadMetrics metrics = m_network->GetMetrics();
-		float width = metrics.laneWidth * 0.2f;
-		float tipLength = metrics.laneWidth * 0.16f;
-		float tipWidth = metrics.laneWidth * 0.3f;
-
-		Vector2f endNormal = node->GetEndNormal();
-		if (node->GetNumInputs() == 0)
-		{
-			endNormal = -endNormal;
-			tipLength = -tipLength;
-		}
-		Vector2f center1 = node->GetCenter();
-		Vector2f center2 = center1 - (endNormal * width);
-
-		Vector2f left2 = Line2f::GetLineIntersection(
-			leftEdge, leftEdge + node->GetLeftEdgeTangent(),
-			center2, center2 + node->GetEndTangent());
-		Vector2f right2 = Line2f::GetLineIntersection(
-			rightEdge, rightEdge + node->GetRightEdgeTangent(),
-			center2, center2 + node->GetEndTangent());
-
-		Vector2f connecterTip = center1 + endNormal * tipLength;
-		Vector2f connecterLeft = center1 - node->GetEndTangent() * tipWidth * 0.5f;
-		Vector2f connecterRight = center1 + node->GetEndTangent() * tipWidth * 0.5f;
-
-		// Draw stop line
-		if (node->GetNumOutputs() == 0)
-		{
-			glBegin(GL_TRIANGLE_FAN);
-			glColor4ubv(Color::WHITE.data());
-			glVertex2fv(node->GetLeftEdge().v);
-			glVertex2fv((node->GetLeftEdge() - direction * metrics.stopLineWidth).v);
-			glVertex2fv((node->GetRightEdge() - direction * metrics.stopLineWidth).v);
-			glVertex2fv(node->GetRightEdge().v);
-			glEnd();
-		}
-
-		// Draw the buckle
-		if (m_showDebug)
-		{
-			if (node->GetNumInputs() == 0)
-			{
-				glBegin(GL_TRIANGLE_FAN);
-				glColor4ubv(fillColor.data());
-				glVertex2fv(left2.v);
-				glVertex2fv(leftEdge.v);
-				glVertex2fv(connecterLeft.v);
-				glVertex2fv(connecterTip.v);
-				glVertex2fv(center2.v);
-				glEnd();
-				glBegin(GL_TRIANGLE_FAN);
-				glColor4ubv(fillColor.data());
-				glVertex2fv(center2.v);
-				glVertex2fv(connecterTip.v);
-				glVertex2fv(connecterRight.v);
-				glVertex2fv(rightEdge.v);
-				glVertex2fv(right2.v);
-				glEnd();
-			}
-			else
-			{
-				glBegin(GL_TRIANGLE_FAN);
-				glColor4ubv(fillColor.data());
-				glVertex2fv(left2.v);
-				glVertex2fv(leftEdge.v);
-				glVertex2fv(rightEdge.v);
-				glVertex2fv(right2.v);
-				glEnd();
-				glBegin(GL_TRIANGLE_FAN);
-				glColor4ubv(fillColor.data());
-				glVertex2fv(connecterLeft.v);
-				glVertex2fv(connecterTip.v);
-				glVertex2fv(connecterRight.v);
-				glEnd();
-			}
-
-			glBegin(GL_LINE_LOOP);
-			glColor4ubv(Color::WHITE.data());
-			glVertex2fv(left2.v);
-			glVertex2fv(leftEdge.v);
-			glVertex2fv(connecterLeft.v);
-			glVertex2fv(connecterTip.v);
-			glVertex2fv(connecterRight.v);
-			glVertex2fv(rightEdge.v);
-			glVertex2fv(right2.v);
-			glEnd();
-		}
-	}
-	if (m_showDebug)
-	{
-		g.DrawLine(leftEdge, rightEdge, Color::GRAY);
-		g.DrawLine(node->GetCenter(),
-			node->GetCenter() + node->GetEndNormal() * node->GetWidth() * 0.2f, Color::GRAY);
-
-		if (m_hoverInfo.node == node)
-		{
-			Vector2f hoverCenter = node->GetCenter();
-
-			if (m_hoverInfo.side != LaneSide::NONE)
-			{
-				float offset = node->GetWidth();
-				if (m_hoverInfo.side == LaneSide::LEFT)
-					offset = -offset;
-				hoverCenter += node->GetEndTangent() * offset;
-			}
-
-			g.FillCircle(hoverCenter, node->GetWidth() * 0.5f, Vector4f(1, 1, 1, 0.3f));
-			if (m_hoverInfo.side != LaneSide::NONE)
-				g.DrawCircle(hoverCenter, node->GetWidth() * 0.5f, Color::WHITE);
-			g.DrawLine(hoverCenter, node->GetCenter(), Color::RED);
-		}
-		g.DrawCircle(node->GetCenter(), node->GetWidth() * 0.5f, Color::WHITE);
 	}
 }
 
@@ -893,6 +391,10 @@ void MainApp::OnQuit()
 
 	delete m_network;
 	m_network = nullptr;
+
+	delete m_font;
+	m_font = nullptr;
+
 	if (m_backgroundTexture != nullptr)
 	{
 		delete m_backgroundTexture;
@@ -955,144 +457,77 @@ void MainApp::OnUpdate(float dt)
 		return;
 	}
 
+	// I: Wireframe mode
 	if (keyboard->IsKeyPressed(Keys::i))
 		m_wireframeMode = !m_wireframeMode;
+
+	// F1: Toggle debug display
+	if (keyboard->IsKeyPressed(Keys::f1))
+		m_showDebug = !m_showDebug;
 
 	// R: Clear road network
 	if (keyboard->IsKeyPressed(Keys::r))
 	{
-		StopDragging();
-		m_lastNodeGroup = nullptr;
-		m_dragState = DragState::NONE;
+		m_toolDraw->CancelDragging();
 		m_network->ClearNodes();
 		m_camera.m_position = m_defaultCameraState.m_position;
 		m_camera.m_rotation = m_defaultCameraState.m_rotation;
 	}
+
+	// T: Create test network
 	if (keyboard->IsKeyPressed(Keys::t))
 	{
-		m_dragState = DragState::NONE;
+		m_toolDraw->CancelDragging();
 		m_network->ClearNodes();
 		CreateTestNetwork();
 	}
-	if (keyboard->IsKeyPressed(Keys::enter) && m_hoverInfo.node != nullptr)
+
+	// M: Selection tool
+	if (keyboard->IsKeyPressed(Keys::m))
+		SetTool(m_toolSelection);
+	// P: Draw tool
+	if (keyboard->IsKeyPressed(Keys::p))
+		SetTool(m_toolDraw);
+	if (keyboard->IsKeyPressed(Keys::tab))
 	{
-		Driver* driver = new Driver(m_network, m_hoverInfo.node);
-		m_drivers.push_back(driver);
+		if (m_currentTool == m_toolDraw)
+			SetTool(m_toolSelection);
+		else
+			SetTool(m_toolDraw);
 	}
 
+	// Enter: Spawn driver
+	//if (keyboard->IsKeyPressed(Keys::enter) && m_hoverInfo.node != nullptr)
+	//{
+	//	Driver* driver = new Driver(m_network, m_hoverInfo.node);
+	//	m_drivers.push_back(driver);
+	//}
+
+	// Update the current tool
+	if (m_currentTool != nullptr)
+	{
+		m_currentTool->m_keyboard = GetKeyboard();
+		m_currentTool->m_mouse = GetMouse();
+		m_currentTool->m_network = m_network;
+		m_currentTool->m_mousePosition = m_mousePosition;
+
+		if (mouse->IsButtonPressed(MouseButtons::left))
+			m_currentTool->OnLeftMousePressed();
+		if (mouse->IsButtonPressed(MouseButtons::right))
+			m_currentTool->OnRightMousePressed();
+		if (mouse->IsButtonReleased(MouseButtons::left))
+			m_currentTool->OnLeftMouseReleased();
+		if (mouse->IsButtonReleased(MouseButtons::right))
+			m_currentTool->OnRightMouseReleased();
+
+		m_currentTool->Update(dt);
+	}
+
+	// Update the drivers
 	for (Driver* driver : m_drivers)
 		driver->Update(dt);
 
-
-	// D: Toggle debug display
-	if (ctrl && keyboard->IsKeyPressed(Keys::d))
-		m_showDebug = !m_showDebug;
-
-	if (GetMouse()->IsButtonDown(MouseButtons::left))
-	{
-		if (ctrl)
-			m_t1 = Vector2f::Normalize(m_mousePosition - m_p1);
-		else
-			m_p1 = m_mousePosition;
-	}
-	if (GetMouse()->IsButtonDown(MouseButtons::right))
-	{
-		if (ctrl)
-			m_t2 = Vector2f::Normalize(m_mousePosition - m_p2);
-		else
-			m_p2 = m_mousePosition;
-	}
-	if (keyboard->IsKeyDown(Keys::space))
-	{
-		m_w = m_mousePosition.x;
-	}
-	if (keyboard->IsKeyDown(Keys::e))
-	{
-		m_offset = m_mousePosition.x;
-	}
-
 	UpdateCameraControls(dt);
-	UpdateHoverInfo();
-
-	if (m_hoverInfo.node != nullptr)
-	{
-		SetCursor(hCursorHand);
-		m_hoverInfo.reverse = (m_mousePosition.Dot(
-			m_hoverInfo.node->GetEndNormal()) <
-			m_hoverInfo.node->GetCenter().Dot(m_hoverInfo.node->GetEndNormal()));
-	}
-	else
-	{
-		SetCursor(hCursorArrow);
-	}
-
-	if (keyboard->IsKeyPressed(Keys::k_delete) &&
-		m_hoverInfo.node != nullptr && m_dragState == DragState::NONE)
-	{
-		m_network->RemoveNodeFromGroup(m_hoverInfo.node->GetNodeGroup(), 1);
-		//m_network->DeleteNode(m_hoverInfo.node);
-		//m_hoverInfo.node = nullptr;
-	}
-
-	if (keyboard->IsKeyPressed(Keys::add_keypad))
-	{
-		m_rightLaneCount++;
-		if (m_dragInfo.state != DragState::NONE)
-		{
-			m_network->AddNodesToGroup(m_dragInfo.nodeGroup, 1);
-			m_dragInfo.connection->m_output.count++;
-		}
-		else if (m_hoverInfo.node != nullptr)
-			m_network->AddNodesToGroup(m_hoverInfo.node->GetNodeGroup(), 1);
-	}
-	if (keyboard->IsKeyPressed(Keys::minus_keypad))
-	{
-		m_rightLaneCount = Math::Max(1, m_rightLaneCount - 1);
-		if (m_dragInfo.state != DragState::NONE)
-		{
-			if (m_dragInfo.nodeGroup->GetNumNodes() > 1)
-				m_network->RemoveNodeFromGroup(m_dragInfo.nodeGroup, 1);
-		}
-		else if (m_hoverInfo.node != nullptr)
-		{
-			if (m_hoverInfo.node->GetNodeGroup()->GetNumNodes() > 1)
-				m_network->RemoveNodeFromGroup(m_hoverInfo.node->GetNodeGroup(), 1);
-		}
-	}
-
-	UpdateDragging();
-
-	/*
-	if (mouse->IsButtonPressed(MouseButtons::left))
-	{
-	NodeGroup* group = m_network->CreateNodeGroup(m_mousePosition,
-	Vector2f::UNITX, m_rightLaneCount);
-
-	if (m_hoverInfo.node != nullptr)
-	{
-	NodeGroupTie* tie = m_network->TieNodeGroups(group, m_hoverInfo.node->GetNodeGroup());
-	}
-	else if (m_lastNodeGroup != nullptr)
-	{
-	Vector2f tangent = (m_mousePosition -
-	m_lastNodeGroup->GetPosition()).Normalize();
-	Vector2f normal(-tangent.y, tangent.x);
-	Vector2f middle = (m_mousePosition + m_lastNodeGroup->GetPosition()) * 0.5f;
-	Vector2f intersection = Line2f::GetLineIntersection(
-	m_lastNodeGroup->GetPosition(), m_lastNodeGroup->GetPosition() + m_lastNodeGroup->GetDirection(),
-	middle, middle + normal);
-	Vector2f autoNormal = Vector2f::Normalize(m_mousePosition - intersection);
-	float dot = m_mousePosition.Dot(m_lastNodeGroup->GetDirection()) -
-	m_lastNodeGroup->GetPosition().Dot(m_lastNodeGroup->GetDirection());
-	if (Math::Abs(dot) < 0.001f)
-	autoNormal = -m_lastNodeGroup->GetDirection();
-	else if (dot < 0)
-	autoNormal = -autoNormal;
-	group->SetDirection(autoNormal);
-	m_network->ConnectNodeGroups(m_lastNodeGroup, group);
-	}
-	m_lastNodeGroup = group;
-	}*/
 
 	m_network->UpdateNodeGeometry();
 }
@@ -1178,6 +613,23 @@ void MainApp::OnRender()
 		glEnd();
 	}
 
+	// Draw intersection surfaces
+	for (RoadIntersection* intersection : m_network->GetIntersections())
+	{
+		for (NodeGroup* group : intersection->GetNodeGroups())
+		{
+			for (int i = 0; i < group->GetNumNodes(); i++)
+			{
+				Node* node = group->GetNode(i);
+				if (m_showDebug)
+				{
+					g.DrawCircle(node->GetCenter(), node->GetWidth() * 0.51f, Color::RED);
+				}
+			}
+		}
+	}
+
+
 	// Draw road markings
 	for (NodeGroupConnection* connection : m_network->GetNodeGroupConnections())
 	{
@@ -1197,7 +649,7 @@ void MainApp::OnRender()
 			DrawArcs(g, connection->m_dividerLines[i], Color::WHITE);
 		DrawArcs(g, connection->m_visualEdgeLines[1], Color::WHITE);
 	}
-	
+
 	float r = 0.2f;
 	float r2 = 0.4f;
 
@@ -1221,7 +673,7 @@ void MainApp::OnRender()
 				//g.FillCircle(node->GetCenter(), node->GetWidth() * 0.5f, Color::GRAY);
 				g.DrawCircle(node->GetCenter(), node->GetWidth() * 0.5f, Color::WHITE);
 				g.DrawLine(node->GetCenter(), node->GetCenter() +
-					node->GetEndNormal() * node->GetWidth() * 0.5f,
+					node->GetDirection() * node->GetWidth() * 0.5f,
 					Color::WHITE);
 			}
 		}
@@ -1245,14 +697,15 @@ void MainApp::OnRender()
 	}
 
 	// Draw hovered-over nodes
-	if (m_hoverInfo.nodeGroup != nullptr)
+	auto m_hoverInfo = m_toolDraw->GetHoverInfo();
+	if (m_hoverInfo.subGroup.group != nullptr)
 	{
-		Vector2f leftEdge = m_hoverInfo.nodeGroup->GetPosition();
-		Vector2f right = m_hoverInfo.nodeGroup->GetRightDirection();
+		Vector2f leftEdge = m_hoverInfo.subGroup.group->GetPosition();
+		Vector2f right = m_hoverInfo.subGroup.group->GetRightDirection();
 		float w = metrics.laneWidth;
-		for (int i = 0; i < m_rightLaneCount; i++)
+		for (int i = 0; i < m_hoverInfo.subGroup.count; i++)
 		{
-			int index = m_hoverInfo.startIndex + i;
+			int index = m_hoverInfo.subGroup.index + i;
 
 			float radius = w * 0.5f;
 			Vector2f center = leftEdge + (right * w * (index + 0.5f));
@@ -1264,46 +717,70 @@ void MainApp::OnRender()
 		}
 	}
 
+	// Draw selection boxes around nodes
+	for (NodeGroup* group : m_toolSelection->GetSelection().GetNodeGroups())
+	{
+		for (int i = 0; i < group->GetNumNodes(); i++)
+		{
+			Node* node = group->GetNode(i);
+			g.DrawCircle(node->GetCenter(), node->GetWidth() * 0.6f, Color::GREEN);
+		}
+	}
+
+
+	if (m_currentTool == m_toolSelection)
+	{
+		if (m_toolSelection->IsCreatingSelection())
+			g.DrawRect(m_toolSelection->GetSelectionBox(), Color::GREEN);
+	}
+
+
 	Keyboard* keyboard = GetKeyboard();
 	bool ctrl = keyboard->IsKeyDown(Keys::left_control) ||
 		keyboard->IsKeyDown(Keys::right_control);
-	if (m_dragState == DragState::DIRECTION ||
-		(m_dragState == DragState::POSITION && ctrl))
-	{
-		g.DrawLine(m_dragNode->GetCenter(), m_mousePosition, Color::RED);
-	}
+	//if (m_dragState == DragState::DIRECTION ||
+	//	(m_dragState == DragState::POSITION && ctrl))
+	//{
+	//	g.DrawLine(m_dragNode->GetCenter(), m_mousePosition, Color::RED);
+	//}
 
 	// Draw HUD
-
 	projection = Matrix4f::CreateOrthographic(0.0f,
 		(float) window->GetWidth(), (float) window->GetHeight(),
 		0.0f, -1.0f, 1.0f);
 	glMatrixMode(GL_PROJECTION);
 	glLoadMatrixf(projection.m);
 
-	for (int i = 0; i < m_rightLaneCount; i++)
+	int groupCount = (int) m_network->GetNodeGroups().size();
+	int connectionCount = (int) m_network->GetNodeGroupConnections().size();
+	int tieCount = (int) m_network->GetNodeGroupTies().size();
+	int intersectionCount = (int) m_network->GetIntersections().size();
+
+
+	String toolName = "(none)";
+	if (m_currentTool == m_toolDraw)
+		toolName = "Draw Tool";
+	if (m_currentTool == m_toolSelection)
+		toolName = "Selection Tool";
+	
+	using namespace std;
+	std::stringstream ss;
+	ss << "Tool: " << toolName << endl;
+	ss << endl;
+	ss << "Groups:        " << groupCount << endl;
+	ss << "Connections:   " << connectionCount << endl;
+	ss << "Ties:          " << tieCount << endl;
+	ss << "Intersections: " << intersectionCount << endl;
+	
+	g.DrawString(m_font, ss.str(), Vector2f(5, 5));
+
+	if (m_currentTool == m_toolDraw)
 	{
-		Vector2f v = Vector2f(30.0f + (i * 20.0f), 30.0f);
-		g.DrawCircle(v, 10, Color::WHITE);
+		for (int i = 0; i < m_toolDraw->GetLaneCount(); i++)
+		{
+			Vector2f v = Vector2f(30.0f + (i * 20.0f), 100.0f);
+			g.DrawCircle(v, 10, Color::WHITE);
+		}
 	}
 
-	/*
-	float r1 = 100.0f;
-	r2 = 50.0f;
-	float d = 110.0f;
-
-	Vector2f p1(200, 200);
-	Vector2f p2(p1.x + d, p1.y);
-	g.DrawCircle(p1, r1, Color::RED);
-	g.DrawCircle(p2, r2, Color::BLUE);
-	g.DrawLine(p1, p2, Color::WHITE);
-
-	float x = (d*d - r2*r2 + r1*r1) / (2 * d);
-	Vector2f v = p1 + (p2 - p1) * (x / d);
-	DrawPoint(g, v, Color::GREEN);
-
-	float y = (0.5f / d) * Math::Sqrt(4 * d*d * r1*r1 - Math::Sqr(d*d - r2*r2 + r1*r1));
-	v.y -= y;
-	DrawPoint(g, v, Color::MAGENTA);
-	*/
 }
