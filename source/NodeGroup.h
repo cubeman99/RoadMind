@@ -81,8 +81,10 @@ public:
 	Node* GetLeftNode() const;
 	Node* GetRightNode() const;
 	Node* GetNode(int index);
+	NodeGroupTie* GetTie();
 	int GetNumNodes() const;
 	Meters GetWidth() const;
+	Meters GetShoulderWidth(LaneSide side) const;
 	Meters GetRightShoulderWidth() const;
 	Meters GetLeftShoulderWidth() const;
 	Vector2f GetCenterPosition() const;
@@ -94,9 +96,11 @@ public:
 
 	void SetPosition(const Vector2f& position);
 	void SetDirection(const Vector2f& direction);
+	void SetDirectionFromCenter(const Vector2f& direction);
 
 	// Geometry
 
+	bool IntersectConnections(NodeGroupConnection* a, NodeGroupConnection* b, IOType end);
 	void UpdateGeometry();
 	void UpdateIntersectionGeometry();
 

@@ -28,6 +28,7 @@ public:
 
 	NodeGroup* CreateNodeGroup(const Vector2f& position,
 		const Vector2f& direction = Vector2f::UNITX, int laneCount = 1);
+	RoadIntersection* CreateIntersection(const Set<NodeGroup*>& nodeGroups);
 	Node* AddNodeToGroup(NodeGroup* group);
 	NodeGroupConnection* ConnectNodeGroups(NodeGroup* from, NodeGroup* to);
 	NodeGroupConnection* ConnectNodeSubGroups(

@@ -3,6 +3,9 @@
 
 INSTALL/
 
+# Save files
+*.gmt
+
 # User-specific files
 *.suo
 *.user

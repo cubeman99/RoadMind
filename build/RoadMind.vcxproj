@@ -76,6 +76,7 @@
     <ClInclude Include="..\source\CommonTypes.h" />
     <ClInclude Include="..\source\Connection.h" />
     <ClInclude Include="..\source\Driver.h" />
+    <ClInclude Include="..\source\GeometryApp.h" />
     <ClInclude Include="..\source\Node.h" />
     <ClInclude Include="..\source\MainApp.h" />
     <ClInclude Include="..\source\NodeGroup.h" />
@@ -92,6 +93,7 @@
     <ClCompile Include="..\source\Camera.cpp" />
     <ClCompile Include="..\source\Connection.cpp" />
     <ClCompile Include="..\source\Driver.cpp" />
+    <ClCompile Include="..\source\GeometryApp.cpp" />
     <ClCompile Include="..\source\Node.cpp" />
     <ClCompile Include="..\source\main.cpp" />
     <ClCompile Include="..\source\MainApp.cpp" />

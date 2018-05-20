@@ -51,14 +51,32 @@ public:
 private:
 
 	void DrawArcs(Graphics2D& g, const BiarcPair& arcs, const Color& color);
+	void FillZippedArcs(Graphics2D& g, const Biarc& a, const Biarc& b, const Color& color);
 
 	SpriteFont* m_font;
 	RoadNetwork* m_network;
 
 	Vector2f m_mousePosition;
 
-	bool m_showDebug;
-	bool m_wireframeMode;
+	struct DebugOption
+	{
+		String name;
+		bool enabled;
+
+		DebugOption(const String& name, bool enabled)
+			: name(name)
+			, enabled(enabled)
+		{
+		}
+	};
+
+	Array<DebugOption*> m_debugOptions;
+	DebugOption* m_showDebug;
+	DebugOption* m_wireframeMode;
+	DebugOption* m_showRoadMarkings;
+	DebugOption* m_showEdgeLines;
+	DebugOption* m_showRoadSurface;
+	DebugOption* m_showNodes;
 
 	EditMode m_editMode;
 
@@ -76,5 +94,8 @@ private:
 	Vector2f m_backgroundSize;
 };
 
+
+void FillShape(Graphics2D& g, const Array<Vector2f>& points, const Color& color);
+void FillShape(Graphics2D& g, const Array<Biarc>& arcs, const Color& color);
 
 #endif // _ANIM_APP_H_

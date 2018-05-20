@@ -15,6 +15,7 @@ class NodeGroupConnection
 {
 	friend class RoadNetwork;
 	friend class NodeGroup;
+	friend class RoadIntersection;
 
 public:
 	// Constructors
@@ -27,9 +28,15 @@ public:
 	const RoadMetrics* GetMetrics() const;
 	BiarcPair GetLeftEdgeLine() const;
 	BiarcPair GetRightEdgeLine() const;
+	BiarcPair GetLeftVisualEdgeLine() const;
+	BiarcPair GetRightVisualEdgeLine() const;
+	BiarcPair GetLeftVisualShoulderLine() const;
+	BiarcPair GetRightVisualShoulderLine() const;
 	NodeGroupConnection* GetTwin();
 	const NodeSubGroup& GetInput();
 	const NodeSubGroup& GetOutput();
+	const Array<BiarcPair>& GetSeams(IOType type, LaneSide side) const;
+	Array<BiarcPair>& GetSeams(IOType type, LaneSide side);
 
 	// Geometry
 
@@ -54,11 +61,17 @@ public:
 
 	const RoadMetrics* m_metrics;
 
+private:
+	void SetSeam(IOType end, LaneSide side, const BiarcPair& seam);
+	void AddSeam(IOType end, LaneSide side, const BiarcPair& seam);
+
+
 public:
 	BiarcPair m_edgeLines[2];
 	std::vector<BiarcPair> m_dividerLines;
-	BiarcPair m_visualShoulderLines[2];
 	BiarcPair m_visualEdgeLines[2];
+	BiarcPair m_visualShoulderLines[2];
+	Array<BiarcPair> m_seams[2][2];
 	Vector2f m_laneIntersectionPoint;
 	Vector2f m_edgeIntersectionPoint;
 };

@@ -36,6 +36,26 @@ BiarcPair NodeGroupConnection::GetRightEdgeLine() const
 	return m_edgeLines[(int) LaneSide::RIGHT];
 }
 
+BiarcPair NodeGroupConnection::GetLeftVisualEdgeLine() const
+{
+	return m_visualEdgeLines[(int) LaneSide::LEFT];
+}
+
+BiarcPair NodeGroupConnection::GetRightVisualEdgeLine() const
+{
+	return m_visualEdgeLines[(int) LaneSide::RIGHT];
+}
+
+BiarcPair NodeGroupConnection::GetLeftVisualShoulderLine() const
+{
+	return m_visualShoulderLines[(int) LaneSide::LEFT];
+}
+
+BiarcPair NodeGroupConnection::GetRightVisualShoulderLine() const
+{
+	return m_visualShoulderLines[(int) LaneSide::RIGHT];
+}
+
 NodeGroupConnection* NodeGroupConnection::GetTwin()
 {
 	return m_twin;
@@ -51,10 +71,33 @@ const NodeSubGroup& NodeGroupConnection::GetOutput()
 	return m_output;
 }
 
+const Array<BiarcPair>& NodeGroupConnection::GetSeams(IOType type, LaneSide side) const
+{
+	return m_seams[(int) type][(int) side];
+}
+
+Array<BiarcPair>& NodeGroupConnection::GetSeams(IOType type, LaneSide side)
+{
+	return m_seams[(int) type][(int) side];
+}
+
 
 //-----------------------------------------------------------------------------
 // Geometry
 //-----------------------------------------------------------------------------
+
+void NodeGroupConnection::SetSeam(IOType end, LaneSide side, const BiarcPair& seam)
+{
+	Array<BiarcPair>& seams = GetSeams(end, side);
+	seams.resize(1);
+	seams[0] = seam;
+}
+
+void NodeGroupConnection::AddSeam(IOType end, LaneSide side, const BiarcPair& seam)
+{
+	Array<BiarcPair>& seams = GetSeams(end, side);
+	seams.push_back(seam);
+}
 
 void NodeGroupConnection::UpdateGeometry()
 {
@@ -103,10 +146,15 @@ void NodeGroupConnection::UpdateGeometry()
 		BiarcPair::CreateParallel(m_dividerLines.back(),
 		m_input.group->GetRightShoulderWidth(),
 		m_output.group->GetRightShoulderWidth());
-	
+
 	m_visualEdgeLines[0] = m_dividerLines.front();
 	m_visualEdgeLines[1] = m_dividerLines.back();
 	m_visualShoulderLines[0] = m_edgeLines[0];
 	m_visualShoulderLines[1] = m_edgeLines[1];
+
+	m_seams[0][0].clear();
+	m_seams[0][1].clear();
+	m_seams[1][0].clear();
+	m_seams[1][1].clear();
 }
 

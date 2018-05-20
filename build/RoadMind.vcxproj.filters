@@ -66,6 +66,9 @@
     <ClInclude Include="..\source\EditorTool.h">
       <Filter>Source Files\Tools</Filter>
     </ClInclude>
+    <ClInclude Include="..\source\GeometryApp.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\source\main.cpp">
@@ -112,6 +115,9 @@
     </ClCompile>
     <ClCompile Include="..\source\EditorTool.cpp">
       <Filter>Source Files\Tools</Filter>
+    </ClCompile>
+    <ClCompile Include="..\source\GeometryApp.cpp">
+      <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>

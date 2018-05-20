@@ -68,6 +68,7 @@ void ToolDraw::OnBegin()
 void ToolDraw::OnEnd()
 {
 	CancelDragging();
+	m_hoverInfo.subGroup.group = nullptr;
 }
 
 void ToolDraw::OnLeftMousePressed()
@@ -352,6 +353,7 @@ void ToolDraw::UdpateDragging(float dt)
 					m_snapInfo.subGroup.index = -(m_hoverInfo.subGroup.index +
 						m_hoverInfo.subGroup.count);
 					m_snapInfo.subGroup.index = Math::Max(0, m_snapInfo.subGroup.index);
+					m_snapInfo.subGroup.count = m_dragInfo.connection->GetOutput().count;
 					m_snapInfo.subGroup.group = m_dragInfo.nodeGroup;
 					m_dragInfo.nodeGroup->SetDirection(
 						-m_hoverInfo.subGroup.group->GetDirection());

@@ -27,9 +27,22 @@ void ToolSelection::OnEnd()
 void ToolSelection::OnLeftMousePressed()
 {
 	Vector2f mousePos = GetMousePosition();
-	
-	if (m_hoverNode != nullptr && m_selection.Contains(m_hoverNode))
+
+	if (m_hoverNode != nullptr)
 	{
+		if (IsShiftDown())
+		{
+			if (!m_selection.Contains(m_hoverNode))
+				m_selection.Add(m_hoverNode->GetNodeGroup());
+			else
+				m_selection.Remove(m_hoverNode->GetNodeGroup());
+
+		}
+		else if (!m_selection.Contains(m_hoverNode))
+		{
+			m_selection.Clear();
+			m_selection.Add(m_hoverNode->GetNodeGroup());
+		}
 		m_preMoveInfo.clear();
 		for (NodeGroup* group : m_selection.GetNodeGroups())
 		{
@@ -82,11 +95,12 @@ void ToolSelection::OnRightMousePressed()
 void ToolSelection::OnRightMouseReleased()
 {
 }
-	
+
 void ToolSelection::Update(float dt)
 {
 	Vector2f mousePos = GetMousePosition();
-	
+	bool ctrl = IsControlDown();
+
 	m_hoverNode = GetPickedNode();
 
 	if (m_state == State::CREATING_SELECTION_BOX)
@@ -102,10 +116,29 @@ void ToolSelection::Update(float dt)
 	else if (m_state == State::MOVING_SELECTION)
 	{
 		Vector2f moveAmount = mousePos - m_preMoveCursorPosition;
-		for (NodeGroup* group : m_selection.GetNodeGroups())
+
+		if (ctrl && m_selection.GetNodeGroups().size() == 1)
 		{
-			PreMoveInfo info = m_preMoveInfo[group];
-			group->SetPosition(info.position + moveAmount);
+			for (NodeGroup* group : m_selection.GetNodeGroups())
+			{
+				if (group->GetTie() != nullptr)
+					group->GetTie()->SetDirection(Vector2f::Normalize(
+						mousePos - group->GetCenterPosition()));
+				else
+					group->SetDirectionFromCenter(Vector2f::Normalize(
+						mousePos - group->GetCenterPosition()));
+			}
+		}
+		else
+		{
+			for (NodeGroup* group : m_selection.GetNodeGroups())
+			{
+				PreMoveInfo info = m_preMoveInfo[group];
+				if (group->GetTie() != nullptr)
+					group->GetTie()->SetPosition(info.position + moveAmount);
+				else
+					group->SetPosition(info.position + moveAmount);
+			}
 		}
 	}
 	else if (m_state == State::NONE)
@@ -119,8 +152,19 @@ void ToolSelection::Update(float dt)
 
 	if (m_keyboard->IsKeyPressed(Keys::k_delete))
 		DeleteSelection();
-	if (IsControlDown() && m_keyboard->IsKeyPressed(Keys::d))
+
+	// Ctrl+D: Deselect
+	if (ctrl && m_keyboard->IsKeyPressed(Keys::d))
 		Deselect();
+
+	// Ctrl+I: Create Intersection
+	if (ctrl && m_keyboard->IsKeyPressed(Keys::i))
+	{
+		if (m_selection.GetNumGroups() >= 2)
+		{
+			m_network->CreateIntersection(m_selection.GetNodeGroups());
+		}
+	}
 }
 
 

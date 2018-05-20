@@ -1,5 +1,6 @@
 #include "NodeGroup.h"
 #include "NodeGroupConnection.h"
+#include <algorithm>
 
 float NodeSubGroup::GetWidth() const
 {
@@ -103,6 +104,11 @@ Node* NodeGroup::GetNode(int index)
 	return m_nodes[index];
 }
 
+NodeGroupTie* NodeGroup::GetTie()
+{
+	return m_tie;
+}
+
 int NodeGroup::GetNumNodes() const
 {
 	return (int) m_nodes.size();
@@ -114,6 +120,15 @@ Meters NodeGroup::GetWidth() const
 	for (unsigned int i = 0; i < m_nodes.size(); i++)
 		width += m_nodes[i]->m_width;
 	return width;
+}
+
+Meters NodeGroup::GetShoulderWidth(LaneSide side) const
+{
+	if (side == LaneSide::RIGHT)
+		return m_rightShoulderWidth;
+	else
+		return m_leftShoulderWidth;
+
 }
 
 Meters NodeGroup::GetRightShoulderWidth() const
@@ -165,6 +180,16 @@ void NodeGroup::SetDirection(const Vector2f& direction)
 	m_direction = direction;
 }
 
+void NodeGroup::SetDirectionFromCenter(const Vector2f& direction)
+{
+	float width = GetWidth();
+	Vector2f right(-m_direction.y, m_direction.x);
+	Vector2f center(m_position + (right * width * 0.5f));
+	m_direction = direction;
+	right = Vector2f(-m_direction.y, m_direction.x);
+	m_position = center - (right * width * 0.5f);
+}
+
 
 //-----------------------------------------------------------------------------
 // Geometry
@@ -185,8 +210,11 @@ static bool IsPointOnArcs(const Vector2f& v, const Biarc& a, const Biarc& b)
 	return (IsPointOnArc(v, a) && IsPointOnArc(v, b));
 }
 
-static bool IntersectArcs(Biarc& a, Biarc& b)
+static bool IntersectArcs(Biarc& a, Biarc& b, Biarc& seam)
 {
+	if (a.IsPoint() || b.IsPoint())
+		return false;
+
 	// Compute the intersection of two circles:
 	// http://mathworld.wolfram.com/Circle-CircleIntersection.html
 	Vector2f c1 = a.center;
@@ -218,45 +246,89 @@ static bool IntersectArcs(Biarc& a, Biarc& b)
 	}
 
 	// Modify the arcs to start at the intersection point
-	a.start = intersection;
+	seam.start = a.start;
+	seam.center = a.center;
+	seam.radius = a.radius;
+	//seam = a;
+	seam.end = intersection;
 	b.start = intersection;
-	a.CalcAngleAndLength(true);
 	b.CalcAngleAndLength(true);
+	seam.CalcAngleAndLength(true);
+	a.start = intersection;
+	a.CalcAngleAndLength(true);
 	return true;
 }
 
-static bool IntersectArcPairs(BiarcPair& pair1, BiarcPair& pair2, bool reverse)
+static bool IntersectArcPairs(BiarcPair& pair1, BiarcPair& pair2, bool reverse, BiarcPair& seam)
 {
 	if (reverse)
 	{
 		pair1 = pair1.Reverse();
 		pair2 = pair2.Reverse();
-		bool result = IntersectArcPairs(pair1, pair2, false);
+		bool result = IntersectArcPairs(pair1, pair2, false, seam);
+		seam = seam.Reverse();
 		pair1 = pair1.Reverse();
 		pair2 = pair2.Reverse();
 		return result;
 	}
+	BiarcPair originalPair1 = pair1;
 
-	if (IntersectArcs(pair1.second, pair2.second))
+	if (IntersectArcs(pair1.second, pair2.second, seam.second))
 	{
 		pair1.first = Biarc::CreatePoint(pair1.second.start);
 		pair2.first = pair1.first;
+		seam.first = originalPair1.first;
 		return true;
 	}
-	else if (IntersectArcs(pair1.first, pair2.second))
+	else if (IntersectArcs(pair1.first, pair2.second, seam.first))
 	{
 		pair2.first = Biarc::CreatePoint(pair2.second.start);
+		seam.second = Biarc::CreatePoint(seam.first.end);
 		return true;
 	}
-	else if (IntersectArcs(pair1.second, pair2.first))
+	else if (IntersectArcs(pair1.second, pair2.first, seam.second))
 	{
 		pair1.first = Biarc::CreatePoint(pair1.second.start);
+		seam.first = originalPair1.first;
+		return true;
+	}
+	else if (IntersectArcs(pair1.first, pair2.first, seam.first))
+	{
+		seam.second = Biarc::CreatePoint(seam.first.end);
 		return true;
 	}
 	else
 	{
-		return IntersectArcs(pair1.first, pair2.first);
+		return false;
 	}
+}
+
+bool NodeGroup::IntersectConnections(NodeGroupConnection* a, NodeGroupConnection* b, IOType end)
+{
+	BiarcPair seam;
+	bool reverse = (end == IOType::INPUT);
+	IOType otherEnd = (end == IOType::INPUT ? IOType::OUTPUT : IOType::INPUT);
+
+	if (IntersectArcPairs(
+		a->m_visualShoulderLines[(int) LaneSide::LEFT],
+		b->m_visualShoulderLines[(int) LaneSide::RIGHT],
+		reverse, seam))
+	{
+		a->AddSeam(otherEnd, LaneSide::LEFT, seam);
+		b->SetSeam(otherEnd, LaneSide::RIGHT, seam);
+		return true;
+	}
+	else if (IntersectArcPairs(
+		a->m_visualShoulderLines[(int) LaneSide::RIGHT],
+		b->m_visualShoulderLines[(int) LaneSide::LEFT],
+		reverse, seam))
+	{
+		a->AddSeam(otherEnd, LaneSide::RIGHT, seam);
+		b->SetSeam(otherEnd, LaneSide::LEFT, seam);
+		return true;
+	}
+
+	return false;
 }
 
 void NodeGroup::UpdateGeometry()
@@ -276,6 +348,7 @@ void NodeGroup::UpdateGeometry()
 void NodeGroup::UpdateIntersectionGeometry()
 {
 	unsigned int first, last, i, j;
+	BiarcPair seam;
 
 	// Check for overlap between neighboring connections
 	for (int inOut = 0; inOut < 2; inOut++)
@@ -298,17 +371,27 @@ void NodeGroup::UpdateIntersectionGeometry()
 			// connections
 			for (i = first; i < last; i++)
 			{
+				NodeGroupConnection* a = connections[i];
 				for (j = i + 1; j < last; j++)
 				{
-					NodeGroupConnection* a = connections[i];
 					NodeGroupConnection* b = connections[j];
-					if (!IntersectArcPairs(
-						connections[i]->m_visualEdgeLines[0],
-						connections[j]->m_visualEdgeLines[1], reverse))
+					if (reverse)
 					{
-						IntersectArcPairs(
-							connections[j]->m_visualEdgeLines[0],
-							connections[i]->m_visualEdgeLines[1], reverse);
+						if (!IntersectArcPairs(a->m_visualEdgeLines[1],
+							b->m_visualEdgeLines[0], true, seam))
+						{
+							IntersectArcPairs(a->m_visualEdgeLines[0],
+								b->m_visualEdgeLines[1], true, seam);
+						}
+					}
+					else
+					{
+						if (!IntersectArcPairs(a->m_visualEdgeLines[0],
+							b->m_visualEdgeLines[1], false, seam))
+						{
+							IntersectArcPairs(a->m_visualEdgeLines[1],
+								b->m_visualEdgeLines[0], false, seam);
+						}
 					}
 				}
 			}
@@ -331,14 +414,8 @@ void NodeGroup::UpdateIntersectionGeometry()
 			{
 				for (j = i + 1; j < last; j++)
 				{
-					if (!IntersectArcPairs(
-						connections[i]->m_visualShoulderLines[0],
-						connections[j]->m_visualShoulderLines[1], reverse))
-					{
-						IntersectArcPairs(
-							connections[j]->m_visualShoulderLines[0],
-							connections[i]->m_visualShoulderLines[1], reverse);
-					}
+					IntersectConnections(connections[i],
+						connections[j], (IOType) inOut);
 				}
 			}
 		}

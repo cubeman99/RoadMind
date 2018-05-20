@@ -45,5 +45,7 @@ enum class InputOutput
 	BOTH = 2,
 };
 
+typedef InputOutput IOType;
+
 
 #endif // _COMMON_TYPES_H_

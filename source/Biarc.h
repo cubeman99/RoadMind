@@ -34,6 +34,33 @@ struct Biarc
 	{
 	}
 
+	inline static Biarc CreateArc(const Vector2f& start,
+		const Vector2f& end, const Vector2f& center, bool clockwise = true)
+	{
+		Biarc result;
+		result.start = start;
+		result.end = end;
+		result.center = center;
+		result.radius = start.DistTo(center);
+		
+		// Calculate angle
+		Vector2f tangent = (start - center) / result.radius;
+		Vector2f normal(tangent.y, -tangent.x);
+		float x = end.Dot(tangent) - center.Dot(tangent);
+		float y = end.Dot(normal) - center.Dot(normal);
+		result.angle = Math::ATan2(y, x);
+		if (result.angle < 0.0f)
+			result.angle += Math::TWO_PI;
+		if (clockwise)
+			result.angle = Math::TWO_PI - result.angle;
+		else
+			result.angle = -result.angle;
+		
+		// Calculate length
+		result.length = Math::Abs(result.angle) * result.radius;
+		return result;
+	}
+
 	inline static Biarc CreatePoint(const Vector2f& point)
 	{
 		Biarc result;
@@ -58,9 +85,17 @@ struct Biarc
 		return result;
 	}
 
+	static Biarc CreateParallel(const Biarc& arc, float offset);
+	static Biarc CreateParallel(const Biarc& arc, float startOffset, float endOffset);
+
 	inline bool IsStraight() const
 	{
 		return (radius == 0.0f);
+	}
+
+	inline bool IsPoint() const
+	{
+		return (length <= FLT_MIN);
 	}
 
 	inline Vector2f GetStartTangent() const
@@ -133,6 +168,11 @@ struct Biarc
 		}
 	}
 
+	inline Vector2f GetMidPoint() const
+	{
+		return GetPoint(length * 0.5f);
+	}
+
 	inline void CalcAngleAndLength(bool shortWay)
 	{
 		if (radius == 0.0f)
@@ -187,6 +227,7 @@ public:
 
 	BiarcPair();
 	BiarcPair(const Biarc& first, const Biarc& second);
+	explicit BiarcPair(const Biarc& arc);
 
 	//-------------------------------------------------------------------------
 	// Operations
@@ -201,6 +242,8 @@ public:
 	//-------------------------------------------------------------------------
 
 	// Perform circular biarc interpolation between two points with directions.
+	static BiarcPair CreatePoint(const Vector2f& point);
+	static BiarcPair Split(const Biarc& arc);
 	static BiarcPair Interpolate(
 		const Vector2f& p1, const Vector2f& t1,
 		const Vector2f& p2, const Vector2f& t2);
@@ -216,7 +259,6 @@ private:
 	static BiarcPair CreateExpanding(const BiarcPair& base, float deltaOffset);
 };
 
-
 Vector2f ComputeCircleCenter(const Vector2f& p1, const Vector2f& t1, const Vector2f& p2);
 Biarc ComputeArc(const Vector2f& p1, const Vector2f& t1, const Vector2f& p2);
 
@@ -224,10 +266,26 @@ Biarc ComputeArc(const Vector2f& p1, const Vector2f& t1, const Vector2f& p2);
 void ComputeBiarcs(Vector2f p1, Vector2f t1, Vector2f p2, Vector2f t2, Biarc& arc1, Biarc& arc2);
 void ComputeBiarcs(Vector2f p1, Vector2f t1, Vector2f p2, Vector2f t2,
 	Vector2f& pm, Vector2f& q1, Vector2f& q, Biarc& arc1, Biarc& arc2, BiarcType& type);
-Biarc CreateParallelBiarc(const Biarc& arc, float offset);
-Biarc CreateParallelBiarc(const Biarc& arc, float startOffset, float endOffset);
 void ComputeExpandingBiarcs(Vector2f p1, Vector2f t1, Vector2f p2, Vector2f t2,
 	Vector2f midpoint, Vector2f midpointNormal, float offset, Biarc& outArc1, Biarc& outArc2);
+
+Vector2f LeftPerpendicular(const Vector2f& v);
+Vector2f RightPerpendicular(const Vector2f& v);
+Line2f CalcOuterTangent(const Circle2f& a, const Circle2f& b);
+
+enum class Convexity
+{
+	CONVEX,
+	CONCAVE,
+	STRAIGHT,
+};
+Convexity GetConvexity(const Vector2f& a, const Vector2f& b, const Vector2f& c);
+bool IsConvex(const Vector2f& a, const Vector2f& b, const Vector2f& c);
+
+BiarcPair CalcWebbedCircle(const BiarcPair& a, const BiarcPair& b, float radius);
+
+bool IsInsideTriangle(const Vector2f& a, const Vector2f& b,
+	const Vector2f& c, const Vector2f& v);
 
 
 #endif // _BIARC_H_

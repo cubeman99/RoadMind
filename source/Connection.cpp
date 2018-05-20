@@ -264,13 +264,13 @@ void Connection::CalcVertices()
 	}
 
 
-	m_centerArc1 = CreateParallelBiarc(m_leftArc1, minWidth * 0.5f);
-	m_centerArc2 = CreateParallelBiarc(m_leftArc2, minWidth * 0.5f);
+	m_centerArc1 = Biarc::CreateParallel(m_leftArc1, minWidth * 0.5f);
+	m_centerArc2 = Biarc::CreateParallel(m_leftArc2, minWidth * 0.5f);
 	AddArcVertices(m_centerArc1, &m_vertices[(int) LaneSide::CENTER]);
 	AddArcVertices(m_centerArc2, &m_vertices[(int) LaneSide::CENTER]);
 
-	m_rightArc1 = CreateParallelBiarc(m_leftArc1, minWidth);
-	m_rightArc2 = CreateParallelBiarc(m_leftArc2, minWidth);
+	m_rightArc1 = Biarc::CreateParallel(m_leftArc1, minWidth);
+	m_rightArc2 = Biarc::CreateParallel(m_leftArc2, minWidth);
 	AddArcVertices(m_rightArc1, &m_vertices[(int) LaneSide::RIGHT]);
 	AddArcVertices(m_rightArc2, &m_vertices[(int) LaneSide::RIGHT]);
 	/*

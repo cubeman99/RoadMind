@@ -1,4 +1,6 @@
 #include "RoadNetwork.h"
+#include <map>
+#include <algorithm>
 
 
 //-----------------------------------------------------------------------------
@@ -73,6 +75,60 @@ NodeGroup* RoadNetwork::CreateNodeGroup(const Vector2f& position,
 	}
 
 	return group;
+}
+
+RoadIntersection* RoadNetwork::CreateIntersection(
+	const Set<NodeGroup*>& nodeGroups)
+{
+	RoadIntersection* intersection = new RoadIntersection();
+
+	// Get the center position of all node groups
+	Vector2f center = Vector2f::ZERO;
+	int count = 0;
+	for (NodeGroup* group : nodeGroups)
+	{
+		intersection->AddPoint(group,
+			!group->GetOutputs().empty() ? IOType::OUTPUT : IOType::INPUT);
+		if (group->m_twin == nullptr)
+		{
+			center += group->GetCenterPosition();
+			count++;
+		}
+		else
+		{
+			center += group->GetPosition() * 2.0f;
+			count += 2;
+		}
+	}
+	center /= (float) count;
+
+	// Determine the angles of each group around the center
+	std::map<RoadIntersectionPoint*, float> groupAngles;
+	for (RoadIntersectionPoint* point : intersection->m_points)
+	{
+		Vector2f v = point->GetNodeGroup()->GetCenterPosition() - center;
+		groupAngles[point] = Math::ATan2(v.y, v.x);
+	}
+
+	// Sort the node groups in counter-clockwise order around the center
+	// position
+	std::sort(intersection->m_points.begin(), intersection->m_points.end(),
+		[&](RoadIntersectionPoint* a, RoadIntersectionPoint* b) -> bool {
+		return (groupAngles[a] < groupAngles[b]);
+	});
+
+	// Create the edges
+	for (unsigned int i = 0; i < intersection->m_points.size(); i++)
+	{
+		RoadIntersectionPoint* left = intersection->m_points[(i + 1) %
+			intersection->m_points.size()];
+		RoadIntersectionPoint* right = intersection->m_points[i];
+		if (left->GetNodeGroup()->GetTwin() != right->GetNodeGroup())
+			intersection->m_edges.push_back(new RoadIntersectionEdge(left, right));
+	}
+
+	m_intersections.insert(intersection);
+	return intersection;
 }
 
 bool RoadNetwork::GrowNodeGroup(NodeSubGroup& subGroup)

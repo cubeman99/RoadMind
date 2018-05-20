@@ -8,14 +8,15 @@
 #include <ctime>
 #include <stdio.h>
 #include "MainApp.h"
+#include "GeometryApp.h"
 
 
 int main(int argc, char* argv[])
 {
 	srand((unsigned int) time(nullptr));
 
-	//TestApp app;
 	MainApp app;
+	//GeometryApp app;
 	app.Initialize("Road Mind", 800, 600);
 	app.Run();
 
