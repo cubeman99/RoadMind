@@ -38,14 +38,9 @@ public:
 
 	void CreateTestNetwork();
 	void DrawGridFloor(const Vector3f& center, Meters squareSize, Meters gridRadius);
-	void DrawConnection(Graphics2D& g, Connection* connection);
-	void DrawNodeGroupConnection(Graphics2D& g, Connection* connection);
-	void DrawRoadMarkings(Graphics2D& g, Connection* connection);
-	void DrawNode(Graphics2D& g, Node* node);
 
 	void SetTool(EditorTool* tool);
 
-	//void UpdateHoverInfo();
 	void UpdateCameraControls(float dt);
 
 private:

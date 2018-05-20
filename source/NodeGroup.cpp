@@ -19,8 +19,7 @@ Vector2f NodeSubGroup::GetCenterPosition() const
 {
 	Vector2f leftEdge = group->GetNode(index)->GetPosition();
 	float width = GetWidth();
-	Vector2f right = group->GetDirection();
-	right = Vector2f(-right.y, right.x);
+	Vector2f right = RightPerpendicular(group->GetDirection());
 	return (leftEdge + (right * width * 0.5f));
 }
 
@@ -70,7 +69,7 @@ Vector2f NodeGroup::GetLeftDirection() const
 
 Vector2f NodeGroup::GetRightDirection() const
 {
-	return Vector2f(-m_direction.y, m_direction.x);
+	return RightPerpendicular(m_direction);
 }
 
 const RoadMetrics* NodeGroup::GetMetrics() const
@@ -186,7 +185,7 @@ void NodeGroup::SetDirectionFromCenter(const Vector2f& direction)
 	Vector2f right(-m_direction.y, m_direction.x);
 	Vector2f center(m_position + (right * width * 0.5f));
 	m_direction = direction;
-	right = Vector2f(-m_direction.y, m_direction.x);
+	right = RightPerpendicular(direction);
 	m_position = center - (right * width * 0.5f);
 }
 
@@ -232,8 +231,7 @@ static bool IntersectArcs(Biarc& a, Biarc& b, Biarc& seam)
 	// Compute the intersection point
 	float y = (0.5f / dist) * Math::Sqrt(discriminant);
 	Vector2f mid = c1 + (c2 - c1) * (x / dist);
-	Vector2f dir = (c1 - c2) / dist;
-	dir = Vector2f(-dir.y, dir.x);
+	Vector2f dir = RightPerpendicular((c1 - c2) / dist);
 	Vector2f intersection = mid + (dir * y);
 
 	// Check if the intersection point is on both arcs

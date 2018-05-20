@@ -37,26 +37,26 @@ void Driver::Update(float dt)
 	{
 		m_distance += m_speed * dt;
 
-		float laneDistance = m_lane->GetDistance();
-		if (m_distance >= laneDistance)
-		{
-			Node* node = m_lane->GetOutput();
-			if (node->GetNumOutputs() > 0)
-			{
-				int index = Random::NextInt(node->GetNumOutputs());
-				auto it = node->GetOutputs().begin();
-				for (int i = 0; i < index; i++)
-					it++;
-				m_lane = *it;
-				m_distance -= laneDistance;
-			}
-			else
-			{
-				m_distance = laneDistance;
-			}
-		}
+		//float laneDistance = m_lane->GetDistance();
+		//if (m_distance >= laneDistance)
+		//{
+		//	Node* node = m_lane->GetOutput();
+		//	if (node->GetNumOutputs() > 0)
+		//	{
+		//		int index = Random::NextInt(node->GetNumOutputs());
+		//		auto it = node->GetOutputs().begin();
+		//		for (int i = 0; i < index; i++)
+		//			it++;
+		//		m_lane = *it;
+		//		m_distance -= laneDistance;
+		//	}
+		//	else
+		//	{
+		//		m_distance = laneDistance;
+		//	}
+		//}
 
-		m_position = m_lane->GetPoint(m_distance, LaneSide::CENTER, 0.0f);
+		//m_position = m_lane->GetPoint(m_distance, LaneSide::CENTER, 0.0f);
 	}
 }
 

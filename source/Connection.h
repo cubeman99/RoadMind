@@ -19,9 +19,8 @@ public:
 
 	Node* GetInput();
 	Node* GetOutput();
-	const Array<Vector2f>& GetVertices(LaneSide side) const;
 	
-	float GetDistance() const;
+	//float GetDistance() const;
 
 	Connection* GetLeftConnection() const;
 	Connection* GetRightConnection() const;
@@ -30,22 +29,11 @@ public:
 	
 	LaneDivider GetLaneDivider(LaneSide side) const;
 
-	Vector2f GetPoint(Meters distance, LaneSide side, Meters offset = 0.0f);
-
-	void CalcVertices();
+	//Vector2f GetPoint(Meters distance, LaneSide side, Meters offset = 0.0f);
 
 private:
 	Node* m_input;
 	Node* m_output;
-
-	Biarc m_centerArc1;
-	Biarc m_centerArc2;
-	Biarc m_leftArc1;
-	Biarc m_leftArc2;
-	Biarc m_rightArc1;
-	Biarc m_rightArc2;
-
-	Array<Vector2f> m_vertices[3];
 };
 
 

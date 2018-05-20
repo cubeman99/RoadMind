@@ -197,8 +197,7 @@ BiarcPair BiarcPair::CreateExpanding(const BiarcPair& base, float offset)
 	}
 
 	Vector2f startTangent = base.first.GetStartTangent();
-	Vector2f midNormal = base.second.GetStartTangent();
-	midNormal = Vector2f(-midNormal.y, midNormal.x);
+	Vector2f midNormal = RightPerpendicular(base.second.GetStartTangent());
 	Vector2f endTangent = base.second.GetEndTangent();
 	Vector2f endNormal(-endTangent.y, endTangent.x);
 	Vector2f endPoint = base.second.end + (offset * endNormal);
@@ -219,8 +218,7 @@ BiarcPair BiarcPair::CreateExpanding(const BiarcPair& base, float offset)
 		result.second = ComputeArc(endPoint, -endTangent, passThrough).Reverse();
 
 		Vector2f e1 = result.first.GetEndTangent();
-		Vector2f e2 = result.second.GetStartTangent();
-		e2 = Vector2f(-e2.y, e2.x);
+		Vector2f e2 = RightPerpendicular(result.second.GetStartTangent());
 		float error = e1.Dot(e2);
 		if (offset < 0)
 			error = -error;
@@ -262,8 +260,7 @@ static Biarc ComputeArc(Vector2f a, Vector2f b, Vector2f q, float d)
 	arc.angle = (b - arc.center).Dot(a - arc.center) / (arc.radius * arc.radius);
 	arc.angle = Math::ACos(arc.angle);
 
-	Vector2f n = (a - q);
-	n = Vector2f(-n.y, n.x);
+	Vector2f n = RightPerpendicular(a - q);
 	if (a.Dot(n) < b.Dot(n))
 		arc.angle = -arc.angle;
 	if (d < 0.0f)
@@ -273,12 +270,11 @@ static Biarc ComputeArc(Vector2f a, Vector2f b, Vector2f q, float d)
 
 void ComputeArcAngle(Biarc& arc, float d)
 {
-	Vector2f normal = arc.center - arc.start;
+	Vector2f normal = RightPerpendicular(arc.center - arc.start);
 	arc.angle = (arc.end - arc.center).Dot(arc.start - arc.center) / (arc.radius * arc.radius);
 	arc.angle = Math::ACos(arc.angle);
 	if (d < 0.0f)
 		arc.angle = Math::TWO_PI - Math::Abs(arc.angle);
-	normal = Vector2f(-normal.y, normal.x);
 	if (arc.end.Dot(normal) > arc.center.Dot(normal))
 		arc.angle = -arc.angle;
 	arc.length = Math::Abs(arc.angle) * arc.radius;
@@ -415,8 +411,7 @@ Biarc Biarc::CreateParallel(const Biarc& arc, float offset)
 
 	if (arc.IsStraight())
 	{
-		Vector2f right = (arc.end - arc.start) / arc.length;
-		right = Vector2f(-right.y, right.x);
+		Vector2f right = RightPerpendicular((arc.end - arc.start) / arc.length);
 		Vector2f move = right * offset;
 		result.start += move;
 		result.end += move;
@@ -424,8 +419,7 @@ Biarc Biarc::CreateParallel(const Biarc& arc, float offset)
 	}
 	else
 	{
-		Vector2f normal = arc.center - arc.start;
-		normal = Vector2f(-normal.y, normal.x);
+		Vector2f normal = RightPerpendicular(arc.center - arc.start);
 		if (arc.end.Dot(normal) < arc.center.Dot(normal))
 			offset = -offset;
 
@@ -479,8 +473,7 @@ Biarc Biarc::CreateParallel(const Biarc& arc, float startOffset, float endOffset
 {
 	Biarc result = arc;
 
-	Vector2f normal = arc.center - arc.start;
-	normal = Vector2f(-normal.y, normal.x);
+	Vector2f normal = RightPerpendicular(arc.center - arc.start);
 	if (arc.end.Dot(normal) < arc.center.Dot(normal))
 	{
 		startOffset = -startOffset;
@@ -520,8 +513,7 @@ void ComputeExpandingBiarcs(Vector2f p1, Vector2f t1, Vector2f p2, Vector2f t2,
 		outArc2 = ComputeArc(p3, -t2, passThrough).Reverse();
 
 		Vector2f e1 = outArc1.GetEndTangent();
-		Vector2f e2 = outArc2.GetStartTangent();
-		e2 = Vector2f(-e2.y, e2.x);
+		Vector2f e2 = RightPerpendicular(outArc2.GetStartTangent());
 
 		float error = e1.Dot(e2);
 		if (offset < 0)
@@ -774,8 +766,7 @@ BiarcPair CalcWebbedCircle(const BiarcPair& a, const BiarcPair& b, float radius)
 	}
 	else if (convexB)
 	{
-		Vector2f right = b.second.GetEndTangent();
-		right = Vector2f(-right.y, right.x);
+		Vector2f right = RightPerpendicular(b.second.GetEndTangent());
 		start = b.second.end;
 		center = start + (right * radius);
 		end = center + (yAxis * radius);

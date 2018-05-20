@@ -74,8 +74,7 @@ void NodeGroupTie::SetCenterWidth(Meters centerWidth)
 
 void NodeGroupTie::UpdateGeometry()
 {
-	Vector2f normal = m_direction;
-	normal = Vector2f(-normal.y, normal.x);
+	Vector2f normal = RightPerpendicular(m_direction);
 
 	m_nodeGroup->SetPosition(m_position + (normal * m_centerDividerWidth * 0.5f));
 	m_nodeGroup->SetDirection(m_direction);

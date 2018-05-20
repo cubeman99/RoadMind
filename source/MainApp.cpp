@@ -256,153 +256,6 @@ void MainApp::DrawGridFloor(const Vector3f& center, Meters squareSize, Meters gr
 	glDepthMask(true);
 }
 
-void MainApp::DrawConnection(Graphics2D& g, Connection* connection)
-{
-}
-
-void MainApp::DrawNodeGroupConnection(Graphics2D& g, Connection* connection)
-{
-	MouseState mouseState = GetMouse()->GetMouseState();
-
-	Connection* leftConnection = connection->GetLeftConnection();
-	Connection* rightConnection = connection->GetRightConnection();
-
-	Color colorRoadFill = Color(64, 64, 64);
-
-	// Fill in the road surface
-	if (connection->GetVertices(LaneSide::RIGHT).size() ==
-		connection->GetVertices(LaneSide::LEFT).size())
-	{
-		unsigned int vertexCount = connection->GetVertices(LaneSide::RIGHT).size();
-		glBegin(GL_TRIANGLE_STRIP);
-		glColor4ubv(colorRoadFill.data());
-		for (unsigned int i = 0; i < vertexCount; i++)
-		{
-			glVertex2fv(connection->GetVertices(LaneSide::RIGHT)[i].v);
-			glVertex2fv(connection->GetVertices(LaneSide::LEFT)[i].v);
-		}
-		glEnd();
-	}
-}
-
-void MainApp::DrawRoadMarkings(Graphics2D& g, Connection* connection)
-{
-	Connection* leftConnection = connection->GetLeftConnection();
-	Connection* rightConnection = connection->GetRightConnection();
-	float distance = connection->GetDistance();
-	RoadMetrics metrics = m_network->GetMetrics();
-
-	Color colorRoadFill = Color(64, 64, 64);
-	Color colorSideDividerLine = Color::YELLOW;
-	Color colorLaneDividerLine = Color::WHITE;
-
-	// Draw the edges
-	for (int s = 0; s < 2; s++)
-	{
-		LaneSide side = (LaneSide) s;
-
-		if (side == LaneSide::RIGHT && !connection->IsRightMostLane())
-			continue; // Don't draw the same divider twice
-
-		const Array<Vector2f>& vertices = connection->GetVertices((LaneSide) side);
-		Color color = colorLaneDividerLine;
-		if (side == LaneSide::LEFT && connection->IsLeftMostLane())
-			color = colorSideDividerLine;
-		if (side == LaneSide::CENTER)
-			color = Color::GRAY;
-		LaneDivider divider = connection->GetLaneDivider(side);
-
-		// Determine the horizontal offset of the divider
-		float offset = 0.0f;
-		if (side == LaneSide::LEFT && leftConnection != nullptr)
-		{
-			if (leftConnection->GetLeftConnection() == connection)
-			{
-				if (leftConnection->GetLaneDivider(LaneSide::LEFT) ==
-					LaneDivider::DASHED && divider == LaneDivider::DASHED)
-				{
-					offset = -metrics.dividerWidth * 0.5f;
-					if (connection->GetInput()->GetNodeId() >
-						leftConnection->GetInput()->GetNodeId())
-						continue; // Don't draw the same divider twice
-				}
-				else
-				{
-					offset = metrics.dividerWidth * 0.5f;
-				}
-			}
-			else
-				offset = -metrics.dividerWidth * 0.5f;
-		}
-		if (side == LaneSide::RIGHT && rightConnection != nullptr)
-		{
-			continue;
-		}
-
-		Vector2f v1, v2, v3, v4;
-
-		if (distance < 1000.0f)
-		{
-			if (divider == LaneDivider::DASHED)
-			{
-				glBegin(GL_QUADS);
-				glColor4ubv(color.data());
-				float spacing = metrics.dividerLength + metrics.dividerGapLength;
-				for (float d = 0.0f; d < distance; d += spacing)
-				{
-					float d2 = Math::Min(distance, d + metrics.dividerLength);
-					v1 = connection->GetPoint(d, side, offset);
-					v2 = connection->GetPoint(d, side,
-						offset + metrics.dividerWidth);
-					v3 = connection->GetPoint(d2, side, offset);
-					v4 = connection->GetPoint(d2, side,
-						offset + metrics.dividerWidth);
-					glVertex2fv(v1.v);
-					glVertex2fv(v2.v);
-					glVertex2fv(v4.v);
-					glVertex2fv(v3.v);
-				}
-				glEnd();
-			}
-			else
-			{
-				glBegin(GL_TRIANGLE_STRIP);
-				glColor4ubv(color.data());
-				for (float d = 0.0f; d < distance; d += 0.5f)
-				{
-					v1 = connection->GetPoint(d, side, offset);
-					v2 = connection->GetPoint(d, side,
-						offset + metrics.dividerWidth);
-					glVertex2fv(v1.v);
-					glVertex2fv(v2.v);
-				}
-				v1 = connection->GetPoint(distance, side, offset);
-				v2 = connection->GetPoint(distance, side,
-					offset + metrics.dividerWidth);
-				glVertex2fv(v1.v);
-				glVertex2fv(v2.v);
-				glEnd();
-			}
-		}
-
-		/*glBegin(GL_TRIANGLE_STRIP);
-		glColor4ubv(color.data());
-		for (float d = 0.0f; d < distance; d += 0.5f)
-		{
-		v1 = connection->GetPoint(d, 3.75f);
-		v2 = connection->GetPoint(d, 3.75f - metrics.dividerWidth);
-		glVertex2fv(v1.v);
-		glVertex2fv(v2.v);
-		}
-		glEnd();*/
-
-		/*for (unsigned int i = 0; i < vertices.size(); i++)
-		{
-		g.DrawCircle(vertices[i], 2, Color::WHITE);
-		}*/
-	}
-}
-
 
 //-----------------------------------------------------------------------------
 // Overridden Methods
@@ -582,18 +435,18 @@ static void DrawArrowHead(Graphics2D& g, const Vector2f& position, const Vector2
 
 void FillShape(Graphics2D& g, const Array<Vector2f>& points, const Color& color)
 {
-	bool showDebug = false;
+	Array<Vector2f> vertices;
+	Convexity convexity;
+	Vector2f a, b, c;
 	Array<Vector2f> remaining = points;
 	unsigned int count = remaining.size();
 	unsigned int searched = 0;
-	Array<Vector2f> vertices;
-	Convexity convexity;
-	for (int i = 0; count >= 3 &&
-		searched < count; i = (i + 1) % count)
+
+	for (int i = 0; count >= 3 && searched < count; i = (i + 1) % count)
 	{
-		Vector2f a = remaining[i];
-		Vector2f b = remaining[(i + 1) % count];
-		Vector2f c = remaining[(i + 2) % count];
+		a = remaining[i];
+		b = remaining[(i + 1) % count];
+		c = remaining[(i + 2) % count];
 
 		convexity = GetConvexity(a, b, c);
 
@@ -604,8 +457,6 @@ void FillShape(Graphics2D& g, const Array<Vector2f>& points, const Color& color)
 				i--;
 			count--;
 			searched = 0;
-			if (showDebug)
-				g.DrawCircle(points[i], 0.15f, Color::CYAN);
 			i--;
 		}
 		else if (convexity == Convexity::STRAIGHT)
@@ -615,16 +466,10 @@ void FillShape(Graphics2D& g, const Array<Vector2f>& points, const Color& color)
 		else
 		{
 			bool contains = false;
-			//for (unsigned int j = 2; j < count - 1; j++)
 			for (unsigned int j = 0; j < points.size(); j++)
 			{
-				//Vector2f v = remaining[(i + j) % count];
 				Vector2f v = points[j];
-				if (
-					v.DistToSqr(a) > 0.00001f &&
-					v.DistToSqr(b) > 0.00001f &&
-					v.DistToSqr(c) > 0.00001f &&
-					IsInsideTriangle(a, b, c, v))
+				if (IsInsideTriangle(a, b, c, v))
 				{
 					contains = true;
 					break;
@@ -659,37 +504,9 @@ void FillShape(Graphics2D& g, const Array<Vector2f>& points, const Color& color)
 	// Draw the shape
 	glBegin(GL_TRIANGLES);
 	glColor4ubv(color.data());
-	if (searched == count && showDebug)
-		glColor4ubv(Color::RED.data());
 	for (unsigned int i = 0; i < vertices.size(); i++)
-	{
-		if (showDebug)
-		{
-			float t = (i / (float) vertices.size());
-			Vector3f c = color.ToVector3f();
-			if (searched == count && showDebug)
-				c = Color::RED.ToVector3f();
-			c *= t;
-			glColor3fv(c.data());
-		}
 		glVertex2fv(vertices[i].v);
-	}
 	glEnd();
-
-	if (showDebug)
-	{
-		for (unsigned int i = 0; i < points.size(); i++)
-		{
-			float t = (i / (float) points.size());
-			Color c = Color::YELLOW.ToVector3f() * t;
-			g.FillCircle(points[i], 0.1f, c);
-		}
-		if (remaining.size() >= 3)
-		{
-			for (unsigned int i = 0; i < remaining.size(); i++)
-				g.DrawCircle(remaining[i], 0.12f, Color::RED);
-		}
-	}
 }
 
 void FillShape(Graphics2D& g, const Array<Biarc>& arcs, const Color& color)

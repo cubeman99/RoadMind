@@ -54,7 +54,7 @@ Vector2f Node::GetDirection() const
 
 Vector2f Node::GetEndTangent() const
 {
-	return Vector2f(-m_direction.y, m_direction.x);
+	return RightPerpendicular(m_direction);
 }
 
 Vector2f Node::GetPosition() const
