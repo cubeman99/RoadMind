@@ -46,6 +46,7 @@ public:
 class NodeGroup
 {
 	friend class RoadNetwork;
+	friend class NodeGroupTie;
 
 public:
 	// Constructors

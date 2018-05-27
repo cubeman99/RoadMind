@@ -108,7 +108,7 @@ private:
 	Vector2f m_preMoveCursorPosition;
 	struct PreMoveInfo
 	{
-		Vector2f position;
+		Vector3f position;
 		Vector2f direction;
 	};
 

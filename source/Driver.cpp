@@ -24,7 +24,7 @@ Driver::Driver(RoadNetwork* network, Node* node)
 		m_lane = *node->GetOutputs().begin();
 	m_distance = 0.0f;
 	if (node != nullptr)
-		m_position = node->GetCenter();
+		m_position = node->GetCenter().xy;
 }
 
 Driver::~Driver()

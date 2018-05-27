@@ -7,7 +7,7 @@
 
 NodeGroupTie::NodeGroupTie()
 	: m_centerDividerWidth(0.0f)
-	, m_position(Vector2f::ZERO)
+	, m_position(Vector3f::ZERO)
 	, m_direction(Vector2f::UNITX)
 	, m_nodeGroup(nullptr)
 {
@@ -27,7 +27,7 @@ float NodeGroupTie::GetCenterWidth() const
 	return m_centerDividerWidth;
 }
 
-const Vector2f& NodeGroupTie::GetPosition() const
+const Vector3f& NodeGroupTie::GetPosition() const
 {
 	return m_position;
 }
@@ -52,7 +52,7 @@ NodeGroup* NodeGroupTie::GetNodeGroupTwin() const
 // Setters
 //-----------------------------------------------------------------------------
 
-void NodeGroupTie::SetPosition(const Vector2f& position)
+void NodeGroupTie::SetPosition(const Vector3f& position)
 {
 	m_position = position;
 }
@@ -76,11 +76,13 @@ void NodeGroupTie::UpdateGeometry()
 {
 	Vector2f normal = RightPerpendicular(m_direction);
 
-	m_nodeGroup->SetPosition(m_position + (normal * m_centerDividerWidth * 0.5f));
-	m_nodeGroup->SetDirection(m_direction);
+	m_nodeGroup->m_position = Vector3f(
+		m_position.xy + (normal * m_centerDividerWidth * 0.5f), m_position.z);
+	m_nodeGroup->m_direction = m_direction;
 
 	NodeGroup* twin = m_nodeGroup->GetTwin();
-	twin->SetPosition(m_position - (normal * m_centerDividerWidth * 0.5f));
-	twin->SetDirection(-m_direction);
+	twin->m_position = Vector3f(
+		m_position.xy - (normal * m_centerDividerWidth * 0.5f), m_position.z);
+	twin->m_direction = -m_direction;
 }
 

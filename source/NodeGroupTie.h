@@ -23,12 +23,12 @@ public:
 	// Getters
 	NodeGroup* GetNodeGroupTwin() const;
 	NodeGroup* GetNodeGroup() const;
-	const Vector2f& GetPosition() const;
+	const Vector3f& GetPosition() const;
 	const Vector2f& GetDirection() const;
 	Meters GetCenterWidth() const;
 
 	// Setters
-	void SetPosition(const Vector2f& position);
+	void SetPosition(const Vector3f& position);
 	void SetDirection(const Vector2f& direction);
 	void SetCenterWidth(Meters centerWidth);
 
@@ -36,7 +36,7 @@ public:
 	void UpdateGeometry();
 
 private:
-	Vector2f m_position;
+	Vector3f m_position;
 	Vector2f m_direction;
 	NodeGroup* m_nodeGroup;
 	Meters m_centerDividerWidth;

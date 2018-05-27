@@ -107,8 +107,8 @@ void NodeGroupConnection::UpdateGeometry()
 	nodes[1] = m_output.group->GetNode(m_output.index);
 	BiarcPair prev, curr;
 	prev = BiarcPair::Interpolate(
-		nodes[0]->m_position, m_input.group->GetDirection(),
-		nodes[1]->m_position, m_output.group->GetDirection());
+		nodes[0]->m_position.xy, m_input.group->GetDirection(),
+		nodes[1]->m_position.xy, m_output.group->GetDirection());
 	m_dividerLines.clear();
 	m_dividerLines.push_back(prev);
 

@@ -26,7 +26,7 @@ public:
 
 	bool GrowNodeGroup(NodeSubGroup& subGroup);
 
-	NodeGroup* CreateNodeGroup(const Vector2f& position,
+	NodeGroup* CreateNodeGroup(const Vector3f& position,
 		const Vector2f& direction = Vector2f::UNITX, int laneCount = 1);
 	RoadIntersection* CreateIntersection(const Set<NodeGroup*>& nodeGroups);
 	Node* AddNodeToGroup(NodeGroup* group);

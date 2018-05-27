@@ -728,7 +728,7 @@ void MainApp::OnRender()
 	// Draw node groups
 	for (NodeGroup* group : m_network->GetNodeGroups())
 	{
-		Vector2f center = group->GetPosition();
+		Vector2f center = group->GetPosition().xy;
 
 		for (int i = 0; i < group->GetNumNodes(); i++)
 		{
@@ -736,18 +736,18 @@ void MainApp::OnRender()
 
 			// Draw stop line at end of lane
 			if (m_showRoadMarkings->enabled && group->GetOutputs().empty())
-				g.DrawLine(node->GetLeftEdge(), node->GetRightEdge(), Color::WHITE);
+				g.DrawLine(node->GetLeftEdge().xy, node->GetRightEdge().xy, Color::WHITE);
 
 			if (m_showNodes->enabled)
 			{
-				g.DrawLine(node->GetLeftEdge(), node->GetRightEdge(), Color::WHITE);
-				g.FillCircle(node->GetRightEdge(), r, Color::WHITE);
+				g.DrawLine(node->GetLeftEdge().xy, node->GetRightEdge().xy, Color::WHITE);
+				g.FillCircle(node->GetRightEdge().xy, r, Color::WHITE);
 				//if (m_hoverInfo.nodeGroup == group &&
 				//i >= m_hoverInfo.startIndex &&
 				//i < m_hoverInfo.startIndex + m_rightLaneCount)
 				//g.FillCircle(node->GetCenter(), node->GetWidth() * 0.5f, Color::GRAY);
-				g.DrawCircle(node->GetCenter(), node->GetWidth() * 0.5f, Color::WHITE);
-				g.DrawLine(node->GetCenter(), node->GetCenter() +
+				g.DrawCircle(node->GetCenter().xy, node->GetWidth() * 0.5f, Color::WHITE);
+				g.DrawLine(node->GetCenter().xy, node->GetCenter().xy +
 					node->GetDirection() * node->GetWidth() * 0.5f,
 					Color::WHITE);
 			}
@@ -759,7 +759,7 @@ void MainApp::OnRender()
 	{
 		if (m_showDebug->enabled)
 		{
-			g.FillCircle(tie->GetPosition(), r * 2.0f, Color::RED);
+			g.FillCircle(tie->GetPosition().xy, r * 2.0f, Color::RED);
 		}
 	}
 
@@ -775,7 +775,7 @@ void MainApp::OnRender()
 	auto m_hoverInfo = m_toolDraw->GetHoverInfo();
 	if (m_hoverInfo.subGroup.group != nullptr)
 	{
-		Vector2f leftEdge = m_hoverInfo.subGroup.group->GetPosition();
+		Vector2f leftEdge = m_hoverInfo.subGroup.group->GetPosition().xy;
 		Vector2f right = m_hoverInfo.subGroup.group->GetRightDirection();
 		float w = metrics.laneWidth;
 		for (int i = 0; i < m_hoverInfo.subGroup.count; i++)
@@ -798,7 +798,7 @@ void MainApp::OnRender()
 		for (int i = 0; i < group->GetNumNodes(); i++)
 		{
 			Node* node = group->GetNode(i);
-			g.DrawCircle(node->GetCenter(), node->GetWidth() * 0.6f, Color::GREEN);
+			g.DrawCircle(node->GetCenter().xy, node->GetWidth() * 0.6f, Color::GREEN);
 		}
 	}
 

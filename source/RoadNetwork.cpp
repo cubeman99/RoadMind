@@ -45,7 +45,7 @@ void RoadNetwork::ClearNodes()
 	m_nodeGroups.clear();
 }
 
-NodeGroup* RoadNetwork::CreateNodeGroup(const Vector2f& position,
+NodeGroup* RoadNetwork::CreateNodeGroup(const Vector3f& position,
 	const Vector2f& direction, int laneCount)
 {
 	// Construct the node group
@@ -91,12 +91,12 @@ RoadIntersection* RoadNetwork::CreateIntersection(
 			!group->GetOutputs().empty() ? IOType::OUTPUT : IOType::INPUT);
 		if (group->m_twin == nullptr)
 		{
-			center += group->GetCenterPosition();
+			center += group->GetCenterPosition().xy;
 			count++;
 		}
 		else
 		{
-			center += group->GetPosition() * 2.0f;
+			center += group->GetPosition().xy * 2.0f;
 			count += 2;
 		}
 	}
@@ -106,7 +106,7 @@ RoadIntersection* RoadNetwork::CreateIntersection(
 	std::map<RoadIntersectionPoint*, float> groupAngles;
 	for (RoadIntersectionPoint* point : intersection->m_points)
 	{
-		Vector2f v = point->GetNodeGroup()->GetCenterPosition() - center;
+		Vector2f v = point->GetNodeGroup()->GetCenterPosition().xy - center;
 		groupAngles[point] = Math::ATan2(v.y, v.x);
 	}
 
@@ -200,7 +200,7 @@ void RoadNetwork::AddNodesToLeftOfGroup(NodeGroup* group, int count)
 		group->m_nodes.insert(group->m_nodes.begin(), node);
 
 		// Shift the node group's position
-		group->m_position += group->GetLeftDirection() * node->m_width;
+		group->m_position.xy += group->GetLeftDirection() * node->m_width;
 	}
 }
 

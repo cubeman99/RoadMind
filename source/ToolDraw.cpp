@@ -73,7 +73,7 @@ void ToolDraw::OnEnd()
 
 void ToolDraw::OnLeftMousePressed()
 {
-	Vector2f cursorPos = GetMousePosition();
+	Vector3f cursorPos(GetMousePosition(), 0.0f);
 
 	if (m_dragInfo.state == DragState::NONE)
 	{
@@ -168,7 +168,7 @@ void ToolDraw::Update(float dt)
 	UpdateHoverInfo();
 	UdpateDragging(dt);
 
-	
+
 	if (m_keyboard->IsKeyPressed(Keys::add_keypad))
 	{
 		m_laneCount++;
@@ -208,7 +208,7 @@ NodeGroup* ToolDraw::GetPickedNodeGroup()
 		{
 			Node* node = group->GetNode(index);
 			float radius = node->GetWidth() * 0.5f;
-			Vector2f center = node->GetCenter();
+			Vector2f center = node->GetCenter().xy;
 			if (cursorPos.DistTo(center) <= radius)
 			{
 				return group;
@@ -234,10 +234,10 @@ void ToolDraw::UpdateHoverInfo()
 	if (m_hoverInfo.subGroup.group != nullptr)
 	{
 		float groupWidth = m_hoverInfo.subGroup.group->GetWidth();
-		Vector2f leftEdge = m_hoverInfo.subGroup.group->GetPosition();
-		Vector2f rightEdge = m_hoverInfo.subGroup.group->GetRightPosition();
-		Vector2f right = m_hoverInfo.subGroup.group->GetDirection();
-		right = Vector2f(-right.y, right.x);
+		Vector2f leftEdge = m_hoverInfo.subGroup.group->GetPosition().xy;
+		Vector2f rightEdge = m_hoverInfo.subGroup.group->GetRightPosition().xy;
+		Vector2f right = RightPerpendicular(
+			m_hoverInfo.subGroup.group->GetDirection());
 		float w = m_network->GetMetrics().laneWidth;
 		float offset = (cursorPos.Dot(right) - leftEdge.Dot(right));
 
@@ -270,7 +270,7 @@ void ToolDraw::UpdateHoverInfo()
 					m_hoverInfo.nodeIndex = index;
 					m_hoverInfo.nodePartialIndex =
 						index + ((offset - o) / node->GetWidth());
-					m_hoverInfo.center = node->GetCenter();
+					m_hoverInfo.center = node->GetCenter().xy;
 					break;
 				}
 				o += node->GetWidth();
@@ -333,7 +333,7 @@ void ToolDraw::UdpateDragging(float dt)
 			if (m_dragInfo.inputGroup != nullptr)
 			{
 				Vector2f startCenter =
-					m_dragInfo.connection->GetInput().GetLeftPosition();
+					m_dragInfo.connection->GetInput().GetLeftPosition().xy;
 				Vector2f startRight = m_dragInfo.connection->GetInput().group->GetDirection();
 				startRight = Vector2f(-startRight.y, startRight.x);
 				startCenter += startRight * width * 0.5f;
@@ -365,15 +365,18 @@ void ToolDraw::UdpateDragging(float dt)
 						m_hoverInfo.subGroup.group->GetDirection());
 				}
 				float w = m_network->GetMetrics().laneWidth;
-				m_dragInfo.nodeGroup->SetPosition(m_hoverInfo.subGroup.group->GetPosition() +
-					(right * w * (float) m_snapInfo.subGroup.index));
+				m_dragInfo.nodeGroup->SetPosition(
+					Vector3f(m_hoverInfo.subGroup.group->GetPosition().xy +
+					(right * w * (float) m_snapInfo.subGroup.index),
+					m_dragInfo.nodeGroup->GetPosition().z));
 			}
 		}
 
 		if (m_snapInfo.subGroup.group == nullptr)
 		{
 			m_dragInfo.nodeGroup->SetPosition(
-				m_dragInfo.position - (right * width * 0.5f));
+				Vector3f(m_dragInfo.position - (right * width * 0.5f),
+				m_dragInfo.nodeGroup->GetPosition().z));
 		}
 	}
 }

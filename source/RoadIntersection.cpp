@@ -65,12 +65,12 @@ void RoadIntersection::UpdateGeometry()
 	{
 		if (point->GetNodeGroup()->GetTwin() == nullptr)
 		{
-			m_centerPosition += point->GetNodeGroup()->GetCenterPosition();
+			m_centerPosition += point->GetNodeGroup()->GetCenterPosition().xy;
 			count++;
 		}
 		else
 		{
-			m_centerPosition += point->GetNodeGroup()->GetPosition() * 2.0f;
+			m_centerPosition += point->GetNodeGroup()->GetPosition().xy * 2.0f;
 			count += 2;
 		}
 	}

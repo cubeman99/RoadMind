@@ -123,10 +123,10 @@ void ToolSelection::Update(float dt)
 			{
 				if (group->GetTie() != nullptr)
 					group->GetTie()->SetDirection(Vector2f::Normalize(
-						mousePos - group->GetCenterPosition()));
+						mousePos - group->GetCenterPosition().xy));
 				else
 					group->SetDirectionFromCenter(Vector2f::Normalize(
-						mousePos - group->GetCenterPosition()));
+						mousePos - group->GetCenterPosition().xy));
 			}
 		}
 		else
@@ -135,9 +135,9 @@ void ToolSelection::Update(float dt)
 			{
 				PreMoveInfo info = m_preMoveInfo[group];
 				if (group->GetTie() != nullptr)
-					group->GetTie()->SetPosition(info.position + moveAmount);
+					group->GetTie()->SetPosition(info.position + Vector3f(moveAmount, 0.0f));
 				else
-					group->SetPosition(info.position + moveAmount);
+					group->SetPosition(info.position + Vector3f(moveAmount, 0.0f));
 			}
 		}
 	}
@@ -180,7 +180,7 @@ Node* ToolSelection::GetPickedNode()
 		{
 			Node* node = group->GetNode(index);
 			float radius = node->GetWidth() * 0.5f;
-			Vector2f center = node->GetCenter();
+			Vector2f center = node->GetCenter().xy;
 			if (cursorPos.DistTo(center) <= radius)
 			{
 				return node;
@@ -245,7 +245,7 @@ void ToolSelection::Select(const Rect2f& box, SelectMode mode)
 		{
 			Node* node = group->GetNode(index);
 			float radius = node->GetWidth() * 0.5f;
-			Vector2f center = node->GetCenter();
+			Vector2f center = node->GetCenter().xy;
 			if (m_selectionBox.Contains(center))
 			{
 				if (mode == SelectMode::ADD)
