@@ -21,38 +21,21 @@ public:
 	int index;
 	int count;
 
+public:
 	// Constructors
 
-	NodeSubGroup()
-		: group(nullptr)
-		, index(0)
-		, count(0)
-	{
-	}
-
-	NodeSubGroup(NodeGroup* group, int index, int count)
-		: group(group)
-		, index(index)
-		, count(count)
-	{
-	}
+	NodeSubGroup();
+	NodeSubGroup(NodeGroup* group, int index, int count);
 
 	// Getters
 
 	float GetWidth() const;
-	Vector2f GetLeftPosition() const;
-	Vector2f GetCenterPosition() const;
-
-public:
+	Vector3f GetLeftPosition() const;
+	Vector3f GetCenterPosition() const;
 
 	// Static methods
 
-	static int GetOverlap(const NodeSubGroup& a, const NodeSubGroup& b)
-	{
-		return Math::Min(
-			a.index + a.count - b.index, 
-			b.index + b.count - a.index);
-	}
+	static int GetOverlap(const NodeSubGroup& a, const NodeSubGroup& b);
 };
 
 
@@ -72,7 +55,7 @@ public:
 
 	// Getters
 
-	const Vector2f& GetPosition() const;
+	const Vector3f& GetPosition() const;
 	const Vector2f& GetDirection() const;
 	Vector2f GetLeftDirection() const;
 	Vector2f GetRightDirection() const;
@@ -87,14 +70,14 @@ public:
 	Meters GetShoulderWidth(LaneSide side) const;
 	Meters GetRightShoulderWidth() const;
 	Meters GetLeftShoulderWidth() const;
-	Vector2f GetCenterPosition() const;
-	Vector2f GetRightPosition() const;
+	Vector3f GetCenterPosition() const;
+	Vector3f GetRightPosition() const;
 	Array<NodeGroupConnection*>& GetInputs();
 	Array<NodeGroupConnection*>& GetOutputs();
 
 	// Setters
 
-	void SetPosition(const Vector2f& position);
+	void SetPosition(const Vector3f& position);
 	void SetDirection(const Vector2f& direction);
 	void SetDirectionFromCenter(const Vector2f& direction);
 
@@ -113,7 +96,7 @@ private:
 	void RemoveOutput(NodeGroupConnection* output);
 	void RemoveConnection(NodeGroupConnection* connection, int direction);
 
-	Vector2f m_position;
+	Vector3f m_position;
 	Vector2f m_direction;
 
 	Array<Node*> m_nodes;

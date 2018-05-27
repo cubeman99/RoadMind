@@ -2,6 +2,25 @@
 #include "NodeGroupConnection.h"
 #include <algorithm>
 
+
+//-----------------------------------------------------------------------------
+// NodeSubGroup
+//-----------------------------------------------------------------------------
+
+NodeSubGroup::NodeSubGroup()
+	: group(nullptr)
+	, index(0)
+	, count(0)
+{
+}
+
+NodeSubGroup::NodeSubGroup(NodeGroup* group, int index, int count)
+	: group(group)
+	, index(index)
+	, count(count)
+{
+}
+
 float NodeSubGroup::GetWidth() const
 {
 	float width = 0.0f;
@@ -10,17 +29,24 @@ float NodeSubGroup::GetWidth() const
 	return width;
 }
 
-Vector2f NodeSubGroup::GetLeftPosition() const
+Vector3f NodeSubGroup::GetLeftPosition() const
 {
 	return group->GetNode(index)->GetPosition();
 }
 
-Vector2f NodeSubGroup::GetCenterPosition() const
+Vector3f NodeSubGroup::GetCenterPosition() const
 {
-	Vector2f leftEdge = group->GetNode(index)->GetPosition();
+	Vector3f leftEdge = group->GetNode(index)->GetPosition();
 	float width = GetWidth();
 	Vector2f right = RightPerpendicular(group->GetDirection());
-	return (leftEdge + (right * width * 0.5f));
+	return Vector3f(leftEdge.xy + (right * width * 0.5f), leftEdge.z);
+}
+
+int NodeSubGroup::GetOverlap(const NodeSubGroup& a, const NodeSubGroup& b)
+{
+	return Math::Min(
+		a.index + a.count - b.index, 
+		b.index + b.count - a.index);
 }
 
 
@@ -30,7 +56,7 @@ Vector2f NodeSubGroup::GetCenterPosition() const
 
 NodeGroup::NodeGroup()
 	: m_metrics(nullptr)
-	, m_position(Vector2f::ZERO)
+	, m_position(Vector3f::ZERO)
 	, m_direction(Vector2f::UNITX)
 	, m_tie(nullptr)
 	, m_allowPassing(false)
@@ -52,7 +78,7 @@ NodeGroup::~NodeGroup()
 // Getters
 //-----------------------------------------------------------------------------
 
-const Vector2f& NodeGroup::GetPosition() const
+const Vector3f& NodeGroup::GetPosition() const
 {
 	return m_position;
 }
@@ -140,18 +166,18 @@ Meters NodeGroup::GetLeftShoulderWidth() const
 	return m_leftShoulderWidth;
 }
 
-Vector2f NodeGroup::GetCenterPosition() const
+Vector3f NodeGroup::GetCenterPosition() const
 {
 	float width = GetWidth();
-	Vector2f right(-m_direction.y, m_direction.x);
-	return (m_position + (right * width * 0.5f));
+	Vector2f right = RightPerpendicular(m_direction);
+	return Vector3f(m_position.xy + (right * width * 0.5f), m_position.z);
 }
 
-Vector2f NodeGroup::GetRightPosition() const
+Vector3f NodeGroup::GetRightPosition() const
 {
 	float width = GetWidth();
-	Vector2f right(-m_direction.y, m_direction.x);
-	return (m_position + (right * width));
+	Vector2f right = RightPerpendicular(m_direction);
+	return Vector3f(m_position.xy + (right * width), m_position.z);
 }
 
 Array<NodeGroupConnection*>& NodeGroup::GetInputs()
@@ -169,7 +195,7 @@ Array<NodeGroupConnection*>& NodeGroup::GetOutputs()
 // Setters
 //-----------------------------------------------------------------------------
 
-void NodeGroup::SetPosition(const Vector2f& position)
+void NodeGroup::SetPosition(const Vector3f& position)
 {
 	m_position = position;
 }
@@ -183,10 +209,10 @@ void NodeGroup::SetDirectionFromCenter(const Vector2f& direction)
 {
 	float width = GetWidth();
 	Vector2f right(-m_direction.y, m_direction.x);
-	Vector2f center(m_position + (right * width * 0.5f));
+	Vector2f center(m_position.xy + (right * width * 0.5f));
 	m_direction = direction;
 	right = RightPerpendicular(direction);
-	m_position = center - (right * width * 0.5f);
+	m_position.xy = center - (right * width * 0.5f);
 }
 
 
@@ -332,14 +358,14 @@ bool NodeGroup::IntersectConnections(NodeGroupConnection* a, NodeGroupConnection
 void NodeGroup::UpdateGeometry()
 {
 	// Adjust the node positions relative to the node group's center
-	Vector2f nodePosition = m_position;
-	Vector2f right(-m_direction.y, m_direction.x);
+	Vector3f nodePosition = m_position;
+	Vector2f right = RightPerpendicular(m_direction);
 	for (unsigned int i = 0; i < m_nodes.size(); i++)
 	{
 		Node* node = m_nodes[i];
 		node->m_position = nodePosition;
 		node->m_direction = m_direction;
-		nodePosition += node->m_width * right;
+		nodePosition.xy += node->m_width * right;
 	}
 }
 
@@ -355,7 +381,7 @@ void NodeGroup::UpdateIntersectionGeometry()
 		bool reverse = (inOut == 0);
 
 		// Intersect lane edges
-		for (first = 0; first < connections.size(); first = last)
+		for (first = 0; first < connections.size(); first = last - 1)
 		{
 			// Find the group of connections that overlap this one
 			for (last = first + 1; last < connections.size(); last++)
@@ -364,6 +390,13 @@ void NodeGroup::UpdateIntersectionGeometry()
 					connections[last]->GetInput()) < 1)
 					break;
 			}
+
+			if (last == first + 1)
+			{
+				last = first + 2;
+				continue;
+			}
+
 
 			// Intersect the lane-edge arc geometry for the overlapping
 			// connections
@@ -396,7 +429,7 @@ void NodeGroup::UpdateIntersectionGeometry()
 		}
 
 		// Intersect shoulder edges
-		for (first = 0; first < connections.size(); first = last)
+		for (first = 0; first < connections.size(); first = last - 1)
 		{
 			// Find the group of connections that are touching or overlapping
 			for (last = first + 1; last < connections.size(); last++)
@@ -405,6 +438,13 @@ void NodeGroup::UpdateIntersectionGeometry()
 					connections[last]->GetInput()) < 0)
 					break;
 			}
+
+			if (last == first + 1)
+			{
+				last = first + 2;
+				continue;
+			}
+
 
 			// Intersect the shoulder-edge arc geometry for the touching
 			// connections

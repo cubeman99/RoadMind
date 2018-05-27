@@ -8,7 +8,7 @@
 //-----------------------------------------------------------------------------
 
 Node::Node()
-	: m_position(Vector2f::ZERO)
+	: m_position(Vector3f::ZERO)
 	, m_direction(Vector2f::UNITX)
 	, m_width(1.0f)
 	, m_leftDivider(LaneDivider::DASHED)
@@ -57,19 +57,19 @@ Vector2f Node::GetEndTangent() const
 	return RightPerpendicular(m_direction);
 }
 
-Vector2f Node::GetPosition() const
+Vector3f Node::GetPosition() const
 {
 	return m_position;
 }
 
-Vector2f Node::GetLeftEdge() const
+Vector3f Node::GetLeftEdge() const
 {
 	return m_position;
 }
 
-Vector2f Node::GetRightEdge() const
+Vector3f Node::GetRightEdge() const
 {
-	return (m_position + (GetEndTangent() * m_width));
+	return Vector3f(m_position.xy + (GetEndTangent() * m_width), m_position.z);
 }
 
 Vector2f Node::GetLeftEdgeTangent() const
@@ -82,9 +82,10 @@ Vector2f Node::GetRightEdgeTangent() const
 	return m_direction;
 }
 
-Vector2f Node::GetCenter() const
+Vector3f Node::GetCenter() const
 {
-	return (m_position + (GetEndTangent() * m_width * 0.5f));
+	return Vector3f(m_position.xy + (GetEndTangent() * m_width * 0.5f),
+		m_position.z);
 }
 
 Node* Node::GetLeftNode() const
@@ -201,14 +202,15 @@ void Node::SetWidth(float width)
 	m_width = width;
 }
 
-void Node::SetLeftPosition(const Vector2f& position)
+void Node::SetLeftPosition(const Vector3f& position)
 {
 	m_position = position;
 }
 
-void Node::SetCenterPosition(const Vector2f& center)
+void Node::SetCenterPosition(const Vector3f& center)
 {
-	m_position = center - (GetEndTangent() * m_width * 0.5f);
+	m_position = Vector3f(
+		center.xy - (GetEndTangent() * m_width * 0.5f), center.z);
 }
 
 void Node::SetEndNormal(const Vector2f& normal)

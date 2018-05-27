@@ -23,7 +23,7 @@ public:
 	// Constructors
 
 	Node();
-	Node(const Vector2f& position, const Vector2f& direction,
+	Node(const Vector3f& position, const Vector2f& direction,
 		const Vector2f& leftDirection, const Vector2f& rightDirection,
 		float width);
 
@@ -36,12 +36,12 @@ public:
 	unsigned int GetNodeId() const;
 	Vector2f GetDirection() const;
 	Vector2f GetEndTangent() const;
-	Vector2f GetPosition() const;
-	Vector2f GetLeftEdge() const;
-	Vector2f GetRightEdge() const;
+	Vector3f GetPosition() const;
+	Vector3f GetLeftEdge() const;
+	Vector3f GetRightEdge() const;
 	Vector2f GetLeftEdgeTangent() const;
 	Vector2f GetRightEdgeTangent() const;
-	Vector2f GetCenter() const;
+	Vector3f GetCenter() const;
 	Node* GetLeftNode() const;
 	Node* GetRightNode() const;
 	int GetNumInputs() const;
@@ -64,8 +64,8 @@ public:
 	void SetPrevNode(Node* node);
 	void SetNextNode(Node* node);
 	void SetWidth(float width);
-	void SetLeftPosition(const Vector2f& position);
-	void SetCenterPosition(const Vector2f& center);
+	void SetLeftPosition(const Vector3f& position);
+	void SetCenterPosition(const Vector3f& center);
 	void SetEndNormal(const Vector2f& normal);
 	
 	// Geometry
@@ -75,7 +75,7 @@ public:
 private:
 	unsigned int m_nodeId;
 	Meters m_width;
-	Vector2f m_position;
+	Vector3f m_position;
 	Vector2f m_direction;
 	LaneDivider m_leftDivider;
 
