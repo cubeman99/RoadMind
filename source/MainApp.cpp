@@ -15,6 +15,7 @@ MainApp::MainApp()
 	m_debugOptions.push_back(m_wireframeMode = new DebugOption("Wireframe", false));
 	m_debugOptions.push_back(m_showDebug = new DebugOption("Debug", true));
 	m_debugOptions.push_back(m_showNodes = new DebugOption("Nodes", true));
+	m_debugOptions.push_back(m_showSeams = new DebugOption("Seams", false));
 
 	//m_showEdgeLines->enabled = true;
 	//m_showDebug->enabled = true;
@@ -418,6 +419,10 @@ void MainApp::OnUpdate(float dt)
 		m_currentTool->m_mouse = GetMouse();
 		m_currentTool->m_network = m_network;
 		m_currentTool->m_mousePosition = m_cursorGroundPosition.xy;
+		m_currentTool->m_mousePositionInWindow = Vector2f(
+			(float) mouseState.x, (float) mouseState.y);
+		m_currentTool->m_camera = &m_newCamera;
+		m_currentTool->m_window = GetWindow();
 
 		if (mouse->IsButtonPressed(MouseButtons::left))
 			m_currentTool->OnLeftMousePressed();
@@ -686,7 +691,6 @@ void MainApp::OnRender()
 	}
 
 	// Draw road markings
-	int index = 0;
 	for (NodeGroupConnection* connection : m_network->GetNodeGroupConnections())
 	{
 		// Draw shoudler edges
@@ -694,8 +698,11 @@ void MainApp::OnRender()
 		{
 			DrawArcs(g, connection->m_visualShoulderLines[0], colorEdgeLines);
 			DrawArcs(g, connection->m_visualShoulderLines[1], colorEdgeLines);
+		}
 
-			// Draw seams
+		// Draw seams
+		if (m_showSeams->enabled)
+		{
 			for (BiarcPair seam : connection->GetSeams(IOType::INPUT, LaneSide::LEFT))
 				DrawArcs(g, seam, Color::MAGENTA);
 			for (BiarcPair seam : connection->GetSeams(IOType::INPUT, LaneSide::RIGHT))
@@ -705,7 +712,6 @@ void MainApp::OnRender()
 			for (BiarcPair seam : connection->GetSeams(IOType::OUTPUT, LaneSide::RIGHT))
 				DrawArcs(g, seam, Color::MAGENTA);
 		}
-		index++;
 
 		// Draw lane divider lines
 		if (m_showRoadMarkings->enabled)
@@ -824,24 +830,6 @@ void MainApp::OnRender()
 	}
 
 
-	if (m_currentTool == m_toolSelection)
-	{
-		if (m_toolSelection->IsCreatingSelection())
-			g.DrawRect(m_toolSelection->GetSelectionBox(), Color::GREEN);
-	}
-
-	g.FillCircle(m_cursorGroundPosition.xy, 0.5f, Color::MAGENTA);
-
-
-	Keyboard* keyboard = GetKeyboard();
-	bool ctrl = keyboard->IsKeyDown(Keys::left_control) ||
-		keyboard->IsKeyDown(Keys::right_control);
-	//if (m_dragState == DragState::DIRECTION ||
-	//	(m_dragState == DragState::POSITION && ctrl))
-	//{
-	//	g.DrawLine(m_dragNode->GetCenter(), m_mousePosition, Color::RED);
-	//}
-
 	// Draw HUD
 	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 	projection = Matrix4f::CreateOrthographic(0.0f,
@@ -849,6 +837,12 @@ void MainApp::OnRender()
 		0.0f, -1.0f, 1.0f);
 	glMatrixMode(GL_PROJECTION);
 	glLoadMatrixf(projection.m);
+
+	if (m_currentTool == m_toolSelection)
+	{
+		if (m_toolSelection->IsCreatingSelection())
+			g.DrawRect(m_toolSelection->GetSelectionBox(), Color::GREEN);
+	}
 
 	int groupCount = (int) m_network->GetNodeGroups().size();
 	int connectionCount = (int) m_network->GetNodeGroupConnections().size();

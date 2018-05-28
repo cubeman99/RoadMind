@@ -27,3 +27,7 @@ Vector2f EditorTool::GetMousePosition() const
 	return m_mousePosition;
 }
 
+Vector2f EditorTool::GetMousePositionInWindow() const
+{
+	return m_mousePositionInWindow;
+}

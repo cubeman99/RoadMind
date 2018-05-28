@@ -74,6 +74,7 @@ private:
 	DebugOption* m_showEdgeLines;
 	DebugOption* m_showRoadSurface;
 	DebugOption* m_showNodes;
+	DebugOption* m_showSeams;
 
 	EditMode m_editMode;
 

@@ -151,6 +151,12 @@ Ray Camera::GetRay(const Vector2f& screenCoordinates) const
 	return Ray(m_position, direction);
 }
 
+bool Camera::IsInsideView(const Vector3f& worldPoint) const
+{
+	Vector3f screenPoint = m_viewProjectionMatrix * worldPoint;
+	return (screenPoint.x >= -1.0f && screenPoint.x <= 1.0f &&
+		screenPoint.y >= -1.0f && screenPoint.y <= 1.0f);
+}
 
 
 //-----------------------------------------------------------------------------

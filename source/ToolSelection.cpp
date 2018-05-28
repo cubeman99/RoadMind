@@ -57,14 +57,12 @@ void ToolSelection::OnLeftMousePressed()
 	else if (m_state == State::NONE)
 	{
 		m_state = State::CREATING_SELECTION_BOX;
-		m_selectionBoxStart = mousePos;
+		m_selectionBoxStart = GetMousePositionInWindow();
 	}
 }
 
 void ToolSelection::OnLeftMouseReleased()
 {
-	Vector2f mousePos = GetMousePosition();
-
 	if (m_state == State::CREATING_SELECTION_BOX)
 	{
 		SelectMode mode = SelectMode::ADD;
@@ -99,6 +97,7 @@ void ToolSelection::OnRightMouseReleased()
 void ToolSelection::Update(float dt)
 {
 	Vector2f mousePos = GetMousePosition();
+	Vector2f mousePosInWindow = GetMousePositionInWindow();
 	bool ctrl = IsControlDown();
 
 	m_hoverNode = GetPickedNode();
@@ -106,11 +105,11 @@ void ToolSelection::Update(float dt)
 	if (m_state == State::CREATING_SELECTION_BOX)
 	{
 		Vector2f mins(
-			Math::Min(m_selectionBoxStart.x, mousePos.x),
-			Math::Min(m_selectionBoxStart.y, mousePos.y));
+			Math::Min(m_selectionBoxStart.x, mousePosInWindow.x),
+			Math::Min(m_selectionBoxStart.y, mousePosInWindow.y));
 		Vector2f maxs(
-			Math::Max(m_selectionBoxStart.x, mousePos.x),
-			Math::Max(m_selectionBoxStart.y, mousePos.y));
+			Math::Max(m_selectionBoxStart.x, mousePosInWindow.x),
+			Math::Max(m_selectionBoxStart.y, mousePosInWindow.y));
 		m_selectionBox = Rect2f(mins, maxs - mins);
 	}
 	else if (m_state == State::MOVING_SELECTION)
@@ -237,6 +236,9 @@ void ToolSelection::DeleteSelection()
 
 void ToolSelection::Select(const Rect2f& box, SelectMode mode)
 {
+	Vector2f windowSize((float) m_window->GetWidth(),
+		(float) m_window->GetHeight());
+
 	// Get the node group the cursor is currently hovering over
 	for (NodeGroup* group : m_network->GetNodeGroups())
 	{
@@ -245,8 +247,13 @@ void ToolSelection::Select(const Rect2f& box, SelectMode mode)
 		{
 			Node* node = group->GetNode(index);
 			float radius = node->GetWidth() * 0.5f;
-			Vector2f center = node->GetCenter().xy;
-			if (m_selectionBox.Contains(center))
+			Vector3f center = node->GetCenter();
+			Vector3f screenPos = m_camera->GetViewProjectionMatrix() * center;
+			Vector2f windowPos(
+				(screenPos.x + 1.0f) * 0.5f * windowSize.x,
+				(-screenPos.y + 1.0f) * 0.5f * windowSize.y);
+
+			if (m_selectionBox.Contains(windowPos))
 			{
 				if (mode == SelectMode::ADD)
 					m_selection.Add(group);

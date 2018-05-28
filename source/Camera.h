@@ -41,6 +41,8 @@ struct CameraState
 class Camera
 {
 public:
+	// Constructors
+
 	Camera();
 
 	// Getters
@@ -52,8 +54,10 @@ public:
 	const Matrix4f& GetInverseViewMatrix() const;
 	const Matrix4f& GetProjectionMatrix() const;
 	Ray GetRay(const Vector2f& screenCoordinates) const;
+	bool IsInsideView(const Vector3f& worldPoint) const;
 
 	// Setters
+
 	void SetPerspective(float aspectRatio, float fieldOfViewY,
 		float minDistance, float maxDistance);
 	void SetAspectRatio(float aspectRatio);
@@ -62,9 +66,12 @@ public:
 	void SetOrientation(const Quaternion& orientation);
 
 private:
+	// Internal Methods
+
 	void CalcProjectionMatrix();
 	void CalcViewMatrix();
 
+private:
 	float m_fieldOfView;
 	float m_aspectRatio;
 	float m_minDistance;
