@@ -82,3 +82,134 @@ CameraState CameraState::Lerp(const CameraState& a, const CameraState& b, float 
 	result.m_rotation = Math::Lerp(a.m_rotation, b.m_rotation, t);
 	return result;
 }
+
+
+
+//-----------------------------------------------------------------------------
+// Constructors
+//-----------------------------------------------------------------------------
+
+Camera::Camera()
+	: m_position(Vector3f::ZERO)
+	, m_orientation(Quaternion::IDENTITY)
+	, m_aspectRatio(1.0f)
+	, m_fieldOfView(1.0f)
+	, m_minDistance(0.1f)
+	, m_maxDistance(100.0f)
+	, m_viewMatrix(Matrix4f::IDENTITY)
+	, m_viewMatrixInv(Matrix4f::IDENTITY)
+	, m_projectionMatrix(Matrix4f::IDENTITY)
+	, m_viewProjectionMatrix(Matrix4f::IDENTITY)
+{
+}
+
+
+//-----------------------------------------------------------------------------
+// Getters
+//-----------------------------------------------------------------------------
+
+Vector3f Camera::GetPosition() const
+{
+	return m_position;
+}
+
+Quaternion Camera::GetOrientation() const
+{
+	return m_orientation;
+}
+
+const Matrix4f& Camera::GetViewProjectionMatrix() const
+{
+	return m_viewProjectionMatrix;
+}
+
+const Matrix4f& Camera::GetViewMatrix() const
+{
+	return m_viewMatrix;
+}
+
+const Matrix4f& Camera::GetInverseViewMatrix() const
+{
+	return m_viewMatrixInv;
+}
+
+const Matrix4f& Camera::GetProjectionMatrix() const
+{
+	return m_projectionMatrix;
+}
+
+Ray Camera::GetRay(const Vector2f& screenCoordinates) const
+{
+	// Get the direction in view space
+    Vector2f screenSpace = screenCoordinates;
+	screenSpace.x *= m_aspectRatio;
+    float viewRatio = Math::Tan(m_fieldOfView * 0.5f);
+	Vector3f direction(screenSpace * viewRatio, -1.0f);
+
+	// Rotate the direction into world space
+	direction.Rotate(m_orientation);
+	return Ray(m_position, direction);
+}
+
+
+
+//-----------------------------------------------------------------------------
+// Setters
+//-----------------------------------------------------------------------------
+
+void Camera::SetPerspective(float aspectRatio, float fieldOfViewY,
+	float minDistance, float maxDistance)
+{
+	m_aspectRatio = aspectRatio;
+	m_fieldOfView = fieldOfViewY;
+	m_minDistance = minDistance;
+	m_maxDistance = maxDistance;
+	CalcProjectionMatrix();
+}
+
+void Camera::SetAspectRatio(float aspectRatio)
+{
+	m_aspectRatio = aspectRatio;
+	CalcProjectionMatrix();
+}
+
+void Camera::SetFieldOfView(float fieldOfViewY)
+{
+	m_fieldOfView = fieldOfViewY;
+	CalcProjectionMatrix();
+}
+
+void Camera::SetPosition(const Vector3f& position)
+{
+	m_position = position;
+	CalcViewMatrix();
+}
+
+void Camera::SetOrientation(const Quaternion& orientation)
+{
+	m_orientation = orientation;
+	CalcViewMatrix();
+}
+
+
+//-----------------------------------------------------------------------------
+// Internal Methods
+//-----------------------------------------------------------------------------
+
+void Camera::CalcViewMatrix()
+{
+	m_viewMatrix = Matrix4f::CreateRotation(m_orientation.GetConjugate()) *
+		Matrix4f::CreateTranslation(-m_position);
+	m_viewMatrixInv = Matrix4f::CreateTranslation(m_position) *
+		Matrix4f::CreateRotation(m_orientation);
+		
+	m_viewProjectionMatrix = m_projectionMatrix * m_viewMatrix;
+}
+
+void Camera::CalcProjectionMatrix()
+{
+	m_projectionMatrix = Matrix4f::CreatePerspective(m_fieldOfView,
+		m_aspectRatio, m_minDistance, m_maxDistance);
+	m_viewProjectionMatrix = m_projectionMatrix * m_viewMatrix;
+}
+

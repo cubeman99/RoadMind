@@ -55,13 +55,23 @@ void MainApp::OnInitialize()
 
 	SetTool(m_toolDraw);
 
-	//Vector2f screenSize(
-	//	(float) GetWindow()->GetWidth(),
-	//	(float) GetWindow()->GetHeight());
-	//m_camera.m_position = screenSize * 0.5f;
-	//m_camera.m_viewHeight = screenSize.y;
+	Reset();
+}
 
-	//CreateTestNetwork();
+void MainApp::Reset()
+{
+	m_camera.m_position = m_defaultCameraState.m_position;
+	m_camera.m_rotation = m_defaultCameraState.m_rotation;
+
+	// Setup the initial camera.
+	m_cameraPosition = Vector3f(0.0f, 0.0f, 0.5f);
+	m_cameraPitch = Math::HALF_PI;
+	m_cameraYaw = 0.0f;
+	m_cameraDistance = 100.0f;
+	m_newCamera = Camera();
+	m_newCamera.SetPosition(Vector3f::ZERO);
+	m_newCamera.SetPerspective(
+		GetWindow()->GetAspectRatio(), 1.4f, 0.1f, 1000.0f);
 }
 
 void MainApp::CreateTestNetwork()
@@ -95,55 +105,64 @@ void MainApp::UpdateCameraControls(float dt)
 	bool ctrl = keyboard->IsKeyDown(Keys::left_control) ||
 		keyboard->IsKeyDown(Keys::right_control);
 
+	Vector3f right = m_newCamera.GetOrientation().GetRight();
+	Vector3f forward = Vector3f::Cross(Vector3f::UNITZ, right);
+
+	// Calculate cursor ground position
+	m_cursorGroundPositionPrev = m_cursorGroundPosition;
+	Plane ground = Plane::XY;
+	Vector2f mouseScreenCoords(
+		((mousePos.x / windowSize.x) - 0.5f) * 2.0f,
+		((mousePos.y / windowSize.y) - 0.5f) * -2.0f);
+	Ray mouseRay = m_newCamera.GetRay(mouseScreenCoords);
+	bool cursorValid = ground.CastRay(mouseRay, m_cursorGroundPosition);
+
+	// Scoll Wheel: Zoom in/out
 	if (scroll != 0)
 	{
 		m_camera.m_viewHeight *= Math::Pow(0.9f, (float) scroll);
+		m_cameraDistance *= Math::Pow(0.9f, (float) scroll);
 	}
 
+	// WASD: Move camera
 	if (!ctrl)
 	{
 		Vector2f move = Vector2f::ZERO;
 		if (keyboard->IsKeyDown(Keys::a))
-			move += m_camera.GetLeft();
+			move.x -= 1.0f;
 		if (keyboard->IsKeyDown(Keys::d))
-			move -= m_camera.GetLeft();
-		if (keyboard->IsKeyDown(Keys::w))
-			move += m_camera.GetUp();
+			move.x += 1.0f;
 		if (keyboard->IsKeyDown(Keys::s))
-			move -= m_camera.GetUp();
-		move = move.Normalize();
+			move.y -= 1.0f;
+		if (keyboard->IsKeyDown(Keys::w))
+			move.y += 1.0f;
 		if (move.LengthSquared() > 0.0f)
-			m_camera.m_position += move * (m_camera.m_viewHeight * 0.9f * dt);
+		{
+			move = move.Normalize();
+			m_cameraPosition += right * move.x;
+			m_cameraPosition += forward * move.y;
+		}
 	}
 
+	// Ctrl+RMB: Rotate camera
 	if (ctrl && mouse->IsButtonDown(MouseButtons::right))
 	{
 		Vector2f windowCenter = windowSize * 0.5f;
-		Radians angle = -(mousePos.x - mousePosPrev.x) * 0.003f;
-
-		//float dot = (mousePos - windowCenter).Normalize().Dot(
-		//	(mousePosPrev - windowCenter).Normalize());
-		//float angle = 0.0f;
-
-		//if (dot >= 1.0f)
-		//{
-		//	angle = 0.0f;
-		//}
-		//else if (dot <= -1.0f)
-		//{
-		//	angle = Math::PI;
-		//}
-		//else
-		//{
-		//	angle = Math::ACos(dot);
-		//	Vector2f normal = mousePosPrev - windowCenter;
-		//	normal = Vector2f(-normal.y, normal.x);
-		//	if (mousePos.Dot(normal) < mousePosPrev.Dot(normal))
-		//		angle = -angle;
-		//}
-
-		m_camera.m_rotation += angle;
+		Vector2f angle = (mousePos - mousePosPrev) * 0.003f;
+		m_cameraPitch += angle.y;
+		m_cameraPitch = Math::Clamp(m_cameraPitch, 0.0f, Math::HALF_PI);
+		m_cameraYaw -= angle.x;
+		if (m_cameraYaw > Math::TWO_PI)
+			m_cameraYaw -= Math::TWO_PI;
+		if (m_cameraYaw < 0.0f)
+			m_cameraYaw += Math::TWO_PI;
 	}
+
+	m_newCamera.SetOrientation(
+		Quaternion(Vector3f::UNITZ, m_cameraYaw) *
+		Quaternion(Vector3f::UNITX, Math::HALF_PI - m_cameraPitch));
+	m_newCamera.SetPosition(m_cameraPosition +
+		m_newCamera.GetOrientation().GetBack() * m_cameraDistance);
 }
 
 
@@ -291,6 +310,7 @@ void MainApp::OnQuit()
 void MainApp::OnResizeWindow(int width, int height)
 {
 	m_camera.m_aspectRatio = GetWindow()->GetAspectRatio();
+	m_newCamera.SetAspectRatio(GetWindow()->GetAspectRatio());
 }
 
 void MainApp::OnDropFile(const String& fileName)
@@ -359,8 +379,7 @@ void MainApp::OnUpdate(float dt)
 	{
 		m_toolDraw->CancelDragging();
 		m_network->ClearNodes();
-		m_camera.m_position = m_defaultCameraState.m_position;
-		m_camera.m_rotation = m_defaultCameraState.m_rotation;
+		Reset();
 	}
 
 	// T: Create test network
@@ -398,11 +417,11 @@ void MainApp::OnUpdate(float dt)
 		m_currentTool->m_keyboard = GetKeyboard();
 		m_currentTool->m_mouse = GetMouse();
 		m_currentTool->m_network = m_network;
-		m_currentTool->m_mousePosition = m_mousePosition;
+		m_currentTool->m_mousePosition = m_cursorGroundPosition.xy;
 
 		if (mouse->IsButtonPressed(MouseButtons::left))
 			m_currentTool->OnLeftMousePressed();
-		if (mouse->IsButtonPressed(MouseButtons::right))
+		if (!ctrl && mouse->IsButtonPressed(MouseButtons::right))
 			m_currentTool->OnRightMousePressed();
 		if (mouse->IsButtonReleased(MouseButtons::left))
 			m_currentTool->OnLeftMouseReleased();
@@ -567,7 +586,8 @@ void MainApp::OnRender()
 	Matrix4f view = m_camera.GetWorldToCameraMatrix();
 	//view = Matrix4f::IDENTITY;
 	glMatrixMode(GL_PROJECTION);
-	glLoadMatrixf((projection * view).m);
+	//glLoadMatrixf((projection * view).m);
+	glLoadMatrixf(m_newCamera.GetViewProjectionMatrix().m);
 
 	if (m_backgroundTexture != nullptr)
 	{
@@ -576,15 +596,16 @@ void MainApp::OnRender()
 	}
 
 	Color colorEdgeLines = Color::WHITE;
-	
+
 	float r = 0.2f;
 	float r2 = 0.4f;
 	Color c = Color::WHITE;
 
 	Vector3f gridCenter;
 	gridCenter.z = 0.0f;
-	gridCenter.xy = m_camera.m_position;
+	gridCenter.xy = m_cameraPosition.xy;
 	Meters gridRadius = m_camera.m_viewHeight;
+	gridRadius = m_cameraDistance * 1.4f;
 	DrawGridFloor(gridCenter, 1.0f, gridRadius);
 
 	if (m_wireframeMode->enabled)
@@ -808,6 +829,8 @@ void MainApp::OnRender()
 		if (m_toolSelection->IsCreatingSelection())
 			g.DrawRect(m_toolSelection->GetSelectionBox(), Color::GREEN);
 	}
+
+	g.FillCircle(m_cursorGroundPosition.xy, 0.5f, Color::MAGENTA);
 
 
 	Keyboard* keyboard = GetKeyboard();

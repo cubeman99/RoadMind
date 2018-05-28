@@ -37,4 +37,46 @@ struct CameraState
 };
 
 
+
+class Camera
+{
+public:
+	Camera();
+
+	// Getters
+
+	Vector3f GetPosition() const;
+	Quaternion GetOrientation() const;
+	const Matrix4f& GetViewProjectionMatrix() const;
+	const Matrix4f& GetViewMatrix() const;
+	const Matrix4f& GetInverseViewMatrix() const;
+	const Matrix4f& GetProjectionMatrix() const;
+	Ray GetRay(const Vector2f& screenCoordinates) const;
+
+	// Setters
+	void SetPerspective(float aspectRatio, float fieldOfViewY,
+		float minDistance, float maxDistance);
+	void SetAspectRatio(float aspectRatio);
+	void SetFieldOfView(float fieldOfViewY);
+	void SetPosition(const Vector3f& position);
+	void SetOrientation(const Quaternion& orientation);
+
+private:
+	void CalcProjectionMatrix();
+	void CalcViewMatrix();
+
+	float m_fieldOfView;
+	float m_aspectRatio;
+	float m_minDistance;
+	float m_maxDistance;
+
+	Vector3f m_position;
+	Quaternion m_orientation;
+	Matrix4f m_viewMatrix;
+	Matrix4f m_viewMatrixInv;
+	Matrix4f m_projectionMatrix;
+	Matrix4f m_viewProjectionMatrix;
+};
+
+
 #endif // _CAMERA_H_

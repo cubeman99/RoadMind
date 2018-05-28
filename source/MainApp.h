@@ -36,6 +36,8 @@ public:
 	void OnUpdate(float timeDelta) override;
 	void OnRender() override;
 
+	void Reset();
+
 	void CreateTestNetwork();
 	void DrawGridFloor(const Vector3f& center, Meters squareSize, Meters gridRadius);
 
@@ -83,6 +85,14 @@ private:
 
 	CameraState m_camera;
 	CameraState m_defaultCameraState;
+	Camera m_newCamera;
+	Vector3f m_cameraPosition;
+	Meters m_cameraDistance;
+	Radians m_cameraPitch;
+	Radians m_cameraYaw;
+
+	Vector3f m_cursorGroundPosition;
+	Vector3f m_cursorGroundPositionPrev;
 
 	Texture* m_backgroundTexture;
 	Vector2f m_backgroundPosition;
