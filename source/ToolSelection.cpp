@@ -122,10 +122,10 @@ void ToolSelection::Update(float dt)
 			{
 				if (group->GetTie() != nullptr)
 					group->GetTie()->SetDirection(Vector2f::Normalize(
-						mousePos - group->GetCenterPosition().xy));
+					mousePos - group->GetCenterPosition().xy));
 				else
 					group->SetDirectionFromCenter(Vector2f::Normalize(
-						mousePos - group->GetCenterPosition().xy));
+					mousePos - group->GetCenterPosition().xy));
 			}
 		}
 		else
@@ -151,6 +151,30 @@ void ToolSelection::Update(float dt)
 
 	if (m_keyboard->IsKeyPressed(Keys::k_delete))
 		DeleteSelection();
+
+	// Ctrl+T: Tie/untie node groups
+	if (ctrl && m_keyboard->IsKeyPressed(Keys::t))
+	{
+		if (m_selection.GetNumGroups() == 2)
+		{
+			int i = 0;
+			NodeGroup* groups[2];
+			for (NodeGroup* group : m_selection.GetNodeGroups())
+				groups[i++] = group;
+			if (groups[0]->GetTwin() == groups[1])
+			{
+				m_network->UntieNodeGroup(groups[0]);
+			}
+			else
+			{
+				if (groups[0]->GetTwin() != nullptr)
+					m_network->UntieNodeGroup(groups[0]);
+				if (groups[1]->GetTwin() != nullptr)
+					m_network->UntieNodeGroup(groups[1]);
+				m_network->TieNodeGroups(groups[0], groups[1]);
+			}
+		}
+	}
 
 	// Ctrl+D: Deselect
 	if (ctrl && m_keyboard->IsKeyPressed(Keys::d))

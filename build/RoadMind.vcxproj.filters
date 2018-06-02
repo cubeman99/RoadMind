@@ -69,6 +69,12 @@
     <ClInclude Include="..\source\GeometryApp.h">
       <Filter>Source Files</Filter>
     </ClInclude>
+    <ClInclude Include="..\source\Biarc3.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\source\RoadCurves.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\source\main.cpp">
@@ -117,6 +123,12 @@
       <Filter>Source Files\Tools</Filter>
     </ClCompile>
     <ClCompile Include="..\source\GeometryApp.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\source\Biarc3.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\source\RoadCurves.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

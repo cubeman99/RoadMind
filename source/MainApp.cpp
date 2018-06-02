@@ -68,7 +68,7 @@ void MainApp::Reset()
 	m_cameraPosition = Vector3f(0.0f, 0.0f, 0.5f);
 	m_cameraPitch = Math::HALF_PI;
 	m_cameraYaw = 0.0f;
-	m_cameraDistance = 100.0f;
+	m_cameraDistance = 60.0f;
 	m_newCamera = Camera();
 	m_newCamera.SetPosition(Vector3f::ZERO);
 	m_newCamera.SetPerspective(
@@ -128,7 +128,7 @@ void MainApp::UpdateCameraControls(float dt)
 	// WASD: Move camera
 	if (!ctrl)
 	{
-		Vector2f move = Vector2f::ZERO;
+		Vector3f move = Vector3f::ZERO;
 		if (keyboard->IsKeyDown(Keys::a))
 			move.x -= 1.0f;
 		if (keyboard->IsKeyDown(Keys::d))
@@ -137,11 +137,17 @@ void MainApp::UpdateCameraControls(float dt)
 			move.y -= 1.0f;
 		if (keyboard->IsKeyDown(Keys::w))
 			move.y += 1.0f;
+		if (keyboard->IsKeyDown(Keys::e))
+			move.z += 1.0f;
+		if (keyboard->IsKeyDown(Keys::q))
+			move.z -= 1.0f;
 		if (move.LengthSquared() > 0.0f)
 		{
-			move = move.Normalize();
+			move.xy.Normalize();
 			m_cameraPosition += right * move.x;
 			m_cameraPosition += forward * move.y;
+			m_cameraPosition.z += move.z;
+			m_cameraPosition.z = Math::Max(m_cameraPosition.z, 0.0f);
 		}
 	}
 
@@ -176,7 +182,55 @@ static void DrawPoint(Graphics2D& g, const Vector2f& point, const Color& color)
 	g.FillCircle(point, 4, color);
 }
 
-static void DrawArc(Graphics2D& g, const Biarc& arc, const Color& color)
+static void DrawPoint(Graphics2D& g, const Vector3f& point, const Color& color)
+{
+	glPointSize(6.0f);
+	glBegin(GL_POINTS);
+	glColor4ubv(color.data());
+	glVertex3fv(point.v);
+	glEnd();
+}
+
+void MainApp::DrawArc(Graphics2D& g, const Biarc3& arc, const Color& color)
+{
+	glBegin(GL_LINE_STRIP);
+	//glBegin(GL_POINTS);
+	glColor4ubv(color.data());
+	if (arc.IsStraight())
+	{
+		glVertex3fv(arc.start.v);
+		glVertex3fv(arc.end.v);
+	}
+	else
+	{
+		glVertex3fv(arc.start.v);
+		Vector3f v = arc.start - arc.center;
+		int count = 10;
+		float angle = -arc.angle / count;
+		for (int j = 0; j < count; j++)
+		{
+			Vector3f vPrev = v;
+			v.Rotate(arc.axis, angle);
+			glVertex3fv((arc.center + v).v);
+		}
+		glVertex3fv(arc.end.v);
+	}
+	glEnd();
+	glBegin(GL_LINE_STRIP);
+	glColor4ubv(color.data());
+	glVertex3fv(arc.center.v);
+	glVertex3fv((arc.center + arc.axis * arc.radius).v);
+	glEnd();
+
+	glPointSize(8.0f);
+	glBegin(GL_POINTS);
+	glVertex3fv(arc.start.v);
+	glVertex3fv(arc.end.v);
+	glVertex3fv(arc.center.v);
+	glEnd();
+}
+
+void MainApp::DrawArc(Graphics2D& g, const Biarc& arc, const Color& color)
 {
 	if (arc.radius == 0.0f)
 	{
@@ -185,7 +239,7 @@ static void DrawArc(Graphics2D& g, const Biarc& arc, const Color& color)
 	else
 	{
 		Vector2f v = arc.start;
-		float angle = arc.angle / 10.0f;
+		float angle = -arc.angle / 10.0f;
 		for (int j = 0; j < 10; j++)
 		{
 			Vector2f vPrev = v;
@@ -205,6 +259,105 @@ void MainApp::DrawArcs(Graphics2D& g, const BiarcPair& arcs, const Color& color)
 		g.FillCircle(arcs.first.end, 0.15f, color);
 		g.FillCircle(arcs.second.end, 0.15f, color);
 	}
+}
+
+static float Smooth(float t)
+{
+	if (t <= 0.5f)
+		return (2.0f * t * t);
+	else
+		return (1.0f - 2.0f * (t - 1.0f) * (t - 1.0f));
+}
+
+void MainApp::DrawArc(Graphics2D& g, const Biarc& arc, float z1, float z2, float t1, float t2, const Color& color)
+{
+	if (arc.radius == 0.0f)
+	{
+		glBegin(GL_LINE_STRIP);
+		glColor4ubv(color.data());
+		glVertex3fv(Vector3f(arc.start, z1).v);
+		glVertex3fv(Vector3f(arc.end, z2).v);
+		glEnd();
+	}
+	else
+	{
+		glBegin(GL_LINE_STRIP);
+		glColor4ubv(color.data());
+		Vector2f v = arc.start;
+		int count = 10;
+		float angle = -arc.angle / count;
+		glVertex3fv(Vector3f(arc.start, Math::Lerp(z1, z2, Smooth(t1))).v);
+		for (int j = 1; j < count; j++)
+		{
+			float t = Math::Lerp(t1, t2, j / (float) count);
+			Vector2f vPrev = v;
+			float zi = Math::Lerp(z1, z2, Smooth(t));
+			v.Rotate(arc.center, angle);
+			glVertex3fv(Vector3f(v, zi).v);
+		}
+		glVertex3fv(Vector3f(arc.end, Math::Lerp(z1, z2, Smooth(t2))).v);
+		glEnd();
+	}
+}
+
+void MainApp::DrawArcs(Graphics2D& g, const BiarcPair& arcs, float z1, float z2, const Color& color)
+{
+	float t = arcs.first.length /
+		(arcs.first.length + arcs.second.length);
+	//float zm = Math::Lerp(z1, z2, t);
+	DrawArc(g, arcs.first, z1, z2, 0, t, color);
+	DrawArc(g, arcs.second, z1, z2, t, 1, color);
+	//BiarcPair zarc = BiarcPair::Interpolate(Vector2f(0, z1), Vector2f::UNITX,
+	//Vector2f(arcs.Length(), z2), Vector2f::UNITX);
+	if (m_showDebug->enabled)
+	{
+		g.FillCircle(arcs.first.start, 0.15f, color);
+		g.FillCircle(arcs.first.end, 0.15f, color);
+		g.FillCircle(arcs.second.end, 0.15f, color);
+	}
+}
+
+void MainApp::DrawCurveLine(Graphics2D& g, const Biarc& horizontalArc,
+	const VerticalCurve& verticalCurve, float t1, float t2, const Color& color)
+{
+	glBegin(GL_LINE_STRIP);
+	glColor4ubv(color.data());
+	glVertex3fv(Vector3f(horizontalArc.start, verticalCurve.GetHeight(t1)).v);
+
+	if (!horizontalArc.IsStraight())
+	{
+		Vector3f point(horizontalArc.start, verticalCurve.GetHeight(t1));
+		int count = 10;
+		float angle = -horizontalArc.angle / count;
+		for (int j = 1; j < count; j++)
+		{
+			float t = Math::Lerp(t1, t2, j / (float) count);
+			point.xy.Rotate(horizontalArc.center, angle);
+			point.z = verticalCurve.GetHeight(t);
+			glVertex3fv(point.v);
+		}
+	}
+
+	glVertex3fv(Vector3f(horizontalArc.end, verticalCurve.GetHeight(t2)).v);
+	glEnd();
+}
+
+void MainApp::DrawCurveLine(Graphics2D& g, const RoadCurveLine& curve, const Color& color)
+{
+	float tm = Math::Lerp(curve.t1, curve.t2,
+		curve.horizontalCurve.first.length /
+		(curve.horizontalCurve.first.length +
+		curve.horizontalCurve.second.length));
+
+	if (m_showDebug->enabled)
+	{
+		DrawPoint(g, curve.Start(), color);
+		DrawPoint(g, curve.Middle(), color);
+		DrawPoint(g, curve.End(), color);
+	}
+
+	DrawCurveLine(g, curve.horizontalCurve.first, curve.verticalCurve, curve.t1, tm, color);
+	DrawCurveLine(g, curve.horizontalCurve.second, curve.verticalCurve, tm, curve.t2, color);
 }
 
 void MainApp::FillZippedArcs(Graphics2D& g, const Biarc& a, const Biarc& b, const Color& color)
@@ -550,7 +703,7 @@ void FillShape(Graphics2D& g, const Array<Biarc>& arcs, const Color& color)
 			for (int j = 1; j < count; j++)
 			{
 				float t = j / (float) count;
-				float angle = arc.angle * t;
+				float angle = -arc.angle * t;
 				v = arc.start;
 				v.Rotate(arc.center, angle);
 				//Vector2f vPrev = v;
@@ -569,6 +722,7 @@ void MainApp::OnRender()
 	Window* window = GetWindow();
 	MouseState mouseState = GetMouse()->GetMouseState();
 	Vector2f windowSize((float) window->GetWidth(), (float) window->GetHeight());
+	RoadCurveLine curve;
 
 	glDisable(GL_DEPTH_TEST);
 	glEnable(GL_TEXTURE_2D);
@@ -625,16 +779,16 @@ void MainApp::OnRender()
 	{
 		// Draw lane surfaces
 		Color colorRoadFill = Color(64, 64, 64);
-		Random::Seed(0);
 		int index = 0;
 		for (NodeGroupConnection* surface : m_network->GetNodeGroupConnections())
 		{
+			/*
 			BiarcPair leftEdge = surface->GetLeftVisualShoulderLine();
 			BiarcPair rightEdge = surface->GetRightVisualShoulderLine();
 
 			Color c(Vector3f(Random::NextFloat(0.5f, 1.0f),
-				Random::NextFloat(0.5f, 1.0f),
-				Random::NextFloat(0.5f, 1.0f)));
+			Random::NextFloat(0.5f, 1.0f),
+			Random::NextFloat(0.5f, 1.0f)));
 
 			auto seamsIL = surface->GetSeams(IOType::INPUT, LaneSide::LEFT);
 			auto seamsIR = surface->GetSeams(IOType::INPUT, LaneSide::RIGHT);
@@ -644,30 +798,31 @@ void MainApp::OnRender()
 			Array<Biarc> surfaceContour;
 			for (auto it = seamsIR.rbegin(); it != seamsIR.rend(); it++)
 			{
-				surfaceContour.push_back(it->second.Reverse());
-				surfaceContour.push_back(it->first.Reverse());
+			surfaceContour.push_back(it->second.Reverse());
+			surfaceContour.push_back(it->first.Reverse());
 			}
 			for (auto it = seamsIL.begin(); it != seamsIL.end(); it++)
 			{
-				surfaceContour.push_back(it->first);
-				surfaceContour.push_back(it->second);
+			surfaceContour.push_back(it->first);
+			surfaceContour.push_back(it->second);
 			}
 			surfaceContour.push_back(leftEdge.first);
 			surfaceContour.push_back(leftEdge.second);
 			for (auto it = seamsOL.begin(); it != seamsOL.end(); it++)
 			{
-				surfaceContour.push_back(it->first);
-				surfaceContour.push_back(it->second);
+			surfaceContour.push_back(it->first);
+			surfaceContour.push_back(it->second);
 			}
 			for (auto it = seamsOR.rbegin(); it != seamsOR.rend(); it++)
 			{
-				surfaceContour.push_back(it->second.Reverse());
-				surfaceContour.push_back(it->first.Reverse());
+			surfaceContour.push_back(it->second.Reverse());
+			surfaceContour.push_back(it->first.Reverse());
 			}
 			surfaceContour.push_back(rightEdge.second.Reverse());
 			surfaceContour.push_back(rightEdge.first.Reverse());
 
 			FillShape(g, surfaceContour, colorRoadFill);
+			*/
 		}
 
 		// Draw intersection surfaces
@@ -693,11 +848,22 @@ void MainApp::OnRender()
 	// Draw road markings
 	for (NodeGroupConnection* connection : m_network->GetNodeGroupConnections())
 	{
+		NodeGroupConnection* twin = connection->GetTwin();
+
 		// Draw shoudler edges
 		if (m_showEdgeLines->enabled)
 		{
-			DrawArcs(g, connection->m_visualShoulderLines[0], colorEdgeLines);
-			DrawArcs(g, connection->m_visualShoulderLines[1], colorEdgeLines);
+			DrawCurveLine(g, connection->m_visualShoulderLines[0], colorEdgeLines);
+			DrawCurveLine(g, connection->m_visualShoulderLines[1], colorEdgeLines);
+
+			//DrawArcs(g, connection->m_visualShoulderLines[0],
+			//	connection->GetInput().group->GetPosition().z,
+			//	connection->GetOutput().group->GetPosition().z,
+			//	colorEdgeLines);
+			//DrawArcs(g, connection->m_visualShoulderLines[1],
+			//	connection->GetInput().group->GetPosition().z,
+			//	connection->GetOutput().group->GetPosition().z,
+			//	colorEdgeLines);
 		}
 
 		// Draw seams
@@ -716,10 +882,43 @@ void MainApp::OnRender()
 		// Draw lane divider lines
 		if (m_showRoadMarkings->enabled)
 		{
-			DrawArcs(g, connection->m_visualEdgeLines[0], Color::YELLOW);
+			//DrawArc(g, connection->m_arc1, Color::CYAN);
+			//DrawArc(g, connection->m_arc2, Color::CYAN);
+			//curve = RoadCurveLine(connection->m_visualEdgeLines[0],
+			//	connection->GetInput().group->GetPosition().z,
+			//	connection->GetOutput().group->GetPosition().z);
+			//DrawCurveLine(g, curve, Color::YELLOW);
+			//for (unsigned int i = 1; i < connection->m_dividerLines.size() - 1; i++)
+			//{
+			//	curve.horizontalCurve = connection->m_dividerLines[i];
+			//	DrawCurveLine(g, curve, Color::YELLOW);
+			//}
+			//curve.horizontalCurve = connection->m_visualEdgeLines[1];
+			//DrawCurveLine(g, curve, Color::WHITE);
+
+			//DrawArcs(g, connection->m_visualEdgeLines[0],
+			//	connection->GetInput().group->GetPosition().z,
+			//	connection->GetOutput().group->GetPosition().z,
+			//	Color::YELLOW);
+			//for (unsigned int i = 1; i < connection->m_dividerLines.size() - 1; i++)
+			//{
+			//	DrawArcs(g, connection->m_dividerLines[i],
+			//		connection->GetInput().group->GetPosition().z,
+			//		connection->GetOutput().group->GetPosition().z,
+			//		Color::WHITE);
+			//}
+			//DrawArcs(g, connection->m_visualEdgeLines[1],
+			//	connection->GetInput().group->GetPosition().z,
+			//	connection->GetOutput().group->GetPosition().z,
+			//	Color::WHITE);
+
+			if (twin != nullptr)
+				DrawCurveLine(g, connection->m_visualEdgeLines[0], Color::GREEN);
+			else
+				DrawCurveLine(g, connection->m_visualEdgeLines[0], Color::YELLOW);
 			for (unsigned int i = 1; i < connection->m_dividerLines.size() - 1; i++)
 				DrawArcs(g, connection->m_dividerLines[i], Color::WHITE);
-			DrawArcs(g, connection->m_visualEdgeLines[1], Color::WHITE);
+			DrawCurveLine(g, connection->m_visualEdgeLines[1], Color::WHITE);
 		}
 	}
 
@@ -829,6 +1028,26 @@ void MainApp::OnRender()
 		}
 	}
 
+	Biarc3 arc1, arc2;
+	static Vector3f p1 = Vector3f(0.0f, 0.0f, 0.0f);
+	static Vector3f t1 = Vector3f(1.0f, 0.7f, 2.0f).Normalize();
+	static Vector3f p2 = Vector3f(40.0f, 200.0f, 30.0f);
+	static Vector3f t2 = Vector3f(0.0f, 1.0f, 4.0f).Normalize();
+
+	if (GetKeyboard()->IsKeyPressed(Keys::j))
+	{
+		p2.x = Random::NextFloat(-200.0f, 200.0f);
+		p2.y = Random::NextFloat(-200.0f, 200.0f);
+		p2.z = Random::NextFloat(-200.0f, 200.0f);
+	}
+
+	//p2 = Vector3f(123.361908f, 60.8233948f, 196.520905f);
+	//p2 = Vector3f(50, 0, 0);
+	//t1 = Vector3f(0, 0, 1);
+	//t2 = Vector3f(0, 0, 1);
+	//Biarc3::Interpolate(p1, t1, p2, t2, arc1, arc2);
+	//DrawArc(g, arc1, Color::MAGENTA);
+	//DrawArc(g, arc2, Color::RED);
 
 	// Draw HUD
 	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);

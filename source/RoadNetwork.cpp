@@ -293,7 +293,6 @@ NodeGroupConnection* RoadNetwork::ConnectNodeSubGroups(
 	NodeGroupConnection* connection = new NodeGroupConnection();
 	connection->m_input = from;
 	connection->m_output = to;
-	connection->m_twin = nullptr;
 	connection->m_metrics = &m_metrics;
 	m_nodeGroupConnections.insert(connection);
 
@@ -334,8 +333,10 @@ NodeGroupTie* RoadNetwork::TieNodeGroups(NodeGroup* a, NodeGroup* b)
 void RoadNetwork::UntieNodeGroup(NodeGroup* nodeGroup)
 {
 	NodeGroupTie* tie = nodeGroup->m_tie;
-	nodeGroup->m_tie = nullptr;
 	nodeGroup->m_twin->m_tie = nullptr;
+	nodeGroup->m_twin->m_twin = nullptr;
+	nodeGroup->m_tie = nullptr;
+	nodeGroup->m_twin = nullptr;
 	m_nodeGroupTies.erase(tie);
 	delete tie;
 }

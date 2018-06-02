@@ -1,4 +1,5 @@
 #include "NodeGroupConnection.h"
+#include "NodeGroupTie.h"
 
 
 //-----------------------------------------------------------------------------
@@ -7,7 +8,6 @@
 
 NodeGroupConnection::NodeGroupConnection()
 	: m_metrics(nullptr)
-	, m_twin(nullptr)
 	, m_laneIntersectionPoint(Vector2f::ZERO)
 {
 }
@@ -36,29 +36,47 @@ BiarcPair NodeGroupConnection::GetRightEdgeLine() const
 	return m_edgeLines[(int) LaneSide::RIGHT];
 }
 
-BiarcPair NodeGroupConnection::GetLeftVisualEdgeLine() const
+RoadCurveLine NodeGroupConnection::GetLeftVisualEdgeLine() const
 {
 	return m_visualEdgeLines[(int) LaneSide::LEFT];
 }
 
-BiarcPair NodeGroupConnection::GetRightVisualEdgeLine() const
+RoadCurveLine NodeGroupConnection::GetRightVisualEdgeLine() const
 {
 	return m_visualEdgeLines[(int) LaneSide::RIGHT];
 }
 
-BiarcPair NodeGroupConnection::GetLeftVisualShoulderLine() const
+RoadCurveLine NodeGroupConnection::GetLeftVisualShoulderLine() const
 {
 	return m_visualShoulderLines[(int) LaneSide::LEFT];
 }
 
-BiarcPair NodeGroupConnection::GetRightVisualShoulderLine() const
+RoadCurveLine NodeGroupConnection::GetRightVisualShoulderLine() const
 {
 	return m_visualShoulderLines[(int) LaneSide::RIGHT];
 }
 
 NodeGroupConnection* NodeGroupConnection::GetTwin()
 {
-	return m_twin;
+	NodeGroup* inputTwin = m_input.group->m_twin;
+	NodeGroup* outputTwin = m_output.group->m_twin;
+
+	if (m_input.index == 0 && m_output.index == 0 &&
+		inputTwin != nullptr && outputTwin != nullptr &&
+		!m_input.group->m_tie->IsDivided() &&
+		!m_output.group->m_tie->IsDivided())
+	{
+		for (unsigned int i = 0; i < outputTwin->m_outputs.size() &&
+			outputTwin->m_outputs[i]->m_input.index == 0; i++)
+		{
+			NodeGroupConnection* connection = outputTwin->m_outputs[i];
+			if (connection->m_output.index == 0 &&
+				connection->m_output.group == inputTwin)
+				return connection;
+		}
+	}
+
+	return nullptr;
 }
 
 const NodeSubGroup& NodeGroupConnection::GetInput()
@@ -147,10 +165,12 @@ void NodeGroupConnection::UpdateGeometry()
 		m_input.group->GetRightShoulderWidth(),
 		m_output.group->GetRightShoulderWidth());
 
-	m_visualEdgeLines[0] = m_dividerLines.front();
-	m_visualEdgeLines[1] = m_dividerLines.back();
-	m_visualShoulderLines[0] = m_edgeLines[0];
-	m_visualShoulderLines[1] = m_edgeLines[1];
+	VerticalCurve verticalCurve(m_input.group->GetPosition().z,
+		m_output.group->GetPosition().z);
+	m_visualEdgeLines[0] = RoadCurveLine(m_dividerLines.front(), verticalCurve);
+	m_visualEdgeLines[1] = RoadCurveLine(m_dividerLines.back(), verticalCurve);
+	m_visualShoulderLines[0] = RoadCurveLine(m_edgeLines[0], verticalCurve);
+	m_visualShoulderLines[1] = RoadCurveLine(m_edgeLines[1], verticalCurve);
 
 	m_seams[0][0].clear();
 	m_seams[0][1].clear();

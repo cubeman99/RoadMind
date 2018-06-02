@@ -7,6 +7,7 @@
 #include <map>
 #include <vector>
 #include "Biarc.h"
+#include "Biarc3.h"
 #include "RoadNetwork.h"
 #include "Camera.h"
 #include "Driver.h"
@@ -46,8 +47,13 @@ public:
 	void UpdateCameraControls(float dt);
 
 private:
-
+	void DrawArc(Graphics2D& g, const Biarc3& arc, const Color& color);
+	void DrawArc(Graphics2D& g, const Biarc& arc, const Color& color);
 	void DrawArcs(Graphics2D& g, const BiarcPair& arcs, const Color& color);
+	void DrawArc(Graphics2D& g, const Biarc& arc, float z1, float z2, float t1, float t2, const Color& color);
+	void DrawArcs(Graphics2D& g, const BiarcPair& arcs, float z1, float z2, const Color& color);
+	void DrawCurveLine(Graphics2D& g, const Biarc& horizontalArc, const VerticalCurve& verticalCurve, float t1, float t2, const Color& color);
+	void DrawCurveLine(Graphics2D& g, const RoadCurveLine& arcs, const Color& color);
 	void FillZippedArcs(Graphics2D& g, const Biarc& a, const Biarc& b, const Color& color);
 
 	SpriteFont* m_font;

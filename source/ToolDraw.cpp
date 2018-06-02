@@ -91,6 +91,7 @@ void ToolDraw::OnLeftMousePressed()
 			m_dragInfo.inputGroup = m_hoverInfo.subGroup.group;
 			m_dragInfo.connection = m_network->ConnectNodeSubGroups(
 				startSubGroup, endSubGroup);
+			m_dragInfo.nodeGroup->SetPosition(m_dragInfo.inputGroup->GetPosition());
 		}
 		else
 		{
@@ -140,6 +141,7 @@ void ToolDraw::OnLeftMousePressed()
 			m_dragInfo.inputGroup = m_dragInfo.nodeGroup;
 			m_dragInfo.nodeGroup = m_network->CreateNodeGroup(cursorPos,
 				Vector2f::UNITX, m_dragInfo.inputGroup->GetNumNodes());
+			m_dragInfo.nodeGroup->SetPosition(m_dragInfo.inputGroup->GetPosition());
 			m_dragInfo.connection = m_network->ConnectNodeGroups(
 				m_dragInfo.inputGroup, m_dragInfo.nodeGroup);
 			m_dragInfo.state = DragState::POSITION;
@@ -301,6 +303,7 @@ void ToolDraw::UpdateHoverInfo()
 void ToolDraw::UdpateDragging(float dt)
 {
 	Vector2f m_mousePosition = GetMousePosition();
+	Vector2f mousePosInWindow = GetMousePositionInWindow();
 	//Keyboard* keyboard = GetKeyboard();
 	//Mouse* mouse = GetMouse();
 	//MouseState mouseState = mouse->GetMouseState();
@@ -312,17 +315,22 @@ void ToolDraw::UdpateDragging(float dt)
 	if (m_dragInfo.state == DragState::POSITION)
 	{
 		float width = m_dragInfo.nodeGroup->GetWidth();
-		Vector2f right = m_dragInfo.nodeGroup->GetDirection();
-		right = Vector2f(-right.y, right.x);
+		Vector2f right = RightPerpendicular(m_dragInfo.nodeGroup->GetDirection());
 
+		//if (shift)
+		//{
+		//	float raiseAmount = -(mousePosInWindow.y - m_mousePositionInWindowPrev.y);
+		//	m_dragInfo.nodeGroup->SetAltitude(
+		//		Math::Max(0.0f, m_dragInfo.nodeGroup->GetPosition().z + raiseAmount));
+		//}
+		//else
 		if (ctrl)
 		{
 			Vector2f v = m_mousePosition - m_dragInfo.position;
 			if (v.Length() > 0.00001f)
 			{
 				m_dragInfo.nodeGroup->SetDirection(Vector2f::Normalize(v));
-				right = m_dragInfo.nodeGroup->GetDirection();
-				right = Vector2f(-right.y, right.x);
+				right = RightPerpendicular(m_dragInfo.nodeGroup->GetDirection());
 			}
 		}
 		else
@@ -334,8 +342,8 @@ void ToolDraw::UdpateDragging(float dt)
 			{
 				Vector2f startCenter =
 					m_dragInfo.connection->GetInput().GetLeftPosition().xy;
-				Vector2f startRight = m_dragInfo.connection->GetInput().group->GetDirection();
-				startRight = Vector2f(-startRight.y, startRight.x);
+				Vector2f startRight = RightPerpendicular(
+					m_dragInfo.connection->GetInput().group->GetDirection());
 				startCenter += startRight * width * 0.5f;
 				Vector2f autoDirection = GetAutoDirection(startCenter,
 					m_dragInfo.inputGroup->GetDirection(), m_mousePosition);
@@ -372,6 +380,13 @@ void ToolDraw::UdpateDragging(float dt)
 			}
 		}
 
+		if (m_keyboard->IsKeyDown(Keys::page_up))
+			m_dragInfo.nodeGroup->SetPosition(
+			m_dragInfo.nodeGroup->GetPosition() + Vector3f(0, 0, 1));
+		if (m_keyboard->IsKeyDown(Keys::page_down))
+			m_dragInfo.nodeGroup->SetPosition(
+			m_dragInfo.nodeGroup->GetPosition() - Vector3f(0, 0, 1));
+
 		if (m_snapInfo.subGroup.group == nullptr)
 		{
 			m_dragInfo.nodeGroup->SetPosition(
@@ -379,4 +394,6 @@ void ToolDraw::UdpateDragging(float dt)
 				m_dragInfo.nodeGroup->GetPosition().z));
 		}
 	}
+
+	m_mousePositionInWindowPrev = mousePosInWindow;
 }

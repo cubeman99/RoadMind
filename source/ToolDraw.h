@@ -72,6 +72,7 @@ private:
 	DragInfo m_dragInfo;
 	HoverInfo m_hoverInfo;
 	SnapInfo m_snapInfo;
+	Vector2f m_mousePositionInWindowPrev;
 };
 
 

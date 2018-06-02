@@ -95,7 +95,7 @@ static void DrawArc(Graphics2D& g, const Biarc& arc, const Color& color)
 	{
 		Vector2f v = arc.start;
 		int count = (int) ((Math::Abs(arc.angle) / Math::TWO_PI) * 20) + 2;
-		float angle = arc.angle / count;
+		float angle = -arc.angle / count;
 		for (int j = 0; j < count; j++)
 		{
 			Vector2f vPrev = v;
@@ -341,7 +341,7 @@ void GeometryApp::OnRender()
 
 	m_arcPoints = m_points.data();
 
-	/*
+	
 	BiarcPair arcs1 = BiarcPair::Interpolate(
 		m_arcPoints[0]->position, m_arcPoints[0]->direction,
 		m_arcPoints[1]->position, m_arcPoints[1]->direction);
@@ -362,12 +362,13 @@ void GeometryApp::OnRender()
 	Circle2f b(arcs2.second.center, arcs2.second.radius);
 	Line2f outerTangent = CalcOuterTangent(a, b);
 	g.DrawLine(outerTangent.end1, outerTangent.end2, Color::MAGENTA);
-	*/
+	
 
-	Array<Vector2f> points;
-	for (Point* p : m_points)
-		points.push_back(p->position);
-	FillShape(g, points, Color::GREEN);
+	//Array<Vector2f> points;
+	//for (Point* p : m_points)
+	//	points.push_back(p->position);
+	//FillShape(g, points, Color::GREEN);
+
 	/*
 	DrawPoint(g, c1, Color::RED);
 	DrawPoint(g, c2, Color::RED);

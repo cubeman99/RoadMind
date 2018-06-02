@@ -26,6 +26,7 @@ public:
 	const Vector3f& GetPosition() const;
 	const Vector2f& GetDirection() const;
 	Meters GetCenterWidth() const;
+	bool IsDivided() const;
 
 	// Setters
 	void SetPosition(const Vector3f& position);

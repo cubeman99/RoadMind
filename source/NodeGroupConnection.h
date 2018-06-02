@@ -5,6 +5,8 @@
 #include <cmgMath/cmg_math.h>
 #include "CommonTypes.h"
 #include "NodeGroup.h"
+#include "Biarc3.h"
+#include "RoadCurves.h"
 
 
 //-----------------------------------------------------------------------------
@@ -28,10 +30,10 @@ public:
 	const RoadMetrics* GetMetrics() const;
 	BiarcPair GetLeftEdgeLine() const;
 	BiarcPair GetRightEdgeLine() const;
-	BiarcPair GetLeftVisualEdgeLine() const;
-	BiarcPair GetRightVisualEdgeLine() const;
-	BiarcPair GetLeftVisualShoulderLine() const;
-	BiarcPair GetRightVisualShoulderLine() const;
+	RoadCurveLine GetLeftVisualEdgeLine() const;
+	RoadCurveLine GetRightVisualEdgeLine() const;
+	RoadCurveLine GetLeftVisualShoulderLine() const;
+	RoadCurveLine GetRightVisualShoulderLine() const;
 	NodeGroupConnection* GetTwin();
 	const NodeSubGroup& GetInput();
 	const NodeSubGroup& GetOutput();
@@ -57,8 +59,6 @@ public:
 		};
 	};
 
-	NodeGroupConnection* m_twin;
-
 	const RoadMetrics* m_metrics;
 
 private:
@@ -69,8 +69,12 @@ private:
 public:
 	BiarcPair m_edgeLines[2];
 	std::vector<BiarcPair> m_dividerLines;
-	BiarcPair m_visualEdgeLines[2];
-	BiarcPair m_visualShoulderLines[2];
+	//BiarcPair m_visualEdgeLines[2];
+	//BiarcPair m_visualShoulderLines[2];
+	
+	RoadCurveLine m_visualEdgeLines[2];
+	RoadCurveLine m_visualShoulderLines[2];
+
 	Array<BiarcPair> m_seams[2][2];
 	Vector2f m_laneIntersectionPoint;
 	Vector2f m_edgeIntersectionPoint;

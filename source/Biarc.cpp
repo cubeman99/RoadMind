@@ -86,8 +86,8 @@ BiarcPair BiarcPair::Interpolate(
 
 	BiarcPair result;
 	Vector2f pm, q1, q2;
-	Vector2f n1(-t1.y, t1.x);
-	Vector2f n2(-t2.y, t2.x);
+	Vector2f n1 = RightPerpendicular(t1);
+	Vector2f n2 = RightPerpendicular(t2);
 	Vector2f v = p2 - p1;
 	Vector2f t = t1 + t2;
 
@@ -199,7 +199,7 @@ BiarcPair BiarcPair::CreateExpanding(const BiarcPair& base, float offset)
 	Vector2f startTangent = base.first.GetStartTangent();
 	Vector2f midNormal = RightPerpendicular(base.second.GetStartTangent());
 	Vector2f endTangent = base.second.GetEndTangent();
-	Vector2f endNormal(-endTangent.y, endTangent.x);
+	Vector2f endNormal = RightPerpendicular(endTangent);
 	Vector2f endPoint = base.second.end + (offset * endNormal);
 
 	float t = 0.5f;
@@ -438,7 +438,7 @@ Vector2f ComputeCircleCenter(const Vector2f& p1, const Vector2f& t1, const Vecto
 {
 	Vector2f v = p2 - p1;
 	Vector2f normal(-t1.y, t1.x);
-	Vector2f bisector(-v.y, v.x);
+	Vector2f bisector = RightPerpendicular(v);
 	Vector2f midpoint = (p1 + p2) * 0.5f;
 	Vector2f center = Line2f::GetLineIntersection(
 		p1, p1 + normal, midpoint, midpoint + bisector);
@@ -449,7 +449,7 @@ Biarc ComputeArc(const Vector2f& p1, const Vector2f& t1, const Vector2f& p2)
 {
 	Vector2f v = p2 - p1;
 	Vector2f normal(-t1.y, t1.x);
-	Vector2f bisector(-v.y, v.x);
+	Vector2f bisector = RightPerpendicular(v);
 	Vector2f midpoint = (p1 + p2) * 0.5f;
 
 	Biarc result;
@@ -567,7 +567,7 @@ static Biarc CalcWebbedCircle(Vector2f p1, Vector2f p2, Vector2f c1, Vector2f c2
 {
 	// Compute the circle tangent to two circles and a line
 	Vector2f xAxis = (p2 - p1).Normalize();
-	Vector2f yAxis(-xAxis.y, xAxis.x);
+	Vector2f yAxis = RightPerpendicular(xAxis);
 	float xOrigin = c1.Dot(xAxis);
 	float yOrigin = p1.Dot(yAxis);
 	float b = c1.Dot(yAxis) - yOrigin;
@@ -609,7 +609,7 @@ static Biarc CalcTangentCircle(Vector2f c, Vector2f p1, Vector2f p2, float radiu
 {
 	// Compute the circle tangent to two circles and a line
 	Vector2f xAxis = (p2 - p1).Normalize();
-	Vector2f yAxis(-xAxis.y, xAxis.x);
+	Vector2f yAxis = RightPerpendicular(xAxis);
 	if (left)
 		yAxis = -yAxis;
 	float xOrigin = c.Dot(xAxis);
@@ -658,7 +658,7 @@ bool IsInsideTriangle(const Vector2f& a, const Vector2f& b, const Vector2f& c, c
 
 static bool CastRayOnArc(const Vector2f& origin, const Vector2f& direction, const Biarc& arc, bool inside, Vector2f& intersection)
 {
-	Vector2f yAxis(direction.y, -direction.x);
+	Vector2f yAxis = LeftPerpendicular(direction);
 	float x = arc.center.Dot(direction) - origin.Dot(direction);
 	float y = arc.center.Dot(yAxis) - origin.Dot(yAxis);
 	if (Math::Abs(y) > arc.radius)
@@ -729,7 +729,7 @@ BiarcPair CalcWebbedCircle(const BiarcPair& a, const BiarcPair& b, float radius)
 	bool convexB = IsConvex(a.second.end, b.second.end, b.second.end - b.second.GetEndTangent());
 	
 	Vector2f xAxis = (b.second.end - a.second.end).Normalize();
-	Vector2f yAxis(-xAxis.y, xAxis.x);
+	Vector2f yAxis = RightPerpendicular(xAxis);
 	Vector2f center, start, end, intersection;
 	float gap;
 
@@ -805,12 +805,12 @@ BiarcPair CalcWebbedCircle(const BiarcPair& a, const BiarcPair& b, float radius)
 
 Vector2f LeftPerpendicular(const Vector2f& v)
 {
-	return Vector2f(v.y, -v.x);
+	return Vector2f(-v.y, v.x);
 }
 
 Vector2f RightPerpendicular(const Vector2f& v)
 {
-	return Vector2f(-v.y, v.x);
+	return Vector2f(v.y, -v.x);
 }
 
 Line2f CalcOuterTangent(const Circle2f& a, const Circle2f& b)

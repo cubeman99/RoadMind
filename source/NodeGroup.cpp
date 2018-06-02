@@ -90,7 +90,7 @@ const Vector2f& NodeGroup::GetDirection() const
 
 Vector2f NodeGroup::GetLeftDirection() const
 {
-	return Vector2f(m_direction.y, -m_direction.x);
+	return LeftPerpendicular(m_direction);
 }
 
 Vector2f NodeGroup::GetRightDirection() const
@@ -200,6 +200,11 @@ void NodeGroup::SetPosition(const Vector3f& position)
 	m_position = position;
 }
 
+void NodeGroup::SetAltitude(float z)
+{
+	m_position.z = z;
+}
+
 void NodeGroup::SetDirection(const Vector2f& direction)
 {
 	m_direction = direction;
@@ -208,7 +213,7 @@ void NodeGroup::SetDirection(const Vector2f& direction)
 void NodeGroup::SetDirectionFromCenter(const Vector2f& direction)
 {
 	float width = GetWidth();
-	Vector2f right(-m_direction.y, m_direction.x);
+	Vector2f right = RightPerpendicular(m_direction);
 	Vector2f center(m_position.xy + (right * width * 0.5f));
 	m_direction = direction;
 	right = RightPerpendicular(direction);
@@ -283,7 +288,7 @@ static bool IntersectArcs(Biarc& a, Biarc& b, Biarc& seam)
 	return true;
 }
 
-static bool IntersectArcPairs(BiarcPair& pair1, BiarcPair& pair2, bool reverse, BiarcPair& seam)
+static bool IntersectArcPairs(RoadCurveLine& pair1, RoadCurveLine& pair2, bool reverse, BiarcPair& seam)
 {
 	if (reverse)
 	{
@@ -295,36 +300,44 @@ static bool IntersectArcPairs(BiarcPair& pair1, BiarcPair& pair2, bool reverse, 
 		pair2 = pair2.Reverse();
 		return result;
 	}
-	BiarcPair originalPair1 = pair1;
+	RoadCurveLine originalPair1 = pair1;
+	RoadCurveLine originalPair2 = pair2;
 
-	if (IntersectArcs(pair1.second, pair2.second, seam.second))
+	if (IntersectArcs(pair1.horizontalCurve.second,
+		pair2.horizontalCurve.second, seam.second))
 	{
-		pair1.first = Biarc::CreatePoint(pair1.second.start);
-		pair2.first = pair1.first;
-		seam.first = originalPair1.first;
-		return true;
+		pair1.horizontalCurve.first = Biarc::CreatePoint(
+			pair1.horizontalCurve.second.start);
+		pair2.horizontalCurve.first = pair1.horizontalCurve.first;
+		seam.first = originalPair1.horizontalCurve.first;
 	}
-	else if (IntersectArcs(pair1.first, pair2.second, seam.first))
+	else if (IntersectArcs(pair1.horizontalCurve.first,
+		pair2.horizontalCurve.second, seam.first))
 	{
-		pair2.first = Biarc::CreatePoint(pair2.second.start);
+		pair2.horizontalCurve.first = Biarc::CreatePoint(
+			pair2.horizontalCurve.second.start);
 		seam.second = Biarc::CreatePoint(seam.first.end);
-		return true;
 	}
-	else if (IntersectArcs(pair1.second, pair2.first, seam.second))
+	else if (IntersectArcs(pair1.horizontalCurve.second,
+		pair2.horizontalCurve.first, seam.second))
 	{
-		pair1.first = Biarc::CreatePoint(pair1.second.start);
-		seam.first = originalPair1.first;
-		return true;
+		pair1.horizontalCurve.first = Biarc::CreatePoint(
+			pair1.horizontalCurve.second.start);
+		seam.first = originalPair1.horizontalCurve.first;
 	}
-	else if (IntersectArcs(pair1.first, pair2.first, seam.first))
+	else if (IntersectArcs(pair1.horizontalCurve.first,
+		pair2.horizontalCurve.first, seam.first))
 	{
 		seam.second = Biarc::CreatePoint(seam.first.end);
-		return true;
 	}
 	else
 	{
 		return false;
 	}
+
+	pair1.t1 = Math::Lerp(pair1.t2, pair1.t1, pair1.Length() / originalPair1.Length());
+	pair2.t1 = Math::Lerp(pair2.t2, pair2.t1, pair2.Length() / originalPair2.Length());
+	return true;
 }
 
 bool NodeGroup::IntersectConnections(NodeGroupConnection* a, NodeGroupConnection* b, IOType end)

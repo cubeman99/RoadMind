@@ -47,6 +47,7 @@ class NodeGroup
 {
 	friend class RoadNetwork;
 	friend class NodeGroupTie;
+	friend class NodeGroupConnection;
 
 public:
 	// Constructors
@@ -79,6 +80,7 @@ public:
 	// Setters
 
 	void SetPosition(const Vector3f& position);
+	void SetAltitude(float z);
 	void SetDirection(const Vector2f& direction);
 	void SetDirectionFromCenter(const Vector2f& direction);
 

@@ -47,6 +47,11 @@ NodeGroup* NodeGroupTie::GetNodeGroupTwin() const
 	return m_nodeGroup->GetTwin();
 }
 
+bool NodeGroupTie::IsDivided() const
+{
+	return false; // TODO
+}
+
 
 //-----------------------------------------------------------------------------
 // Setters
