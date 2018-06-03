@@ -76,6 +76,7 @@ public:
 	Vector3f GetRightPosition() const;
 	Array<NodeGroupConnection*>& GetInputs();
 	Array<NodeGroupConnection*>& GetOutputs();
+	bool IsTied() const;
 
 	// Setters
 

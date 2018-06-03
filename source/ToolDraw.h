@@ -67,6 +67,7 @@ private:
 	NodeGroup* GetPickedNodeGroup();
 	void UpdateHoverInfo();
 	void UdpateDragging(float dt);
+	int GetBestCurve(const BiarcPair& a, const BiarcPair& b);
 
 	int m_laneCount;
 	DragInfo m_dragInfo;

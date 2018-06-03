@@ -84,14 +84,29 @@ void ToolDraw::OnLeftMousePressed()
 
 		if (m_hoverInfo.subGroup.group != nullptr)
 		{
-			// Begin extending an existing node group
-			NodeSubGroup startSubGroup = m_hoverInfo.subGroup;
-			m_network->GrowNodeGroup(startSubGroup);
-			NodeSubGroup endSubGroup(m_dragInfo.nodeGroup, 0, m_laneCount);
-			m_dragInfo.inputGroup = m_hoverInfo.subGroup.group;
-			m_dragInfo.connection = m_network->ConnectNodeSubGroups(
-				startSubGroup, endSubGroup);
-			m_dragInfo.nodeGroup->SetPosition(m_dragInfo.inputGroup->GetPosition());
+			if (IsControlDown() &&
+				m_hoverInfo.subGroup.group != nullptr &&
+				!m_hoverInfo.subGroup.group->IsTied())
+			{
+				// Begin dragging a new node group tied to an existing one
+				NodeGroup* twin = m_hoverInfo.subGroup.group;
+				m_dragInfo.inputGroup = m_network->CreateNodeGroup(
+					twin->GetPosition(), -twin->GetDirection(), m_laneCount);
+				m_dragInfo.connection = m_network->ConnectNodeGroups(
+					m_dragInfo.inputGroup, m_dragInfo.nodeGroup);
+				m_network->TieNodeGroups(m_dragInfo.inputGroup, twin);
+			}
+			else
+			{
+				// Begin extending an existing node group
+				NodeSubGroup startSubGroup = m_hoverInfo.subGroup;
+				m_network->GrowNodeGroup(startSubGroup);
+				NodeSubGroup endSubGroup(m_dragInfo.nodeGroup, 0, m_laneCount);
+				m_dragInfo.inputGroup = m_hoverInfo.subGroup.group;
+				m_dragInfo.connection = m_network->ConnectNodeSubGroups(
+					startSubGroup, endSubGroup);
+				m_dragInfo.nodeGroup->SetPosition(m_dragInfo.inputGroup->GetPosition());
+			}
 		}
 		else
 		{
@@ -324,7 +339,7 @@ void ToolDraw::UdpateDragging(float dt)
 		//		Math::Max(0.0f, m_dragInfo.nodeGroup->GetPosition().z + raiseAmount));
 		//}
 		//else
-		if (ctrl)
+		if (ctrl && m_hoverInfo.subGroup.group == nullptr)
 		{
 			Vector2f v = m_mousePosition - m_dragInfo.position;
 			if (v.Length() > 0.00001f)
@@ -354,8 +369,16 @@ void ToolDraw::UdpateDragging(float dt)
 			m_snapInfo.subGroup.group = nullptr;
 			if (m_hoverInfo.subGroup.group != nullptr)
 			{
-				m_snapInfo.reverse = (m_hoverInfo.subGroup.group->GetDirection().Dot(
-					m_dragInfo.inputGroup->GetDirection()) < 0.0f);
+				Vector2f p1 = m_dragInfo.inputGroup->GetPosition().xy;
+				Vector2f t1 = m_dragInfo.inputGroup->GetDirection();
+				Vector2f p2 = m_hoverInfo.subGroup.group->GetPosition().xy;
+				Vector2f t2 = m_hoverInfo.subGroup.group->GetDirection();
+				BiarcPair pair1 = BiarcPair::Interpolate(p1, t1, p2, t2);
+				BiarcPair pair2 = BiarcPair::Interpolate(p1, t1, p2, -t2);
+				m_snapInfo.reverse = false;
+				if (!m_hoverInfo.subGroup.group->IsTied())
+					m_snapInfo.reverse = (GetBestCurve(pair1, pair2) == 1);
+
 				if (m_snapInfo.reverse)
 				{
 					m_snapInfo.subGroup.index = -(m_hoverInfo.subGroup.index +
@@ -397,3 +420,29 @@ void ToolDraw::UdpateDragging(float dt)
 
 	m_mousePositionInWindowPrev = mousePosInWindow;
 }
+
+int ToolDraw::GetBestCurve(const BiarcPair& a, const BiarcPair& b)
+{
+	float width = m_dragInfo.nodeGroup->GetWidth();
+	bool good1 = !((a.first.IsClockwise() && a.first.radius <= width) ||
+		(a.second.IsClockwise() && a.second.radius <= width) ||
+		a.first.length <= FLT_EPSILON || a.second.length <= FLT_EPSILON);
+	bool good2 = !((b.first.IsClockwise() && b.first.radius <= width) ||
+		(b.second.IsClockwise() && b.second.radius <= width) ||
+		b.first.length <= FLT_EPSILON || b.second.length <= FLT_EPSILON);
+
+	if (good1 && !good2)
+		return 0;
+	if (good2 && !good1)
+		return 1;
+
+	float dist1 = a.Length();
+	float dist2 = b.Length();
+	if (dist1 < dist2)
+		return 0;
+	if (dist2 < dist1)
+		return 1;
+	return 0;
+}
+
+

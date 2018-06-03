@@ -382,6 +382,28 @@ void MainApp::FillZippedArcs(Graphics2D& g, const Biarc& a, const Biarc& b, cons
 	glEnd();
 }
 
+void MainApp::FillZippedCurves(Graphics2D& g, const RoadCurveLine& a, const RoadCurveLine& b, const Color& color)
+{
+	float maxLength = Math::Max(a.Length(), b.Length());
+	int count = 10;
+	float interval = 1.5f;
+	count = (int) ((maxLength / interval) + 0.5f);
+	count = Math::Max(2, count);
+	glBegin(GL_TRIANGLE_STRIP);
+	glColor3ubv(color.data());
+	glVertex3fv(a.Start().v);
+	glVertex3fv(b.Start().v);
+	for (int i = 1; i <= count; i++)
+	{
+		float t = (float) i / count;
+		glVertex3fv(a.GetPoint(a.Length() * t).v);
+		glVertex3fv(b.GetPoint(b.Length() * t).v);
+	}
+	glVertex3fv(a.End().v);
+	glVertex3fv(b.End().v);
+	glEnd();
+}
+
 void MainApp::DrawGridFloor(const Vector3f& center, Meters squareSize, Meters gridRadius)
 {
 	int majorTick = 10;
@@ -754,7 +776,7 @@ void MainApp::OnRender()
 			m_backgroundPosition - (m_backgroundSize * 0.5f));
 	}
 
-	Color colorEdgeLines = Color::WHITE;
+	Color colorEdgeLines = Color::GRAY;
 
 	float r = 0.2f;
 	float r2 = 0.4f;
@@ -780,12 +802,27 @@ void MainApp::OnRender()
 		// Draw lane surfaces
 		Color colorRoadFill = Color(64, 64, 64);
 		int index = 0;
-		for (NodeGroupConnection* surface : m_network->GetNodeGroupConnections())
+		for (NodeGroupConnection* connection : m_network->GetNodeGroupConnections())
 		{
-			/*
-			BiarcPair leftEdge = surface->GetLeftVisualShoulderLine();
-			BiarcPair rightEdge = surface->GetRightVisualShoulderLine();
+			NodeGroupConnection* twin = connection->GetTwin();
+			RoadCurveLine leftEdge;
+			RoadCurveLine rightEdge = connection->GetRightVisualShoulderLine();
 
+			if (twin != nullptr)
+			{
+				if (connection->GetId() < twin->GetId())
+					leftEdge = twin->GetRightVisualShoulderLine().Reverse();
+				else
+					continue;
+			}
+			else
+			{
+				leftEdge = connection->GetLeftVisualShoulderLine();
+			}
+
+			FillZippedCurves(g, leftEdge, rightEdge, colorRoadFill);
+
+			/*
 			Color c(Vector3f(Random::NextFloat(0.5f, 1.0f),
 			Random::NextFloat(0.5f, 1.0f),
 			Random::NextFloat(0.5f, 1.0f)));
@@ -853,7 +890,8 @@ void MainApp::OnRender()
 		// Draw shoudler edges
 		if (m_showEdgeLines->enabled)
 		{
-			DrawCurveLine(g, connection->m_visualShoulderLines[0], colorEdgeLines);
+			if (twin == nullptr)
+				DrawCurveLine(g, connection->m_visualShoulderLines[0], colorEdgeLines);
 			DrawCurveLine(g, connection->m_visualShoulderLines[1], colorEdgeLines);
 
 			//DrawArcs(g, connection->m_visualShoulderLines[0],
@@ -912,9 +950,9 @@ void MainApp::OnRender()
 			//	connection->GetOutput().group->GetPosition().z,
 			//	Color::WHITE);
 
-			if (twin != nullptr)
-				DrawCurveLine(g, connection->m_visualEdgeLines[0], Color::GREEN);
-			else
+			//if (twin != nullptr)
+				//DrawCurveLine(g, connection->m_visualEdgeLines[0], Color::GREEN);
+			//else
 				DrawCurveLine(g, connection->m_visualEdgeLines[0], Color::YELLOW);
 			for (unsigned int i = 1; i < connection->m_dividerLines.size() - 1; i++)
 				DrawArcs(g, connection->m_dividerLines[i], Color::WHITE);

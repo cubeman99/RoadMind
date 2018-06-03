@@ -24,7 +24,7 @@ struct RoadCurveLine
 	float t2;
 
 	RoadCurveLine();
-	RoadCurveLine(const BiarcPair& horizontalCurve);
+	explicit RoadCurveLine(const BiarcPair& horizontalCurve);
 	RoadCurveLine(const BiarcPair& horizontalCurve, const VerticalCurve& verticalCurve);
 	RoadCurveLine(const BiarcPair& horizontalCurve, float h1, float h2);
 	float Length() const;

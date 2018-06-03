@@ -1,4 +1,5 @@
 #include "NodeGroup.h"
+#include "NodeGroupTie.h"
 #include "NodeGroupConnection.h"
 #include <algorithm>
 
@@ -45,7 +46,7 @@ Vector3f NodeSubGroup::GetCenterPosition() const
 int NodeSubGroup::GetOverlap(const NodeSubGroup& a, const NodeSubGroup& b)
 {
 	return Math::Min(
-		a.index + a.count - b.index, 
+		a.index + a.count - b.index,
 		b.index + b.count - a.index);
 }
 
@@ -188,6 +189,11 @@ Array<NodeGroupConnection*>& NodeGroup::GetInputs()
 Array<NodeGroupConnection*>& NodeGroup::GetOutputs()
 {
 	return m_outputs;
+}
+
+bool NodeGroup::IsTied() const
+{
+	return (m_tie != nullptr);
 }
 
 
@@ -386,6 +392,33 @@ void NodeGroup::UpdateIntersectionGeometry()
 {
 	unsigned int first, last, i, j;
 	BiarcPair seam;
+
+	// Intersect shoulder edges between tied connections
+	if (m_twin != nullptr)
+	{
+		for (unsigned int i = 0; i < m_outputs.size() &&
+			m_outputs[i]->GetInput().index == 0; i++)
+		{
+			NodeGroupConnection* a = m_outputs[i];
+			for (unsigned int j = 0; j < m_twin->m_inputs.size() &&
+				m_twin->m_inputs[j]->GetOutput().index == 0; j++)
+			{
+				NodeGroupConnection* b = m_twin->m_inputs[j];
+				RoadCurveLine twinCurve = b->m_visualShoulderLines[
+					(int) LaneSide::LEFT].Reverse();
+
+				if (IntersectArcPairs(
+					a->m_visualShoulderLines[(int) LaneSide::LEFT],
+					twinCurve, false, seam))
+				{
+					//a->AddSeam(otherEnd, LaneSide::LEFT, seam);
+					//b->SetSeam(otherEnd, LaneSide::RIGHT, seam);
+				}
+				b->m_visualShoulderLines[(int) LaneSide::LEFT] = twinCurve.Reverse();
+				break;
+			}
+		}
+	}
 
 	// Check for overlap between neighboring connections
 	for (int inOut = 0; inOut < 2; inOut++)

@@ -55,6 +55,7 @@ private:
 	void DrawCurveLine(Graphics2D& g, const Biarc& horizontalArc, const VerticalCurve& verticalCurve, float t1, float t2, const Color& color);
 	void DrawCurveLine(Graphics2D& g, const RoadCurveLine& arcs, const Color& color);
 	void FillZippedArcs(Graphics2D& g, const Biarc& a, const Biarc& b, const Color& color);
+	void FillZippedCurves(Graphics2D& g, const RoadCurveLine& a, const RoadCurveLine& b, const Color& color);
 
 	SpriteFont* m_font;
 	RoadNetwork* m_network;

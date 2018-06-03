@@ -26,7 +26,8 @@ public:
 	~NodeGroupConnection();
 
 	// Getters
-
+	
+	int GetId() const;
 	const RoadMetrics* GetMetrics() const;
 	BiarcPair GetLeftEdgeLine() const;
 	BiarcPair GetRightEdgeLine() const;
@@ -71,6 +72,8 @@ public:
 	std::vector<BiarcPair> m_dividerLines;
 	//BiarcPair m_visualEdgeLines[2];
 	//BiarcPair m_visualShoulderLines[2];
+
+	int m_id;
 	
 	RoadCurveLine m_visualEdgeLines[2];
 	RoadCurveLine m_visualShoulderLines[2];

@@ -21,6 +21,11 @@ NodeGroupConnection::~NodeGroupConnection()
 // Getters
 //-----------------------------------------------------------------------------
 
+int NodeGroupConnection::GetId() const
+{
+	return m_id;
+}
+
 const RoadMetrics* NodeGroupConnection::GetMetrics() const
 {
 	return m_metrics;

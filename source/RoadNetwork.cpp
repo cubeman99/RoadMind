@@ -10,6 +10,7 @@
 RoadNetwork::RoadNetwork()
 {
 	m_nodeIdCounter = 1;
+	m_nodeGroupConnectionIdCounter = 1;
 
 	// Setup standard road metrics
 	m_metrics.laneWidth = 3.7f;
@@ -114,7 +115,7 @@ RoadIntersection* RoadNetwork::CreateIntersection(
 	// position
 	std::sort(intersection->m_points.begin(), intersection->m_points.end(),
 		[&](RoadIntersectionPoint* a, RoadIntersectionPoint* b) -> bool {
-		return (groupAngles[a] < groupAngles[b]);
+		return (groupAngles[a] > groupAngles[b]);
 	});
 
 	// Create the edges
@@ -291,10 +292,12 @@ NodeGroupConnection* RoadNetwork::ConnectNodeSubGroups(
 
 	// Construct the node group connection
 	NodeGroupConnection* connection = new NodeGroupConnection();
+	connection->m_id = m_nodeGroupConnectionIdCounter;
 	connection->m_input = from;
 	connection->m_output = to;
 	connection->m_metrics = &m_metrics;
 	m_nodeGroupConnections.insert(connection);
+	m_nodeGroupConnectionIdCounter++;
 
 	from.group->InsertOutput(connection);
 	to.group->InsertInput(connection);

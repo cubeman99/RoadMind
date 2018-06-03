@@ -58,6 +58,7 @@ private:
 	Set<NodeGroupConnection*> m_nodeGroupConnections;
 	Set<RoadIntersection*> m_intersections;
 	unsigned int m_nodeIdCounter;
+	unsigned int m_nodeGroupConnectionIdCounter;
 };
 
 

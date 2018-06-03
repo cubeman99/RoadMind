@@ -91,6 +91,11 @@ struct Biarc
 	static Biarc CreateParallel(const Biarc& arc, float offset);
 	static Biarc CreateParallel(const Biarc& arc, float startOffset, float endOffset);
 
+	inline bool IsClockwise() const
+	{
+		return (angle > 0.0f);
+	}
+
 	inline bool IsStraight() const
 	{
 		return (radius == 0.0f);
@@ -167,7 +172,7 @@ struct Biarc
 		else
 		{
 			Vector2f point = start;
-			return point.Rotate(center, Math::Sign(angle) * (distance / radius));
+			return point.Rotate(center, Math::Sign(angle) * (-distance / radius));
 		}
 	}
 
