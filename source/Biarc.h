@@ -165,14 +165,14 @@ struct Biarc
 		{
 			return start;
 		}
-		else if (radius == 0.0f)
+		else if (IsStraight())
 		{
 			return Vector2f::Lerp(start, end, distance / length);
 		}
 		else
 		{
 			Vector2f point = start;
-			return point.Rotate(center, Math::Sign(angle) * (-distance / radius));
+			return point.Rotate(center, -angle * (distance / length));
 		}
 	}
 

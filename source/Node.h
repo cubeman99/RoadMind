@@ -33,7 +33,6 @@ public:
 	NodeGroup* GetNodeGroup();
 	const RoadMetrics* GetMetrics() const;
 	float GetWidth() const;
-	unsigned int GetNodeId() const;
 	Vector2f GetDirection() const;
 	Vector2f GetEndTangent() const;
 	Vector3f GetPosition() const;
@@ -73,7 +72,6 @@ public:
 	void UpdateGeometry();
 
 private:
-	unsigned int m_nodeId;
 	Meters m_width;
 	Vector3f m_position;
 	Vector2f m_direction;

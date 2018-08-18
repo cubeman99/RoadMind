@@ -47,6 +47,7 @@ public:
 
 
 public:
+	int m_id;
 	union
 	{
 		struct
@@ -73,7 +74,6 @@ public:
 	//BiarcPair m_visualEdgeLines[2];
 	//BiarcPair m_visualShoulderLines[2];
 
-	int m_id;
 	
 	RoadCurveLine m_visualEdgeLines[2];
 	RoadCurveLine m_visualShoulderLines[2];

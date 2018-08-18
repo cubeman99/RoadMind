@@ -18,6 +18,11 @@ public:
 		return m_nodeGroups;
 	}
 
+	inline const Set<NodeGroup*>& GetNodeGroups() const
+	{
+		return m_nodeGroups;
+	}
+
 	inline void Clear()
 	{
 		m_nodeGroups.clear();
@@ -79,6 +84,8 @@ public:
 	void Update(float dt) override;
 	
 	bool IsCreatingSelection() const;
+	bool IsRotatingDirection() const;
+	Vector3f GetRotationCenter() const;
 	Rect2f GetSelectionBox() const;
 	NodeGroupSelection& GetSelection();
 	void Deselect();
@@ -111,6 +118,9 @@ private:
 		Vector3f position;
 		Vector2f direction;
 	};
+
+	bool m_reverseDirection;
+
 
 	std::map<NodeGroup*, PreMoveInfo> m_preMoveInfo;
 };

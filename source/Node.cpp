@@ -42,11 +42,6 @@ float Node::GetWidth() const
 	return m_width;
 }
 
-unsigned int Node::GetNodeId() const
-{
-	return m_nodeId;
-}
-
 Vector2f Node::GetDirection() const
 {
 	return m_direction;

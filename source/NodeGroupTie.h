@@ -37,6 +37,7 @@ public:
 	void UpdateGeometry();
 
 private:
+	int m_id;
 	Vector3f m_position;
 	Vector2f m_direction;
 	NodeGroup* m_nodeGroup;

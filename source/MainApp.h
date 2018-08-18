@@ -11,6 +11,7 @@
 #include "RoadNetwork.h"
 #include "Camera.h"
 #include "Driver.h"
+#include "Vehicle.h"
 #include "ToolSelection.h"
 #include "ToolDraw.h"
 
@@ -41,10 +42,12 @@ public:
 
 	void CreateTestNetwork();
 	void DrawGridFloor(const Vector3f& center, Meters squareSize, Meters gridRadius);
+	void DrawVehicle(Graphics2D& g, Vehicle* vehicle);
 
 	void SetTool(EditorTool* tool);
 
 	void UpdateCameraControls(float dt);
+	void UpdateVehicleControls(float dt);
 
 private:
 	void DrawArc(Graphics2D& g, const Biarc3& arc, const Color& color);
@@ -57,10 +60,16 @@ private:
 	void FillZippedArcs(Graphics2D& g, const Biarc& a, const Biarc& b, const Color& color);
 	void FillZippedCurves(Graphics2D& g, const RoadCurveLine& a, const RoadCurveLine& b, const Color& color);
 
+	Joystick* m_joystick;
+	Joystick* m_wheel;
 	SpriteFont* m_font;
 	RoadNetwork* m_network;
 
 	Vector2f m_mousePosition;
+
+	Mesh* m_vehicleMesh;
+	Mesh* m_meshWheel;
+	DebugDraw* m_debugDraw;
 
 	struct DebugOption
 	{
@@ -90,6 +99,9 @@ private:
 	ToolDraw* m_toolDraw;
 	Array<EditorTool*> m_tools;
 	Array<Driver*> m_drivers;
+	VehicleParams m_vehicleParams;
+	Vehicle* m_player;
+	PhysicsEngine* m_physicsEngine;
 
 	CameraState m_camera;
 	CameraState m_defaultCameraState;

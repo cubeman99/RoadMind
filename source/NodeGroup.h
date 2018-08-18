@@ -100,9 +100,9 @@ private:
 	void RemoveOutput(NodeGroupConnection* output);
 	void RemoveConnection(NodeGroupConnection* connection, int direction);
 
+	int m_id;
 	Vector3f m_position;
 	Vector2f m_direction;
-
 	Array<Node*> m_nodes;
 
 	union

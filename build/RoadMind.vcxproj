@@ -50,7 +50,7 @@
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalLibraryDirectories>../../cmgEngine/INSTALL/lib/Debug;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>cmgCore.lib;cmgMath.lib;cmgGraphics.lib;cmgInput.lib;cmgPhysics.lib;cmgApplication.lib;opengl32.lib;glu32.lib;dinput8.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>cmgCore.lib;cmgMath.lib;cmgGraphics.lib;cmgInput.lib;cmgPhysics.lib;cmgApplication.lib;opengl32.lib;glu32.lib;dinput8.lib;Xinput9_1_0.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -76,6 +76,7 @@
     <ClInclude Include="..\source\Camera.h" />
     <ClInclude Include="..\source\CommonTypes.h" />
     <ClInclude Include="..\source\Connection.h" />
+    <ClInclude Include="..\source\DrivingApp.h" />
     <ClInclude Include="..\source\RoadCurves.h" />
     <ClInclude Include="..\source\Driver.h" />
     <ClInclude Include="..\source\GeometryApp.h" />
@@ -89,12 +90,15 @@
     <ClInclude Include="..\source\EditorTool.h" />
     <ClInclude Include="..\source\ToolDraw.h" />
     <ClInclude Include="..\source\ToolSelection.h" />
+    <ClInclude Include="..\source\Vehicle.h" />
+    <ClInclude Include="..\source\VehicleParams.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\source\Biarc.cpp" />
     <ClCompile Include="..\source\Biarc3.cpp" />
     <ClCompile Include="..\source\Camera.cpp" />
     <ClCompile Include="..\source\Connection.cpp" />
+    <ClCompile Include="..\source\DrivingApp.cpp" />
     <ClCompile Include="..\source\RoadCurves.cpp" />
     <ClCompile Include="..\source\Driver.cpp" />
     <ClCompile Include="..\source\GeometryApp.cpp" />
@@ -109,6 +113,7 @@
     <ClCompile Include="..\source\EditorTool.cpp" />
     <ClCompile Include="..\source\ToolDraw.cpp" />
     <ClCompile Include="..\source\ToolSelection.cpp" />
+    <ClCompile Include="..\source\Vehicle.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

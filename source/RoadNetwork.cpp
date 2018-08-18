@@ -9,8 +9,10 @@
 
 RoadNetwork::RoadNetwork()
 {
-	m_nodeIdCounter = 1;
 	m_nodeGroupConnectionIdCounter = 1;
+	m_intersectionIdCounter = 1;
+	m_nodeGroupIdCounter = 1;
+	m_tieIdCounter = 1;
 
 	// Setup standard road metrics
 	m_metrics.laneWidth = 3.7f;
@@ -32,6 +34,11 @@ RoadNetwork::~RoadNetwork()
 
 void RoadNetwork::ClearNodes()
 {
+	m_nodeGroupConnectionIdCounter = 1;
+	m_intersectionIdCounter = 1;
+	m_nodeGroupIdCounter = 1;
+	m_tieIdCounter = 1;
+
 	for (RoadIntersection* intersection : m_intersections)
 		delete intersection;
 	m_intersections.clear();
@@ -51,6 +58,7 @@ NodeGroup* RoadNetwork::CreateNodeGroup(const Vector3f& position,
 {
 	// Construct the node group
 	NodeGroup* group = new NodeGroup();
+	group->m_id = m_nodeGroupIdCounter++;
 	group->m_metrics = &m_metrics;
 	group->m_position = position;
 	group->m_direction = direction;
@@ -59,7 +67,7 @@ NodeGroup* RoadNetwork::CreateNodeGroup(const Vector3f& position,
 	m_nodeGroups.insert(group);
 
 	// Create the left-most node
-	Node* node = CreateNode();
+	Node* node = new Node();
 	node->m_nodeGroup = group;
 	node->m_width = m_metrics.laneWidth;
 	group->m_nodes.push_back(node);
@@ -68,7 +76,7 @@ NodeGroup* RoadNetwork::CreateNodeGroup(const Vector3f& position,
 	Node* prev = node;
 	for (int i = 1; i < laneCount; i++)
 	{
-		node = CreateNode();
+		node = new Node();
 		node->m_nodeGroup = group;
 		node->m_width = m_metrics.laneWidth;
 		prev = node;
@@ -82,6 +90,8 @@ RoadIntersection* RoadNetwork::CreateIntersection(
 	const Set<NodeGroup*>& nodeGroups)
 {
 	RoadIntersection* intersection = new RoadIntersection();
+	intersection->m_id = m_intersectionIdCounter++;
+
 
 	// Get the center position of all node groups
 	Vector2f center = Vector2f::ZERO;
@@ -292,12 +302,11 @@ NodeGroupConnection* RoadNetwork::ConnectNodeSubGroups(
 
 	// Construct the node group connection
 	NodeGroupConnection* connection = new NodeGroupConnection();
-	connection->m_id = m_nodeGroupConnectionIdCounter;
+	connection->m_id = m_nodeGroupConnectionIdCounter++;
 	connection->m_input = from;
 	connection->m_output = to;
 	connection->m_metrics = &m_metrics;
 	m_nodeGroupConnections.insert(connection);
-	m_nodeGroupConnectionIdCounter++;
 
 	from.group->InsertOutput(connection);
 	to.group->InsertInput(connection);
@@ -320,6 +329,7 @@ NodeGroupTie* RoadNetwork::TieNodeGroups(NodeGroup* a, NodeGroup* b)
 
 	// Construct the tie
 	NodeGroupTie* tie = new NodeGroupTie();
+	tie->m_id = m_tieIdCounter++;
 	tie->m_position = b->m_position;
 	tie->m_direction = b->m_direction;
 	tie->m_nodeGroup = b;
@@ -346,6 +356,10 @@ void RoadNetwork::UntieNodeGroup(NodeGroup* nodeGroup)
 
 void RoadNetwork::DeleteNodeGroup(NodeGroup* nodeGroup)
 {
+	// Untie the node group
+	if (nodeGroup->IsTied())
+		UntieNodeGroup(nodeGroup);
+
 	// Delete any connections to the node group
 	while (!nodeGroup->m_inputs.empty())
 		DeleteNodeGroupConnection(nodeGroup->m_inputs.back());
@@ -411,26 +425,246 @@ Set<RoadIntersection*>& RoadNetwork::GetIntersections()
 	return m_intersections;
 }
 
-Node* RoadNetwork::CreateNode()
-{
-	Node* node = new Node();
-	node->m_metrics = &m_metrics;
-	node->m_width = m_metrics.laneWidth;
-	node->m_nodeId = m_nodeIdCounter;
-	m_nodeIdCounter++;
-	return node;
-}
-
 void RoadNetwork::UpdateNodeGeometry()
 {
 	for (NodeGroupTie* tie : m_nodeGroupTies)
 		tie->UpdateGeometry();
 	for (NodeGroup* group : m_nodeGroups)
 		group->UpdateGeometry();
-	for (NodeGroupConnection* surface : m_nodeGroupConnections)
-		surface->UpdateGeometry();
+	for (NodeGroupConnection* connection : m_nodeGroupConnections)
+		connection->UpdateGeometry();
 	for (NodeGroup* group : m_nodeGroups)
 		group->UpdateIntersectionGeometry();
 	for (RoadIntersection* intersection : m_intersections)
 		intersection->UpdateGeometry();
 }
+
+
+//-----------------------------------------------------------------------------
+// Save & Load
+//-----------------------------------------------------------------------------
+
+bool RoadNetwork::Save(const Path& path)
+{
+	File file(path);
+	if (file.Open(FileAccess::WRITE, FileType::BINARY).Failed())
+		return false;
+
+	unsigned int count;
+
+	// Save node groups
+	count = m_nodeGroups.size();
+	file.Write(&m_nodeGroupIdCounter, sizeof(int));
+	file.Write(&count, sizeof(unsigned int));
+	for (NodeGroup* group : m_nodeGroups)
+	{
+		file.Write(&group->m_id, sizeof(int));
+		file.Write(&group->m_position, sizeof(Vector3f));
+		file.Write(&group->m_direction, sizeof(Vector2f));
+		file.Write(&group->m_leftShoulderWidth, sizeof(Meters));
+		file.Write(&group->m_rightShoulderWidth, sizeof(Meters));
+		file.Write(&group->m_allowPassing, sizeof(Meters));
+		SavePointer(file, group->m_twin);
+		SavePointer(file, group->m_tie);
+
+		// Save individual nodes
+		count = group->m_nodes.size();
+		file.Write(&count, sizeof(unsigned int));
+		for (unsigned int i = 0; i < group->m_nodes.size(); i++)
+		{
+			Node* node = group->m_nodes[i];
+			file.Write(&node->m_width, sizeof(Meters));
+			file.Write(&node->m_position, sizeof(Vector3f));
+			file.Write(&node->m_direction, sizeof(Vector2f));
+			file.Write(&node->m_leftDivider, sizeof(node->m_leftDivider));
+			file.Write(&node->m_index, sizeof(node->m_index));
+		}
+
+		// Save input & output connections
+		for (unsigned int i = 0; i < 2; i++)
+		{
+			count = group->m_connections[i].size();
+			file.Write(&count, sizeof(unsigned int));
+			for (unsigned int j = 0; j < group->m_connections[i].size(); j++)
+				SavePointer(file, group->m_connections[i][j]);
+		}
+	}
+
+	// Save node group ties
+	file.Write(&m_tieIdCounter, sizeof(int));
+	count = m_nodeGroupTies.size();
+	file.Write(&count, sizeof(unsigned int));
+	for (NodeGroupTie* tie : m_nodeGroupTies)
+	{
+		file.Write(&tie->m_id, sizeof(int));
+		file.Write(&tie->m_position, sizeof(Vector3f));
+		file.Write(&tie->m_direction, sizeof(Vector2f));
+		file.Write(&tie->m_centerDividerWidth, sizeof(Meters));
+		SavePointer(file, tie->m_nodeGroup);
+	}
+
+	// Save node group connections
+	file.Write(&m_nodeGroupConnectionIdCounter, sizeof(int));
+	count = m_nodeGroupConnections.size();
+	file.Write(&count, sizeof(unsigned int));
+	for (NodeGroupConnection* connection : m_nodeGroupConnections)
+	{
+		file.Write(&connection->m_id, sizeof(int));
+		file.Write(&connection->m_input.index, sizeof(int));
+		file.Write(&connection->m_input.count, sizeof(int));
+		SavePointer(file, connection->m_input.group);
+		file.Write(&connection->m_output.index, sizeof(int));
+		file.Write(&connection->m_output.count, sizeof(int));
+		SavePointer(file, connection->m_output.group);
+	}
+
+	// Save intersections
+	file.Write(&m_intersectionIdCounter, sizeof(int));
+	count = m_intersections.size();
+	file.Write(&count, sizeof(unsigned int));
+	for (RoadIntersection* intersection : m_intersections)
+	{
+		file.Write(&intersection->m_id, sizeof(int));
+
+		// Save points
+		count = intersection->m_points.size();
+		file.Write(&count, sizeof(unsigned int));
+		for (unsigned int i = 0; i < intersection->m_points.size(); i++)
+		{
+			RoadIntersectionPoint* point = intersection->m_points[i];
+			file.Write(&point->m_ioType, sizeof(IOType));
+			SavePointer(file, point->m_nodeGroup);
+		}
+
+		// Save edges
+		count = intersection->m_edges.size();
+		file.Write(&count, sizeof(unsigned int));
+		for (unsigned int i = 0; i < intersection->m_edges.size(); i++)
+		{
+			RoadIntersectionEdge* edge = intersection->m_edges[i];
+			for (unsigned int j = 0; j < 2; j++)
+			{
+				auto it = std::find(intersection->m_points.begin(),
+					intersection->m_points.end(), edge->m_points[j]);
+				unsigned int index = it - intersection->m_points.begin();
+				file.Write(&index, sizeof(unsigned int));
+			}
+		}
+	}
+
+	return true;
+}
+
+bool RoadNetwork::Load(const Path& path)
+{
+	ClearNodes();
+	File file(path);
+	if (file.Open(FileAccess::READ, FileType::BINARY).Failed())
+		return false;
+	unsigned int count;
+	unsigned int count2;
+
+	// Read node groups
+	file.Read(&m_nodeGroupIdCounter, sizeof(int));
+	file.Read(&count, sizeof(unsigned int));
+	for (unsigned int i = 0; i < count; i++)
+	{
+		NodeGroup* group = LoadPointer(file, m_nodeGroups);
+		file.Read(&group->m_position, sizeof(Vector3f));
+		file.Read(&group->m_direction, sizeof(Vector2f));
+		file.Read(&group->m_leftShoulderWidth, sizeof(Meters));
+		file.Read(&group->m_rightShoulderWidth, sizeof(Meters));
+		file.Read(&group->m_allowPassing, sizeof(Meters));
+		group->m_twin = LoadPointer(file, m_nodeGroups);
+		group->m_tie = LoadPointer(file, m_nodeGroupTies);
+
+		// Read individual nodes
+		file.Read(&count2, sizeof(unsigned int));
+		group->m_nodes.resize(count2);
+		for (unsigned int j = 0; j < count2; j++)
+		{
+			Node* node = new Node();
+			group->m_nodes[j] = node;
+			node->m_nodeGroup = group;
+			file.Read(&node->m_width, sizeof(Meters));
+			file.Read(&node->m_position, sizeof(Vector3f));
+			file.Read(&node->m_direction, sizeof(Vector2f));
+			file.Read(&node->m_leftDivider, sizeof(node->m_leftDivider));
+			file.Read(&node->m_index, sizeof(node->m_index));
+		}
+
+		// Read input & output connections
+		for (unsigned int i = 0; i < 2; i++)
+		{
+			file.Read(&count2, sizeof(unsigned int));
+			group->m_connections[i].resize(count2);
+			for (unsigned int j = 0; j < count2; j++)
+				group->m_connections[i][j] = LoadPointer(file, m_nodeGroupConnections);
+		}
+	}
+
+
+	// Read node group ties
+	file.Read(&m_tieIdCounter, sizeof(int));
+	file.Read(&count, sizeof(unsigned int));
+	for (unsigned int i = 0; i < count; i++)
+	{
+		NodeGroupTie* tie = LoadPointer(file, m_nodeGroupTies);
+		file.Read(&tie->m_position, sizeof(Vector3f));
+		file.Read(&tie->m_direction, sizeof(Vector2f));
+		file.Read(&tie->m_centerDividerWidth, sizeof(Meters));
+		tie->m_nodeGroup = LoadPointer(file, m_nodeGroups);
+	}
+
+	// Read node group connections
+	file.Read(&m_nodeGroupConnectionIdCounter, sizeof(int));
+	file.Read(&count, sizeof(unsigned int));
+	for (unsigned int i = 0; i < count; i++)
+	{
+		NodeGroupConnection* connection =
+			LoadPointer(file, m_nodeGroupConnections);
+		file.Read(&connection->m_input.index, sizeof(int));
+		file.Read(&connection->m_input.count, sizeof(int));
+		connection->m_input.group = LoadPointer(file, m_nodeGroups);
+		file.Read(&connection->m_output.index, sizeof(int));
+		file.Read(&connection->m_output.count, sizeof(int));
+		connection->m_output.group = LoadPointer(file, m_nodeGroups);
+	}
+
+	// Read intersections
+	file.Read(&m_nodeGroupConnectionIdCounter, sizeof(int));
+	file.Read(&count, sizeof(unsigned int));
+	for (unsigned int i = 0; i < count; i++)
+	{
+		RoadIntersection* intersection = LoadPointer(file, m_intersections);
+
+		// Read points
+		file.Read(&count2, sizeof(unsigned int));
+		intersection->m_points.resize(count2);
+		for (unsigned int j = 0; j < count2; j++)
+		{
+			RoadIntersectionPoint* point = new RoadIntersectionPoint();
+			intersection->m_points[j] = point;
+			file.Read(&point->m_ioType, sizeof(IOType));
+			point->m_nodeGroup = LoadPointer(file, m_nodeGroups);
+		}
+
+		// Read edges
+		file.Read(&count2, sizeof(unsigned int));
+		intersection->m_edges.resize(count2);
+		for (unsigned int j = 0; j < count2; j++)
+		{
+			RoadIntersectionEdge* edge = new RoadIntersectionEdge();
+			intersection->m_edges[j] = edge;
+			for (unsigned int k = 0; k < 2; k++)
+			{
+				unsigned int index;
+				file.Read(&index, sizeof(unsigned int));
+				edge->m_points[k] = intersection->m_points[index];
+			}
+		}
+	}
+
+	return true;
+}
+

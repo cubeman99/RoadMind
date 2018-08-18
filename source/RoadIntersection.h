@@ -16,8 +16,12 @@ class RoadIntersectionPoint;
 class RoadIntersectionEdge
 {
 	friend class RoadIntersection;
+	friend class RoadNetwork;
 
 public:
+	RoadIntersectionEdge()
+	{
+	}
 	RoadIntersectionEdge(RoadIntersectionPoint* leftPoint,
 		RoadIntersectionPoint* rightPoint)
 	{
@@ -61,8 +65,13 @@ public:
 class RoadIntersectionPoint
 {
 	friend class RoadIntersection;
+	friend class RoadNetwork;
 
 public:
+	RoadIntersectionPoint()
+	{
+	}
+
 	RoadIntersectionPoint(NodeGroup* group, IOType type)
 		: m_nodeGroup(group)
 		, m_ioType(type)
@@ -127,6 +136,7 @@ public:
 private:
 	void AddPoint(NodeGroup* group, IOType type);
 
+	int m_id;
 	Vector2f m_centerPosition;
 
 	// Sorted in clockwise order

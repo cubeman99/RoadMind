@@ -121,8 +121,12 @@ void ToolSelection::Update(float dt)
 			for (NodeGroup* group : m_selection.GetNodeGroups())
 			{
 				if (group->GetTie() != nullptr)
-					group->GetTie()->SetDirection(Vector2f::Normalize(
-					mousePos - group->GetCenterPosition().xy));
+				{
+					Vector2f dir = Vector2f::Normalize(
+						mousePos - group->GetTie()->GetPosition().xy);
+					group->GetTie()->SetDirection(dir *
+						Math::Sign(group->GetTie()->GetDirection().Dot(dir)));
+				}
 				else
 					group->SetDirectionFromCenter(Vector2f::Normalize(
 					mousePos - group->GetCenterPosition().xy));
@@ -218,6 +222,28 @@ Node* ToolSelection::GetPickedNode()
 bool ToolSelection::IsCreatingSelection() const
 {
 	return (m_state == State::CREATING_SELECTION_BOX);
+}
+
+bool ToolSelection::IsRotatingDirection() const
+{
+	return (m_state == State::MOVING_SELECTION && IsControlDown());
+}
+
+Vector3f ToolSelection::GetRotationCenter() const
+{
+	if (m_selection.GetNumGroups() == 1)
+	{
+		NodeGroup* group = *m_selection.GetNodeGroups().begin();
+		
+		if (group->GetTie() != nullptr)
+			return group->GetTie()->GetPosition();
+		else
+			return group->GetCenterPosition();
+	}
+	else
+	{
+		return Vector3f::ZERO;
+	}
 }
 
 Rect2f ToolSelection::GetSelectionBox() const

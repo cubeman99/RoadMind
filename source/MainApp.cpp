@@ -7,8 +7,28 @@
 
 #define BOOL2ASCII(x) (x ? "TRUE" : "FALSE")
 
+static const char* SAVE_FILE_PATH = "road_network.rdmd";
+
+#define ASSETS_PATH "C:/Workspace/C++/Framework Projects/RoadMind/assets/"
+
+// calculate local inertia tensors for different shapes
+Matrix3f createInertiaTensorBox(float mass, const Vector3f& halfBox)
+{
+	if (mass > 0.0f)
+	{
+		float k = (1.0f / 12.0f) * mass * 4.0f; // multiply by 4.0 because sizes are half-dimensions
+		float xx = (float) halfBox.x * (float) halfBox.x;
+		float yy = (float) halfBox.y * (float) halfBox.y;
+		float zz = (float) halfBox.z * (float) halfBox.z;
+		return Matrix3f::CreateScale(k * (yy + zz), k * (zz + xx), k * (xx + yy));
+	}
+	return Matrix3f::IDENTITY;
+}
+
 MainApp::MainApp()
 {
+	m_player = nullptr;
+
 	m_debugOptions.push_back(m_showRoadMarkings = new DebugOption("Markings", true));
 	m_debugOptions.push_back(m_showEdgeLines = new DebugOption("Edges", true));
 	m_debugOptions.push_back(m_showRoadSurface = new DebugOption("Surface", true));
@@ -33,6 +53,8 @@ void MainApp::OnInitialize()
 {
 	LoadShaders();
 
+	m_debugDraw = new DebugDraw();
+
 	m_network = new RoadNetwork();
 
 	m_backgroundTexture = nullptr;
@@ -43,7 +65,122 @@ void MainApp::OnInitialize()
 	m_defaultCameraState.m_aspectRatio = GetWindow()->GetAspectRatio();
 	m_camera = m_defaultCameraState;
 
+	m_wheel = GetInputManager()->AddDevice<Joystick>();
+	m_joystick = GetInputManager()->AddDevice<Joystick>();
 	m_font = SpriteFont::LoadBuiltInFont(BuiltInFonts::FONT_CONSOLE);
+
+	m_vehicleMesh = Mesh::Load(ASSETS_PATH "toyota_ae86.obj");
+	m_meshWheel = Mesh::Load(ASSETS_PATH "wheel.obj");
+
+
+	//-------------------------------------------------------------------------
+	// Custom Toyota Corolla AE85 low poly
+	//-------------------------------------------------------------------------
+
+	VehicleParams params;
+
+	// Body
+	params.body.size.x = 0.5f;
+	params.body.size.y = 0.5f;
+	params.body.size.z = 0.5f;
+	params.body.mass = 1435;
+	params.body.inertiaTensor = createInertiaTensorBox(params.body.mass, params.body.size);
+	params.body.centerOfMassOffset = Vector3f(0.0f, 0.33216f, -0.30f);
+	params.body.dragCoefficient = 0.39f;
+	params.body.rollReduction = 0.4f;
+	params.body.pitchReduction = 0.0f;
+	params.graphics.driverHeadPostion = Vector3f(-0.377f, 0.902f, 0.073f);
+
+	//-------------------------------------------------------------------------
+	// Engine: M30B35 6-cyl SOHC
+
+	//params.engine.idleSpeed					= rpmToRadPerSec(700);
+	//params.engine.revLimiterSpeed			= rpmToRadPerSec(5700);
+	//params.engine.torqueCurve.peakTorque	= torqueCurveMaxTorque(305, 4000); // 305 Nm @ 4000 rpm
+	//params.engine.torqueCurve.redLine		= torqueCurveMaxPower(155, 5700); // 155 kW @ 5700 rpm
+
+	//-------------------------------------------------------------------------
+	// Transmission
+
+	//params.transmission.numGears			= 5;
+	//params.transmission.gearRatios[0]		= 3.17f;
+	//params.transmission.gearRatios[1]		= 1.88f;
+	//params.transmission.gearRatios[2]		= 1.30f;
+	//params.transmission.gearRatios[3]		= 1.00f;
+	//params.transmission.gearRatios[4]		= 0.90f;
+	//params.transmission.reverseGearRatio	= 4.00f;
+	//params.transmission.finalDriveRatio		= 4.44f;
+	//params.transmission.efficiency			= 0.90f;
+	//params.transmission.isAutoTransmission	= 1;
+	//params.transmission.shiftDownSpeed		= rpmToRadPerSec(3000);
+	//params.transmission.shiftUpSpeed		= rpmToRadPerSec(5500);
+
+	//-------------------------------------------------------------------------
+	// Brakes
+
+	//params.brakes.brakingTorque	= 1000 * 4.0f;
+
+	//-------------------------------------------------------------------------
+	// Axles & Wheels
+
+	params.numAxles = 2;
+
+	// Front axle
+	params.axles[0].offset = Vector3f(0.0f, 1.25158f, -0.33f);
+	params.axles[0].wheelOffset = Vector3f(0.71697f, 0.0f, 0.0f);
+	params.axles[0].torqueBias = 0.0f;
+	params.axles[0].brakeBias = 0.25f;
+	params.axles[0].steeringAngleMult = 1.0f;
+	params.axles[0].ackermannGeometry = true;
+	params.axles[0].numWheels = 2;
+	params.axles[0].wheels.radius = 0.310f;
+	params.axles[0].wheels.mass = 13.0f;
+	params.axles[0].wheels.inertia = 0.0f; // TODO
+	//params.axles[0].wheels.latTractionMult = 2.50f;
+	//params.axles[0].wheels.longTractionMult = 2.50f;
+	params.axles[0].wheels.latTractionMult = 1.0f;
+	params.axles[0].wheels.longTractionMult = 1.0f;
+	params.axles[0].wheels.rollingResistance = 0.02f;
+	//params.axles[0].suspension.springStiffness	= 100000000.0f;
+	//params.axles[0].suspension.springDamping	= 35000;
+	params.axles[0].suspension.springStiffness = 69686;
+	params.axles[0].suspension.springDamping = 70;
+	//params.axles[0].suspension.springStiffness	= 100;
+	//params.axles[0].suspension.springDamping	= 0.0f;
+	params.axles[0].suspension.restLength = 0.310f * 1.5f;
+	params.axles[0].suspension.minLength = 0.310f;
+	params.axles[0].suspension.maxLength = 0.310f * 1.5f;
+	//params.axles[0].wheels.longitudinalPacejka	= pacejkaSimpleCreate(10.0f, 1.6f, 1.0f, 0.8f);
+	//params.axles[0].wheels.longitudinalPacejka	= pacejkaSimpleCreate(10.0f, 2.1f, 1.0f, 0.6f);
+	//params.axles[0].wheels.lateralPacejka		= pacejkaSimpleCreate(4.0f, 2.0f, 1.0f, -0.1f);
+	params.axles[0].wheels.latTractionMult = 1.80f;
+	params.axles[0].wheels.longTractionMult = 2.00f;
+
+	// Rear axle
+	params.axles[1] = params.axles[0];
+	params.axles[1].offset.y = -1.22317f;
+	params.axles[1].torqueBias = 1.0f;
+	params.axles[1].brakeBias = 0.75f;
+	params.axles[1].steeringAngleMult = 0.0f;
+	params.axles[1].ackermannGeometry = false;
+
+	// Steering
+	params.steering.speedSlow			= mphToMetersPerSecond(5);
+	params.steering.speedFast			= mphToMetersPerSecond(55);
+	params.steering.maxAngleSlow		= Math::ToRadians(40.0f);
+	params.steering.maxAngleFast		= Math::ToRadians(4.0f);
+	params.steering.turnRateSlow		= Math::ToRadians(80.0f);
+	params.steering.turnRateFast		= Math::ToRadians(8.0f);
+	params.steering.alignRateSlow		= Math::ToRadians(80.0f);
+	params.steering.alignRateFast		= Math::ToRadians(8.0f);
+	params.steering.steeringExponent	= 1.0f;
+
+	// Graphics
+	params.graphics.meshBody = m_vehicleMesh;
+	params.graphics.meshWheel = m_meshWheel;
+	params.graphics.driverHeadPostion = Vector3f(-0.29761f, 0.00362f, 0.46259f);
+	
+	m_vehicleParams = params;
 
 	m_editMode = EditMode::CREATE;
 
@@ -61,6 +198,14 @@ void MainApp::OnInitialize()
 
 void MainApp::Reset()
 {
+	if (m_player != nullptr)
+		delete m_player;
+	m_player = new Vehicle(m_vehicleParams);
+	m_player->SetPosition(Vector3f::ZERO);
+	m_physicsEngine = new PhysicsEngine();
+	m_physicsEngine->SetGravity(Vector3f::ZERO);
+	m_physicsEngine->AddBody(m_player->GetBody());
+
 	m_camera.m_position = m_defaultCameraState.m_position;
 	m_camera.m_rotation = m_defaultCameraState.m_rotation;
 
@@ -69,6 +214,10 @@ void MainApp::Reset()
 	m_cameraPitch = Math::HALF_PI;
 	m_cameraYaw = 0.0f;
 	m_cameraDistance = 60.0f;
+	
+	m_cameraPitch = Math::HALF_PI * 0.4f;
+	m_cameraDistance = 7.0f;
+
 	m_newCamera = Camera();
 	m_newCamera.SetPosition(Vector3f::ZERO);
 	m_newCamera.SetPerspective(
@@ -165,11 +314,59 @@ void MainApp::UpdateCameraControls(float dt)
 			m_cameraYaw += Math::TWO_PI;
 	}
 
+	auto xbox = m_joystick->GetState();
+	float speed = 2.0f;
+	if (xbox.rightStick.Length() < 0.25f)
+		xbox.rightStick = Vector2f::ZERO;
+	m_cameraPitch -= xbox.rightStick.y * speed * dt;
+	m_cameraYaw -= xbox.rightStick.x * speed * dt;
+
 	m_newCamera.SetOrientation(
 		Quaternion(Vector3f::UNITZ, m_cameraYaw) *
 		Quaternion(Vector3f::UNITX, Math::HALF_PI - m_cameraPitch));
 	m_newCamera.SetPosition(m_cameraPosition +
 		m_newCamera.GetOrientation().GetBack() * m_cameraDistance);
+}
+
+void MainApp::UpdateVehicleControls(float dt)
+{
+	Keyboard* keyboard = GetKeyboard();
+	Vehicle* vehicle = m_player;
+	VehicleOperatingParams operatingParams;
+
+	operatingParams.brake = 0.0f;
+	if (keyboard->IsKeyDown(Keys::space))
+		operatingParams.brake = 1.0f;
+	operatingParams.throttle = 0.0f;
+	if (keyboard->IsKeyDown(Keys::up))
+		operatingParams.throttle += 1.0f;
+	if (keyboard->IsKeyDown(Keys::down))
+		operatingParams.throttle -= 1.0f;
+
+	operatingParams.steering = 0.0f;
+	if (keyboard->IsKeyDown(Keys::left))
+		operatingParams.steering += 1.0f;
+	if (keyboard->IsKeyDown(Keys::right))
+		operatingParams.steering -= 1.0f;
+
+	auto xbox = m_joystick->GetState();
+	if (xbox.leftStick.Length() < 0.25f)
+		xbox.leftStick = Vector2f::ZERO;
+	operatingParams.steeringAngle -= xbox.leftStick.x;
+	operatingParams.throttle += xbox.rightTrigger - xbox.leftTrigger;
+	operatingParams.brake += xbox.a ? 1.0f : 0.0f;
+	
+	operatingParams.steeringAngle -= m_wheel->m_axisPool[0].x;
+	operatingParams.throttle += 1.0f - (m_wheel->m_axisPool[1].x + 1.0f) * 0.5f;
+	operatingParams.brake += 1.0f - (m_wheel->m_axisPool[5].x + 1.0f) * 0.5f;
+	
+	vehicle->GetBody()->ApplyForceLinear(vehicle->GetBody()->GetBodyToWorld().c1.xyz *
+		vehicle->GetBody()->GetMass() * 9.81f * operatingParams.throttle * 0.5f);
+	//operatingParams.throttle = 0.0f;
+
+	vehicle->SetOperatingParams(operatingParams);
+
+	m_cameraPosition = vehicle->GetPosition();
 }
 
 
@@ -382,26 +579,35 @@ void MainApp::FillZippedArcs(Graphics2D& g, const Biarc& a, const Biarc& b, cons
 	glEnd();
 }
 
-void MainApp::FillZippedCurves(Graphics2D& g, const RoadCurveLine& a, const RoadCurveLine& b, const Color& color)
+void MainApp::FillZippedCurves(Graphics2D& g, const RoadCurveLine& a,
+	const RoadCurveLine& b, const Color& color)
 {
-	float maxLength = Math::Max(a.Length(), b.Length());
-	int count = 10;
 	float interval = 1.5f;
-	count = (int) ((maxLength / interval) + 0.5f);
-	count = Math::Max(2, count);
+
 	glBegin(GL_TRIANGLE_STRIP);
 	glColor3ubv(color.data());
-	glVertex3fv(a.Start().v);
-	glVertex3fv(b.Start().v);
-	for (int i = 1; i <= count; i++)
+	//glVertex3fv(a.Start().v);
+	//glVertex3fv(b.Start().v);
+
+	for (int k = 0; k < 2; k++)
 	{
-		float t = (float) i / count;
-		glVertex3fv(a.GetPoint(a.Length() * t).v);
-		glVertex3fv(b.GetPoint(b.Length() * t).v);
+		float maxLength = Math::Max(a.horizontalCurve.arcs[k].length,
+			b.horizontalCurve.arcs[k].length);
+		int count = Math::Max(2, (int) ((maxLength / interval) + 0.5f));
+		float offset1 = a.horizontalCurve.first.length * k;
+		float offset2 = b.horizontalCurve.first.length * k;
+		for (int i = 0; i < count; i++)
+		{
+			float t = (float) i / (float) count;
+			glVertex3fv(a.GetPoint(offset1 + a.horizontalCurve.arcs[k].length * t).v);
+			glVertex3fv(b.GetPoint(offset2 + b.horizontalCurve.arcs[k].length * t).v);
+		}
 	}
+
 	glVertex3fv(a.End().v);
 	glVertex3fv(b.End().v);
 	glEnd();
+
 }
 
 void MainApp::DrawGridFloor(const Vector3f& center, Meters squareSize, Meters gridRadius)
@@ -451,6 +657,80 @@ void MainApp::DrawGridFloor(const Vector3f& center, Meters squareSize, Meters gr
 	glDepthMask(true);
 }
 
+void MainApp::DrawVehicle(Graphics2D& g, Vehicle* vehicle)
+{
+	Vector3f pos = vehicle->GetPosition();
+	Quaternion rot = vehicle->GetOrientation();
+	VehicleParams params = vehicle->GetParams();
+	rot.Rotate(Vector3f::UNITZ, 0.2f);
+
+	Vector3f forward = Vector3f::UNITY;
+	Vector3f right = Vector3f::UNITX;
+	Vector3f up = Vector3f::UNITZ;
+	rot.RotateVector(forward);
+	rot.RotateVector(right);
+	rot.RotateVector(up);
+
+	Mesh* mesh = m_vehicleMesh;
+	Mesh* meshWheel = m_meshWheel;
+
+	Matrix4f viewProjection = m_newCamera.GetViewProjectionMatrix();
+	m_debugDraw->SetViewProjection(viewProjection);
+	m_debugDraw->SetShaded(true);
+	glClear(GL_DEPTH_BUFFER_BIT);
+	glEnable(GL_DEPTH_TEST);
+	glDepthMask(true);
+
+	Vector3f groundOffset = Vector3f::ZERO;
+	groundOffset.z = -params.axles[0].offset.z -
+		params.axles[0].wheelOffset.z + params.axles[0].wheels.radius;
+
+	// Draw the body
+	glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+	m_debugDraw->DrawMesh(params.graphics.meshBody,
+		vehicle->GetBody()->GetBodyToWorld(), Color::GREEN);
+	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+	
+	m_debugDraw->DrawPoint(vehicle->GetBody()->GetBodyToWorld(),
+		vehicle->GetBody()->GetCenterOfMass(),
+		Color::MAGENTA, 6.0f);
+
+	// Draw the wheels
+	for (Wheel* wheel : vehicle->GetWheels())
+	{
+		float forceScale = 0.0001f;
+		wheel->GetWheelToWorld();
+		m_debugDraw->DrawMesh(params.graphics.meshWheel,
+			wheel->GetWheelToWorld() *
+			Matrix4f::CreateScale(wheel->GetRadius()), Color::WHITE);
+		m_debugDraw->DrawFilledBox(
+			wheel->GetWheelToWorld() *
+			Matrix4f::CreateRotation(Vector3f::UNITX, -wheel->GetAngle()),
+			Vector3f(0.2f, 0.3f, 0.1f), Color::MAGENTA);
+
+		Matrix4f forceModelMatrix = 
+			wheel->GetWheelToWorld() *
+			Matrix4f::CreateTranslation(0, 0, -1) *
+			Matrix4f::CreateScale(forceScale);
+		m_debugDraw->DrawLine(forceModelMatrix,
+			Vector3f(0, 0, 0),
+			Vector3f(0, wheel->GetLongitudinalForce(), 0),
+			Color::GREEN, 4.0f);
+		m_debugDraw->DrawLine(forceModelMatrix,
+			Vector3f(0, 0, 0),
+			Vector3f(wheel->GetLateralForce(), 0, 0),
+			Color::RED, 4.0f);
+		m_debugDraw->DrawLine(forceModelMatrix,
+			Vector3f(0, 0, 0),
+			Vector3f(wheel->GetLateralForce(), wheel->GetLongitudinalForce(), 0),
+			Color::YELLOW, 4.0f);
+	}
+
+	glUseProgram(0);
+	glLineWidth(1.0f);
+	glPointSize(1.0f);
+}
+
 
 //-----------------------------------------------------------------------------
 // Overridden Methods
@@ -466,6 +746,15 @@ void MainApp::UnloadShaders()
 
 void MainApp::OnQuit()
 {
+	delete m_debugDraw;
+	m_debugDraw = nullptr;
+	delete m_vehicleMesh;
+	m_vehicleMesh = nullptr;
+	delete m_meshWheel;
+	m_meshWheel = nullptr;
+	delete m_player;
+	m_player = nullptr;
+
 	for (Driver* driver : m_drivers)
 		delete driver;
 	m_drivers.clear();
@@ -537,6 +826,23 @@ void MainApp::OnUpdate(float dt)
 	{
 		Quit();
 		return;
+	}
+	
+	// F4: Toggle Fullscreen Mode
+	if (keyboard->IsKeyPressed(Keys::f4))
+		GetWindow()->SetFullscreen(!GetWindow()->IsFullscreen());
+
+	// Ctrl+S: Save
+	if (ctrl && keyboard->IsKeyPressed(Keys::s))
+	{
+		m_network->Save(SAVE_FILE_PATH);
+		std::cout << "Saved to " << SAVE_FILE_PATH << std::endl;
+	}
+	// Ctrl+S: Load
+	if (ctrl && keyboard->IsKeyPressed(Keys::l))
+	{
+		m_network->Load(SAVE_FILE_PATH);
+		std::cout << "Loaded " << SAVE_FILE_PATH << std::endl;
 	}
 
 	// Number keys: debug options
@@ -610,6 +916,12 @@ void MainApp::OnUpdate(float dt)
 
 		m_currentTool->Update(dt);
 	}
+
+	UpdateVehicleControls(dt);
+
+	// Update vehicles
+	m_physicsEngine->Simulate(dt);
+	m_player->Update(dt);
 
 	// Update the drivers
 	for (Driver* driver : m_drivers)
@@ -743,8 +1055,8 @@ void MainApp::OnRender()
 {
 	Window* window = GetWindow();
 	MouseState mouseState = GetMouse()->GetMouseState();
-	Vector2f windowSize((float) window->GetWidth(), (float) window->GetHeight());
-	RoadCurveLine curve;
+	Vector2f windowSize((float) window->GetWidth(),
+		(float) window->GetHeight());
 
 	glDisable(GL_DEPTH_TEST);
 	glEnable(GL_TEXTURE_2D);
@@ -951,9 +1263,9 @@ void MainApp::OnRender()
 			//	Color::WHITE);
 
 			//if (twin != nullptr)
-				//DrawCurveLine(g, connection->m_visualEdgeLines[0], Color::GREEN);
+			//DrawCurveLine(g, connection->m_visualEdgeLines[0], Color::GREEN);
 			//else
-				DrawCurveLine(g, connection->m_visualEdgeLines[0], Color::YELLOW);
+			DrawCurveLine(g, connection->m_visualEdgeLines[0], Color::YELLOW);
 			for (unsigned int i = 1; i < connection->m_dividerLines.size() - 1; i++)
 				DrawArcs(g, connection->m_dividerLines[i], Color::WHITE);
 			DrawCurveLine(g, connection->m_visualEdgeLines[1], Color::WHITE);
@@ -1027,6 +1339,10 @@ void MainApp::OnRender()
 		}
 	}
 
+	// Draw the player
+	DrawVehicle(g, m_player);
+
+
 	for (Driver* driver : m_drivers)
 	{
 		float radius = 1.75f * 0.5f;
@@ -1037,7 +1353,7 @@ void MainApp::OnRender()
 
 	// Draw hovered-over nodes
 	auto m_hoverInfo = m_toolDraw->GetHoverInfo();
-	if (m_hoverInfo.subGroup.group != nullptr)
+	if (m_currentTool == m_toolDraw && m_hoverInfo.subGroup.group != nullptr)
 	{
 		Vector2f leftEdge = m_hoverInfo.subGroup.group->GetPosition().xy;
 		Vector2f right = m_hoverInfo.subGroup.group->GetRightDirection();
@@ -1056,6 +1372,16 @@ void MainApp::OnRender()
 		}
 	}
 
+	if (m_currentTool == m_toolSelection && m_toolSelection->IsRotatingDirection())
+	{
+		glBegin(GL_LINES);
+		glColor4ubv(Color::RED.data());
+		Vector3f center = m_toolSelection->GetRotationCenter();
+		glVertex3fv(center.v);
+		glVertex3fv(Vector3f(m_cursorGroundPosition.xy, center.z).v);
+		glEnd();
+	}
+
 	// Draw selection boxes around nodes
 	for (NodeGroup* group : m_toolSelection->GetSelection().GetNodeGroups())
 	{
@@ -1066,26 +1392,6 @@ void MainApp::OnRender()
 		}
 	}
 
-	Biarc3 arc1, arc2;
-	static Vector3f p1 = Vector3f(0.0f, 0.0f, 0.0f);
-	static Vector3f t1 = Vector3f(1.0f, 0.7f, 2.0f).Normalize();
-	static Vector3f p2 = Vector3f(40.0f, 200.0f, 30.0f);
-	static Vector3f t2 = Vector3f(0.0f, 1.0f, 4.0f).Normalize();
-
-	if (GetKeyboard()->IsKeyPressed(Keys::j))
-	{
-		p2.x = Random::NextFloat(-200.0f, 200.0f);
-		p2.y = Random::NextFloat(-200.0f, 200.0f);
-		p2.z = Random::NextFloat(-200.0f, 200.0f);
-	}
-
-	//p2 = Vector3f(123.361908f, 60.8233948f, 196.520905f);
-	//p2 = Vector3f(50, 0, 0);
-	//t1 = Vector3f(0, 0, 1);
-	//t2 = Vector3f(0, 0, 1);
-	//Biarc3::Interpolate(p1, t1, p2, t2, arc1, arc2);
-	//DrawArc(g, arc1, Color::MAGENTA);
-	//DrawArc(g, arc2, Color::RED);
 
 	// Draw HUD
 	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
@@ -1130,6 +1436,13 @@ void MainApp::OnRender()
 		ss << std::left << std::setw(15) << label.str() <<
 			BOOL2ASCII(m_debugOptions[i]->enabled) << endl;
 	}
+	
+	ss << "" << endl;
+	auto operatingParams = m_player->GetOperatingParams();
+	ss << "Steering: " << operatingParams.steeringAngle << endl;
+	ss << "Throttle: " << operatingParams.throttle << endl;
+	ss << "Brake: " << operatingParams.brake << endl;
+	ss << "Vehicle Speed: " << metersPerSecondToMph(m_player->GetVelocity().Length()) << " MPH" << endl;
 
 	g.DrawString(m_font, ss.str(), Vector2f(5, 5));
 
