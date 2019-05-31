@@ -20,6 +20,7 @@ MainApp::MainApp()
 	m_debugOptions.push_back(m_showDebug = new DebugOption("Debug", true));
 	m_debugOptions.push_back(m_showNodes = new DebugOption("Nodes", true));
 	m_debugOptions.push_back(m_showSeams = new DebugOption("Seams", false));
+	m_debugOptions.push_back(m_showDrivingLines = new DebugOption("Driving Lines", true));
 
 	//m_showEdgeLines->enabled = true;
 	//m_showDebug->enabled = true;
@@ -38,9 +39,7 @@ void MainApp::OnInitialize()
 	LoadShaders();
 
 	m_debugDraw = new DebugDraw();
-
 	m_network = new RoadNetwork();
-
 	m_backgroundTexture = nullptr;
 
 	m_defaultCameraState.m_viewHeight = 50.0f;
@@ -48,16 +47,18 @@ void MainApp::OnInitialize()
 	m_defaultCameraState.m_rotation = 0.0f;
 	m_defaultCameraState.m_aspectRatio = GetWindow()->GetAspectRatio();
 	m_camera = m_defaultCameraState;
+	m_camera.m_aspectRatio = GetWindow()->GetAspectRatio();
+	m_newCamera.SetAspectRatio(GetWindow()->GetAspectRatio());
 
 	m_wheel = nullptr;
 	m_joystick = nullptr;
 	//m_wheel = GetInputManager()->AddDevice<Joystick>();
 	//m_joystick = GetInputManager()->AddDevice<Joystick>();
+
 	m_font = SpriteFont::LoadBuiltInFont(BuiltInFonts::FONT_CONSOLE);
 
-	m_editMode = EditMode::CREATE;
-
 	// Create the editor tools
+	m_editMode = EditMode::CREATE;
 	m_toolSelection = new ToolSelection();
 	m_toolDraw = new ToolDraw();
 	m_tools.push_back(m_toolDraw);
@@ -67,6 +68,16 @@ void MainApp::OnInitialize()
 	SetTool(m_toolDraw);
 
 	Reset();
+	m_network->Load(SAVE_FILE_PATH);
+
+	for (int i = 0; i < 50; i++)
+	{
+		NodeGroup* nodeGroup = Random::ChooseFromSet(m_network->GetNodeGroups());
+		int index = Random::NextInt(nodeGroup->GetNumNodes());
+		Node* node = nodeGroup->GetNode(index);
+		Driver* driver = new Driver(m_network, node);
+		m_drivers.push_back(driver);
+	}
 }
 
 void MainApp::Reset()
@@ -661,8 +672,8 @@ void MainApp::OnUpdate(float dt)
 	}
 	
 	// Update the drivers
-	//for (Driver* driver : m_drivers)
-	//	driver->Update(dt);
+	for (Driver* driver : m_drivers)
+		driver->Update(dt);
 
 	UpdateCameraControls(dt);
 
@@ -1007,6 +1018,12 @@ void MainApp::OnRender()
 				DrawArcs(g, connection->m_dividerLines[i], Color::WHITE);
 			DrawCurveLine(g, connection->m_visualEdgeLines[1], Color::WHITE);
 		}
+
+		if (m_showDrivingLines->enabled)
+		{
+			for (unsigned int i = 0; i < connection->GetDrivingLines().size(); i++)
+				DrawArcs(g, connection->GetDrivingLines()[i], Color::GREEN);
+		}
 	}
 
 	for (RoadIntersection* intersection : m_network->GetIntersections())
@@ -1080,8 +1097,8 @@ void MainApp::OnRender()
 	for (Driver* driver : m_drivers)
 	{
 		float radius = 1.75f * 0.5f;
-		g.DrawCircle(driver->GetPosition(), radius, Color::GREEN);
-		g.DrawLine(driver->GetPosition(), driver->GetPosition() +
+		g.DrawCircle(driver->GetPosition().xy, radius, Color::GREEN);
+		g.DrawLine(driver->GetPosition().xy, driver->GetPosition().xy +
 			driver->GetDirection() * radius, Color::BLACK);
 	}
 

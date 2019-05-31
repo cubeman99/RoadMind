@@ -40,6 +40,7 @@ public:
 	NodeSubGroup& GetOutput();
 	const Array<BiarcPair>& GetSeams(IOType type, LaneSide side) const;
 	Array<BiarcPair>& GetSeams(IOType type, LaneSide side);
+	Array<BiarcPair>& GetDrivingLines();
 	
 	// Setters
 
@@ -66,6 +67,7 @@ public:
 	NodeSubGroup m_groups[2];
 	BiarcPair m_edgeLines[2];
 	std::vector<BiarcPair> m_dividerLines;
+	std::vector<BiarcPair> m_drivingLines;
 	RoadCurveLine m_visualEdgeLines[2];
 	RoadCurveLine m_visualShoulderLines[2];
 	Array<BiarcPair> m_seams[2][2];

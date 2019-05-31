@@ -42,6 +42,10 @@ Vector3f NodeSubGroup::GetCenterPosition() const
 	Vector2f right = RightPerpendicular(group->GetDirection());
 	return Vector3f(leftEdge.xy + (right * width * 0.5f), leftEdge.z);
 }
+Node* NodeSubGroup::GetNode(int index)
+{
+	return group->GetNode(this->index + index);
+}
 
 int NodeSubGroup::GetOverlap(const NodeSubGroup& a, const NodeSubGroup& b)
 {

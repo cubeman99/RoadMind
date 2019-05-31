@@ -70,6 +70,7 @@ NodeGroup* RoadNetwork::CreateNodeGroup(const Vector3f& position,
 	Node* node = new Node();
 	node->m_nodeGroup = group;
 	node->m_width = m_metrics.laneWidth;
+	node->m_index = 0;
 	group->m_nodes.push_back(node);
 
 	// Add nodes to the right
@@ -77,6 +78,7 @@ NodeGroup* RoadNetwork::CreateNodeGroup(const Vector3f& position,
 	for (int i = 1; i < laneCount; i++)
 	{
 		node = new Node();
+		node->m_index = i;
 		node->m_nodeGroup = group;
 		node->m_width = m_metrics.laneWidth;
 		prev = node;
@@ -171,6 +173,7 @@ Node* RoadNetwork::AddNodeToGroup(NodeGroup* group)
 {
 	Node* node = new Node();
 	node->m_width = m_metrics.laneWidth;
+	node->m_index = (int) group->m_nodes.size();
 	group->m_nodes.push_back(node);
 	return node;
 }
@@ -590,7 +593,8 @@ bool RoadNetwork::Load(const Path& path)
 			file.Read(&node->m_position, sizeof(Vector3f));
 			file.Read(&node->m_direction, sizeof(Vector2f));
 			file.Read(&node->m_leftDivider, sizeof(node->m_leftDivider));
-			file.Read(&node->m_index, sizeof(node->m_index));
+			file.Read(&node->m_index, sizeof(node->m_leftDivider));
+			node->m_index = j;
 		}
 
 		// Read input & output connections

@@ -79,9 +79,6 @@ private:
 
 	int m_index;
 
-	Set<Connection*> m_outputs;
-	Set<Connection*> m_inputs;
-
 	void* m_signal; // Stop-light, stop-sign, yield-sign
 	void* m_laneMarking;
 
@@ -89,6 +86,10 @@ private:
 	NodeGroup* m_nodeGroup;
 
 	Array<Vector2f> m_vertices[3];
+
+	// UNUSED
+	Set<Connection*> m_outputs;
+	Set<Connection*> m_inputs;
 };
 
 

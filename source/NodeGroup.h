@@ -32,6 +32,7 @@ public:
 	float GetWidth() const;
 	Vector3f GetLeftPosition() const;
 	Vector3f GetCenterPosition() const;
+	Node* GetNode(int index);
 
 	// Static methods
 

@@ -114,6 +114,11 @@ Array<BiarcPair>& NodeGroupConnection::GetSeams(IOType type, LaneSide side)
 	return m_seams[(int) type][(int) side];
 }
 
+Array<BiarcPair>& NodeGroupConnection::GetDrivingLines()
+{
+	return m_drivingLines;
+}
+
 
 //-----------------------------------------------------------------------------
 // Geometry
@@ -138,23 +143,42 @@ void NodeGroupConnection::UpdateGeometry()
 	Node* nodes[2];
 	nodes[0] = GetInput().group->GetNode(GetInput().index);
 	nodes[1] = GetOutput().group->GetNode(GetOutput().index);
-	BiarcPair prev, curr;
+	BiarcPair prev, lastPair, curr, drivingLine;
 	prev = BiarcPair::Interpolate(
 		nodes[0]->m_position.xy, GetInput().group->GetDirection(),
 		nodes[1]->m_position.xy, GetOutput().group->GetDirection());
+	m_drivingLines.clear();
 	m_dividerLines.clear();
 	m_dividerLines.push_back(prev);
 
 	// Create the lane dividers
 	int minRightCount = Math::Min(GetInput().count, GetOutput().count);
-	int mxaRightCount = Math::Max(GetInput().count, GetOutput().count);
+	int maxRightCount = Math::Max(GetInput().count, GetOutput().count);
 	for (int i = 0; i < minRightCount; i++)
 	{
 		nodes[0] = GetInput().group->GetNode(i);
 		nodes[1] = GetOutput().group->GetNode(i);
 		curr = BiarcPair::CreateParallel(prev,
 			nodes[0]->GetWidth(), nodes[1]->GetWidth());
+		drivingLine = BiarcPair::CreateParallel(prev,
+			nodes[0]->GetWidth() * 0.5f, nodes[1]->GetWidth() * 0.5f);
 		m_dividerLines.push_back(curr);
+		m_drivingLines.push_back(drivingLine);
+		prev = curr;
+	}
+	lastPair = prev;
+
+	for (int i = minRightCount; i < maxRightCount; i++)
+	{
+		float laneWidth;
+		if (i < GetInput().count)
+			laneWidth = GetInput().group->GetNode(i)->GetWidth();
+		else
+			laneWidth = GetOutput().group->GetNode(i)->GetWidth();
+		curr = BiarcPair::CreateParallel(prev, laneWidth, laneWidth);
+		drivingLine = BiarcPair::CreateParallel(prev,
+			laneWidth * 0.5f, laneWidth * 0.5f);
+		m_drivingLines.push_back(drivingLine);
 		prev = curr;
 	}
 
@@ -167,7 +191,7 @@ void NodeGroupConnection::UpdateGeometry()
 			for (int i = minRightCount; i < m_groups[k].count; i++)
 				offsets[k] += m_groups[k].group->GetNode(i)->GetWidth();
 		}
-		curr = BiarcPair::CreateParallel(prev, offsets[0], offsets[1]);
+		curr = BiarcPair::CreateParallel(lastPair, offsets[0], offsets[1]);
 		m_dividerLines.push_back(curr);
 	}
 
