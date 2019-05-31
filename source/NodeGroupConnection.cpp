@@ -63,20 +63,20 @@ RoadCurveLine NodeGroupConnection::GetRightVisualShoulderLine() const
 
 NodeGroupConnection* NodeGroupConnection::GetTwin()
 {
-	NodeGroup* inputTwin = m_input.group->m_twin;
-	NodeGroup* outputTwin = m_output.group->m_twin;
+	NodeGroup* inputTwin = GetInput().group->m_twin;
+	NodeGroup* outputTwin = GetOutput().group->m_twin;
 
-	if (m_input.index == 0 && m_output.index == 0 &&
+	if (GetInput().index == 0 && GetOutput().index == 0 &&
 		inputTwin != nullptr && outputTwin != nullptr &&
-		!m_input.group->m_tie->IsDivided() &&
-		!m_output.group->m_tie->IsDivided())
+		!GetInput().group->m_tie->IsDivided() &&
+		!GetOutput().group->m_tie->IsDivided())
 	{
-		for (unsigned int i = 0; i < outputTwin->m_outputs.size() &&
-			outputTwin->m_outputs[i]->m_input.index == 0; i++)
+		for (unsigned int i = 0; i < outputTwin->GetOutputs().size() &&
+			outputTwin->GetOutputs()[i]->GetInput().index == 0; i++)
 		{
-			NodeGroupConnection* connection = outputTwin->m_outputs[i];
-			if (connection->m_output.index == 0 &&
-				connection->m_output.group == inputTwin)
+			NodeGroupConnection* connection = outputTwin->GetOutputs()[i];
+			if (connection->GetOutput().index == 0 &&
+				connection->GetOutput().group == inputTwin)
 				return connection;
 		}
 	}
@@ -84,14 +84,24 @@ NodeGroupConnection* NodeGroupConnection::GetTwin()
 	return nullptr;
 }
 
-const NodeSubGroup& NodeGroupConnection::GetInput()
+NodeSubGroup& NodeGroupConnection::GetInput()
 {
-	return m_input;
+	return m_groups[(int) InputOutput::INPUT];
 }
 
-const NodeSubGroup& NodeGroupConnection::GetOutput()
+NodeSubGroup& NodeGroupConnection::GetOutput()
 {
-	return m_output;
+	return m_groups[(int) InputOutput::OUTPUT];
+}
+
+void NodeGroupConnection::SetInput(const NodeSubGroup& input)
+{
+	m_groups[(int) InputOutput::INPUT] = input;
+}
+
+void NodeGroupConnection::SetOutput(const NodeSubGroup& output)
+{
+	m_groups[(int) InputOutput::OUTPUT] = output;
 }
 
 const Array<BiarcPair>& NodeGroupConnection::GetSeams(IOType type, LaneSide side) const
@@ -126,22 +136,22 @@ void NodeGroupConnection::UpdateGeometry()
 {
 	// Create the left edge
 	Node* nodes[2];
-	nodes[0] = m_input.group->GetNode(m_input.index);
-	nodes[1] = m_output.group->GetNode(m_output.index);
+	nodes[0] = GetInput().group->GetNode(GetInput().index);
+	nodes[1] = GetOutput().group->GetNode(GetOutput().index);
 	BiarcPair prev, curr;
 	prev = BiarcPair::Interpolate(
-		nodes[0]->m_position.xy, m_input.group->GetDirection(),
-		nodes[1]->m_position.xy, m_output.group->GetDirection());
+		nodes[0]->m_position.xy, GetInput().group->GetDirection(),
+		nodes[1]->m_position.xy, GetOutput().group->GetDirection());
 	m_dividerLines.clear();
 	m_dividerLines.push_back(prev);
 
 	// Create the lane dividers
-	int minRightCount = Math::Min(m_input.count, m_output.count);
-	int mxaRightCount = Math::Max(m_input.count, m_output.count);
+	int minRightCount = Math::Min(GetInput().count, GetOutput().count);
+	int mxaRightCount = Math::Max(GetInput().count, GetOutput().count);
 	for (int i = 0; i < minRightCount; i++)
 	{
-		nodes[0] = m_input.group->GetNode(i);
-		nodes[1] = m_output.group->GetNode(i);
+		nodes[0] = GetInput().group->GetNode(i);
+		nodes[1] = GetOutput().group->GetNode(i);
 		curr = BiarcPair::CreateParallel(prev,
 			nodes[0]->GetWidth(), nodes[1]->GetWidth());
 		m_dividerLines.push_back(curr);
@@ -149,7 +159,7 @@ void NodeGroupConnection::UpdateGeometry()
 	}
 
 	// Create the right edge
-	if (m_input.count != m_output.count)
+	if (GetInput().count != GetOutput().count)
 	{
 		float offsets[2] = { 0.0f, 0.0f };
 		for (int k = 0; k < 2; k++)
@@ -163,15 +173,15 @@ void NodeGroupConnection::UpdateGeometry()
 
 	m_edgeLines[(int) LaneSide::LEFT] =
 		BiarcPair::CreateParallel(m_dividerLines.front(),
-		-m_input.group->GetLeftShoulderWidth(),
-		-m_output.group->GetLeftShoulderWidth());
+		-GetInput().group->GetLeftShoulderWidth(),
+		-GetOutput().group->GetLeftShoulderWidth());
 	m_edgeLines[(int) LaneSide::RIGHT] =
 		BiarcPair::CreateParallel(m_dividerLines.back(),
-		m_input.group->GetRightShoulderWidth(),
-		m_output.group->GetRightShoulderWidth());
+		GetInput().group->GetRightShoulderWidth(),
+		GetOutput().group->GetRightShoulderWidth());
 
-	VerticalCurve verticalCurve(m_input.group->GetPosition().z,
-		m_output.group->GetPosition().z);
+	VerticalCurve verticalCurve(GetInput().group->GetPosition().z,
+		GetOutput().group->GetPosition().z);
 	m_visualEdgeLines[0] = RoadCurveLine(m_dividerLines.front(), verticalCurve);
 	m_visualEdgeLines[1] = RoadCurveLine(m_dividerLines.back(), verticalCurve);
 	m_visualShoulderLines[0] = RoadCurveLine(m_edgeLines[0], verticalCurve);

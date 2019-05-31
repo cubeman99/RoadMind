@@ -183,12 +183,12 @@ Vector3f NodeGroup::GetRightPosition() const
 
 Array<NodeGroupConnection*>& NodeGroup::GetInputs()
 {
-	return m_inputs;
+	return m_connections[(int) InputOutput::INPUT];
 }
 
 Array<NodeGroupConnection*>& NodeGroup::GetOutputs()
 {
-	return m_outputs;
+	return m_connections[(int) InputOutput::OUTPUT];
 }
 
 bool NodeGroup::IsTied() const
@@ -396,14 +396,15 @@ void NodeGroup::UpdateIntersectionGeometry()
 	// Intersect shoulder edges between tied connections
 	if (m_twin != nullptr)
 	{
-		for (unsigned int i = 0; i < m_outputs.size() &&
-			m_outputs[i]->GetInput().index == 0; i++)
+		auto outputs = GetOutputs();
+		for (unsigned int i = 0; i < outputs.size() &&
+			outputs[i]->GetInput().index == 0; i++)
 		{
-			NodeGroupConnection* a = m_outputs[i];
-			for (unsigned int j = 0; j < m_twin->m_inputs.size() &&
-				m_twin->m_inputs[j]->GetOutput().index == 0; j++)
+			NodeGroupConnection* a = outputs[i];
+			for (unsigned int j = 0; j < m_twin->GetInputs().size() &&
+				m_twin->GetInputs()[j]->GetOutput().index == 0; j++)
 			{
-				NodeGroupConnection* b = m_twin->m_inputs[j];
+				NodeGroupConnection* b = m_twin->GetInputs()[j];
 				RoadCurveLine twinCurve = b->m_visualShoulderLines[
 					(int) LaneSide::LEFT].Reverse();
 

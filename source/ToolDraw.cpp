@@ -128,7 +128,7 @@ void ToolDraw::OnLeftMousePressed()
 			{
 				// Connect to the opposide side of an existing node
 				m_network->GrowNodeGroup(m_snapInfo.subGroup);
-				m_dragInfo.connection->m_output = m_snapInfo.subGroup;
+				m_dragInfo.connection->SetOutput(m_snapInfo.subGroup);
 				m_network->TieNodeGroups(m_dragInfo.nodeGroup, m_hoverInfo.subGroup.group);
 
 				m_dragInfo.inputGroup = m_dragInfo.nodeGroup;
@@ -192,7 +192,7 @@ void ToolDraw::Update(float dt)
 		if (m_dragInfo.state != DragState::NONE)
 		{
 			m_network->AddNodesToGroup(m_dragInfo.nodeGroup, 1);
-			m_dragInfo.connection->m_output.count++;
+			m_dragInfo.connection->GetOutput().count++;
 		}
 	}
 	if (m_keyboard->IsKeyPressed(Keys::minus_keypad))

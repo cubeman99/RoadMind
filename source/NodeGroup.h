@@ -105,18 +105,7 @@ private:
 	Vector2f m_direction;
 	Array<Node*> m_nodes;
 
-	union
-	{
-		struct
-		{
-			Array<NodeGroupConnection*> m_inputs;
-			Array<NodeGroupConnection*> m_outputs;
-		};
-		struct
-		{
-			Array<NodeGroupConnection*> m_connections[2];
-		};
-	};
+	Array<NodeGroupConnection*> m_connections[2];
 
 	Meters m_leftShoulderWidth;
 	Meters m_rightShoulderWidth;

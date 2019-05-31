@@ -3,7 +3,6 @@
 
 #include <cmgApplication/cmg_application.h>
 #include <cmgMath/cmg_math.h>
-#include <cmgPhysics/cmg_physics.h>
 #include <map>
 #include <vector>
 #include "Biarc.h"
@@ -42,12 +41,10 @@ public:
 
 	void CreateTestNetwork();
 	void DrawGridFloor(const Vector3f& center, Meters squareSize, Meters gridRadius);
-	void DrawVehicle(Graphics2D& g, Vehicle* vehicle);
 
 	void SetTool(EditorTool* tool);
 
 	void UpdateCameraControls(float dt);
-	void UpdateVehicleControls(float dt);
 
 private:
 	void DrawArc(Graphics2D& g, const Biarc3& arc, const Color& color);
@@ -99,9 +96,6 @@ private:
 	ToolDraw* m_toolDraw;
 	Array<EditorTool*> m_tools;
 	Array<Driver*> m_drivers;
-	VehicleParams m_vehicleParams;
-	Vehicle* m_player;
-	PhysicsEngine* m_physicsEngine;
 
 	CameraState m_camera;
 	CameraState m_defaultCameraState;
@@ -117,14 +111,6 @@ private:
 	Texture* m_backgroundTexture;
 	Vector2f m_backgroundPosition;
 	Vector2f m_backgroundSize;
-
-	Array<SimulationData> m_simulationData;
-	float m_lapTime;
-	Vector3f m_rollVector;
-	Vector3f m_pitchVector;
-	Vector3f m_upVector;
-	Vector3f m_leftVector;
-	Vector3f m_forwardVector;
 };
 
 

@@ -282,20 +282,20 @@ NodeGroupConnection* RoadNetwork::ConnectNodeSubGroups(
 	// combined with this one
 	for (NodeGroupConnection* connection : from.group->GetOutputs())
 	{
-		if (connection->m_output.group == to.group &&
-			NodeSubGroup::GetOverlap(connection->m_input, from) >= 0 &&
-			NodeSubGroup::GetOverlap(connection->m_output, to) >= 0)
+		if (connection->GetOutput().group == to.group &&
+			NodeSubGroup::GetOverlap(connection->GetInput(), from) >= 0 &&
+			NodeSubGroup::GetOverlap(connection->GetOutput(), to) >= 0)
 		{
 			int end0 = Math::Max(from.index + from.count,
-				connection->m_input.index + connection->m_input.count);
+				connection->GetInput().index + connection->GetInput().count);
 			int end1 = Math::Max(to.index + to.count,
-				connection->m_output.index + connection->m_output.count);
-			connection->m_input.index = Math::Min(
-				connection->m_input.index, from.index);
-			connection->m_output.index = Math::Min(
-				connection->m_output.index, to.index);
-			connection->m_input.count = end0 - connection->m_input.index;
-			connection->m_output.count = end1 - connection->m_output.index;
+				connection->GetOutput().index + connection->GetOutput().count);
+			connection->GetInput().index = Math::Min(
+				connection->GetInput().index, from.index);
+			connection->GetOutput().index = Math::Min(
+				connection->GetOutput().index, to.index);
+			connection->GetInput().count = end0 - connection->GetInput().index;
+			connection->GetOutput().count = end1 - connection->GetOutput().index;
 			return connection;
 		}
 	}
@@ -303,8 +303,8 @@ NodeGroupConnection* RoadNetwork::ConnectNodeSubGroups(
 	// Construct the node group connection
 	NodeGroupConnection* connection = new NodeGroupConnection();
 	connection->m_id = m_nodeGroupConnectionIdCounter++;
-	connection->m_input = from;
-	connection->m_output = to;
+	connection->SetInput(from);
+	connection->SetOutput(to);
 	connection->m_metrics = &m_metrics;
 	m_nodeGroupConnections.insert(connection);
 
@@ -361,10 +361,10 @@ void RoadNetwork::DeleteNodeGroup(NodeGroup* nodeGroup)
 		UntieNodeGroup(nodeGroup);
 
 	// Delete any connections to the node group
-	while (!nodeGroup->m_inputs.empty())
-		DeleteNodeGroupConnection(nodeGroup->m_inputs.back());
-	while (!nodeGroup->m_outputs.empty())
-		DeleteNodeGroupConnection(nodeGroup->m_outputs.back());
+	while (!nodeGroup->GetInputs().empty())
+		DeleteNodeGroupConnection(nodeGroup->GetInputs().back());
+	while (!nodeGroup->GetOutputs().empty())
+		DeleteNodeGroupConnection(nodeGroup->GetOutputs().back());
 
 	// Delete the node group itself
 	m_nodeGroups.erase(nodeGroup);
@@ -374,15 +374,15 @@ void RoadNetwork::DeleteNodeGroup(NodeGroup* nodeGroup)
 void RoadNetwork::DeleteNodeGroupConnection(NodeGroupConnection* connection)
 {
 	// Delete individiual node connections
-	NodeGroup* input = connection->m_input.group;
-	NodeGroup* output = connection->m_output.group;
-	for (int i = connection->m_input.index; i < connection->m_input.count; i++)
+	NodeGroup* input = connection->GetInput().group;
+	NodeGroup* output = connection->GetOutput().group;
+	for (int i = connection->GetInput().index; i < connection->GetInput().count; i++)
 	{
-		Node* a = connection->m_input.group->GetNode(i);
-		for (int j = connection->m_output.index;
-			j < connection->m_output.count; j++)
+		Node* a = connection->GetInput().group->GetNode(i);
+		for (int j = connection->GetOutput().index;
+			j < connection->GetOutput().count; j++)
 		{
-			Node* b = connection->m_output.group->GetNode(j);
+			Node* b = connection->GetOutput().group->GetNode(j);
 			//Disconnect(a, b);
 		}
 	}
@@ -510,12 +510,12 @@ bool RoadNetwork::Save(const Path& path)
 	for (NodeGroupConnection* connection : m_nodeGroupConnections)
 	{
 		file.Write(&connection->m_id, sizeof(int));
-		file.Write(&connection->m_input.index, sizeof(int));
-		file.Write(&connection->m_input.count, sizeof(int));
-		SavePointer(file, connection->m_input.group);
-		file.Write(&connection->m_output.index, sizeof(int));
-		file.Write(&connection->m_output.count, sizeof(int));
-		SavePointer(file, connection->m_output.group);
+		file.Write(&connection->GetInput().index, sizeof(int));
+		file.Write(&connection->GetInput().count, sizeof(int));
+		SavePointer(file, connection->GetInput().group);
+		file.Write(&connection->GetOutput().index, sizeof(int));
+		file.Write(&connection->GetOutput().count, sizeof(int));
+		SavePointer(file, connection->GetOutput().group);
 	}
 
 	// Save intersections
@@ -623,12 +623,12 @@ bool RoadNetwork::Load(const Path& path)
 	{
 		NodeGroupConnection* connection =
 			LoadPointer(file, m_nodeGroupConnections);
-		file.Read(&connection->m_input.index, sizeof(int));
-		file.Read(&connection->m_input.count, sizeof(int));
-		connection->m_input.group = LoadPointer(file, m_nodeGroups);
-		file.Read(&connection->m_output.index, sizeof(int));
-		file.Read(&connection->m_output.count, sizeof(int));
-		connection->m_output.group = LoadPointer(file, m_nodeGroups);
+		file.Read(&connection->GetInput().index, sizeof(int));
+		file.Read(&connection->GetInput().count, sizeof(int));
+		connection->GetInput().group = LoadPointer(file, m_nodeGroups);
+		file.Read(&connection->GetOutput().index, sizeof(int));
+		file.Read(&connection->GetOutput().count, sizeof(int));
+		connection->GetOutput().group = LoadPointer(file, m_nodeGroups);
 	}
 
 	// Read intersections
