@@ -9,7 +9,7 @@
 
 static const char* SAVE_FILE_PATH = "road_network.rdmd";
 
-#define ASSETS_PATH "C:/Workspace/C++/Framework Projects/RoadMind/assets/"
+#define ASSETS_PATH "C:/workspace/c++/cmg/RoadMind/assets/"
 
 // calculate local inertia tensors for different shapes
 Matrix3f createInertiaTensorBox(float mass, const Vector3f& halfBox)
@@ -17,9 +17,9 @@ Matrix3f createInertiaTensorBox(float mass, const Vector3f& halfBox)
 	if (mass > 0.0f)
 	{
 		float k = (1.0f / 12.0f) * mass * 4.0f; // multiply by 4.0 because sizes are half-dimensions
-		float xx = (float) halfBox.x * (float) halfBox.x;
-		float yy = (float) halfBox.y * (float) halfBox.y;
-		float zz = (float) halfBox.z * (float) halfBox.z;
+		float xx = (float)halfBox.x * (float)halfBox.x;
+		float yy = (float)halfBox.y * (float)halfBox.y;
+		float zz = (float)halfBox.z * (float)halfBox.z;
 		return Matrix3f::CreateScale(k * (yy + zz), k * (zz + xx), k * (xx + yy));
 	}
 	return Matrix3f::IDENTITY;
@@ -66,11 +66,12 @@ void MainApp::OnInitialize()
 	m_camera = m_defaultCameraState;
 
 	m_wheel = GetInputManager()->AddDevice<Joystick>();
-	m_joystick = GetInputManager()->AddDevice<Joystick>();
+	m_joystick = nullptr;
+	//m_joystick = GetInputManager()->AddDevice<Joystick>();
 	m_font = SpriteFont::LoadBuiltInFont(BuiltInFonts::FONT_CONSOLE);
 
-	m_vehicleMesh = Mesh::Load(ASSETS_PATH "toyota_ae86.obj");
-	m_meshWheel = Mesh::Load(ASSETS_PATH "wheel.obj");
+	Mesh::Load(ASSETS_PATH "toyota_ae86.obj", m_vehicleMesh);
+	Mesh::Load(ASSETS_PATH "wheel.obj", m_meshWheel);
 
 
 	//-------------------------------------------------------------------------
@@ -165,21 +166,21 @@ void MainApp::OnInitialize()
 	params.axles[1].ackermannGeometry = false;
 
 	// Steering
-	params.steering.speedSlow			= mphToMetersPerSecond(5);
-	params.steering.speedFast			= mphToMetersPerSecond(55);
-	params.steering.maxAngleSlow		= Math::ToRadians(40.0f);
-	params.steering.maxAngleFast		= Math::ToRadians(4.0f);
-	params.steering.turnRateSlow		= Math::ToRadians(80.0f);
-	params.steering.turnRateFast		= Math::ToRadians(8.0f);
-	params.steering.alignRateSlow		= Math::ToRadians(80.0f);
-	params.steering.alignRateFast		= Math::ToRadians(8.0f);
-	params.steering.steeringExponent	= 1.0f;
+	params.steering.speedSlow = mphToMetersPerSecond(5);
+	params.steering.speedFast = mphToMetersPerSecond(55);
+	params.steering.maxAngleSlow = Math::ToRadians(40.0f);
+	params.steering.maxAngleFast = Math::ToRadians(4.0f);
+	params.steering.turnRateSlow = Math::ToRadians(80.0f);
+	params.steering.turnRateFast = Math::ToRadians(8.0f);
+	params.steering.alignRateSlow = Math::ToRadians(80.0f);
+	params.steering.alignRateFast = Math::ToRadians(8.0f);
+	params.steering.steeringExponent = 1.0f;
 
 	// Graphics
 	params.graphics.meshBody = m_vehicleMesh;
 	params.graphics.meshWheel = m_meshWheel;
 	params.graphics.driverHeadPostion = Vector3f(-0.29761f, 0.00362f, 0.46259f);
-	
+
 	m_vehicleParams = params;
 
 	m_editMode = EditMode::CREATE;
@@ -192,6 +193,13 @@ void MainApp::OnInitialize()
 	m_currentTool = nullptr;
 
 	SetTool(m_toolDraw);
+
+	Array<uint8> fileData;
+	File::OpenAndGetContents("C:/files/scripts/germany.tlm", fileData);
+	uint32 count = fileData.size() / sizeof(SimulationData);
+	m_simulationData.resize(count);
+	memcpy(m_simulationData.data(), fileData.data(), count * sizeof(SimulationData));
+	m_lapTime = m_simulationData[0].time;
 
 	Reset();
 }
@@ -214,7 +222,8 @@ void MainApp::Reset()
 	m_cameraPitch = Math::HALF_PI;
 	m_cameraYaw = 0.0f;
 	m_cameraDistance = 60.0f;
-	
+
+	/*
 	m_cameraPitch = Math::HALF_PI * 0.4f;
 	m_cameraDistance = 7.0f;
 
@@ -222,6 +231,7 @@ void MainApp::Reset()
 	m_newCamera.SetPosition(Vector3f::ZERO);
 	m_newCamera.SetPerspective(
 		GetWindow()->GetAspectRatio(), 1.4f, 0.1f, 1000.0f);
+	*/
 }
 
 void MainApp::CreateTestNetwork()
@@ -248,9 +258,9 @@ void MainApp::UpdateCameraControls(float dt)
 	Mouse* mouse = GetMouse();
 	Keyboard* keyboard = GetKeyboard();
 	Window* window = GetWindow();
-	Vector2f windowSize((float) window->GetWidth(), (float) window->GetHeight());
-	Vector2f mousePos((float) mouse->GetMouseState().x, (float) mouse->GetMouseState().y);
-	Vector2f mousePosPrev((float) mouse->GetPrevMouseState().x, (float) mouse->GetPrevMouseState().y);
+	Vector2f windowSize((float)window->GetWidth(), (float)window->GetHeight());
+	Vector2f mousePos((float)mouse->GetMouseState().x, (float)mouse->GetMouseState().y);
+	Vector2f mousePosPrev((float)mouse->GetPrevMouseState().x, (float)mouse->GetPrevMouseState().y);
 	int scroll = mouse->GetMouseState().z - mouse->GetPrevMouseState().z;
 	bool ctrl = keyboard->IsKeyDown(Keys::left_control) ||
 		keyboard->IsKeyDown(Keys::right_control);
@@ -270,8 +280,8 @@ void MainApp::UpdateCameraControls(float dt)
 	// Scoll Wheel: Zoom in/out
 	if (scroll != 0)
 	{
-		m_camera.m_viewHeight *= Math::Pow(0.9f, (float) scroll);
-		m_cameraDistance *= Math::Pow(0.9f, (float) scroll);
+		m_camera.m_viewHeight *= Math::Pow(0.9f, (float)scroll);
+		m_cameraDistance *= Math::Pow(0.9f, (float)scroll);
 	}
 
 	// WASD: Move camera
@@ -314,12 +324,15 @@ void MainApp::UpdateCameraControls(float dt)
 			m_cameraYaw += Math::TWO_PI;
 	}
 
-	auto xbox = m_joystick->GetState();
-	float speed = 2.0f;
-	if (xbox.rightStick.Length() < 0.25f)
-		xbox.rightStick = Vector2f::ZERO;
-	m_cameraPitch -= xbox.rightStick.y * speed * dt;
-	m_cameraYaw -= xbox.rightStick.x * speed * dt;
+	if (m_joystick != nullptr)
+	{
+		auto xbox = m_joystick->GetState();
+		float speed = 2.0f;
+		if (xbox.rightStick.Length() < 0.25f)
+			xbox.rightStick = Vector2f::ZERO;
+		m_cameraPitch -= xbox.rightStick.y * speed * dt;
+		m_cameraYaw -= xbox.rightStick.x * speed * dt;
+	}
 
 	m_newCamera.SetOrientation(
 		Quaternion(Vector3f::UNITZ, m_cameraYaw) *
@@ -349,17 +362,23 @@ void MainApp::UpdateVehicleControls(float dt)
 	if (keyboard->IsKeyDown(Keys::right))
 		operatingParams.steering -= 1.0f;
 
-	auto xbox = m_joystick->GetState();
-	if (xbox.leftStick.Length() < 0.25f)
-		xbox.leftStick = Vector2f::ZERO;
-	operatingParams.steeringAngle -= xbox.leftStick.x;
-	operatingParams.throttle += xbox.rightTrigger - xbox.leftTrigger;
-	operatingParams.brake += xbox.a ? 1.0f : 0.0f;
-	
-	operatingParams.steeringAngle -= m_wheel->m_axisPool[0].x;
-	operatingParams.throttle += 1.0f - (m_wheel->m_axisPool[1].x + 1.0f) * 0.5f;
-	operatingParams.brake += 1.0f - (m_wheel->m_axisPool[5].x + 1.0f) * 0.5f;
-	
+	if (m_joystick != nullptr)
+	{
+		auto xbox = m_joystick->GetState();
+		if (xbox.leftStick.Length() < 0.25f)
+			xbox.leftStick = Vector2f::ZERO;
+		operatingParams.steeringAngle -= xbox.leftStick.x;
+		operatingParams.throttle += xbox.rightTrigger - xbox.leftTrigger;
+		operatingParams.brake += xbox.a ? 1.0f : 0.0f;
+	}
+
+	if (m_wheel != nullptr)
+	{
+		operatingParams.steeringAngle -= m_wheel->m_axisPool[0].x;
+		operatingParams.throttle += 1.0f - (m_wheel->m_axisPool[1].x + 1.0f) * 0.5f;
+		operatingParams.brake += 1.0f - (m_wheel->m_axisPool[5].x + 1.0f) * 0.5f;
+	}
+
 	vehicle->GetBody()->ApplyForceLinear(vehicle->GetBody()->GetBodyToWorld().c1.xyz *
 		vehicle->GetBody()->GetMass() * 9.81f * operatingParams.throttle * 0.5f);
 	//operatingParams.throttle = 0.0f;
@@ -486,7 +505,7 @@ void MainApp::DrawArc(Graphics2D& g, const Biarc& arc, float z1, float z2, float
 		glVertex3fv(Vector3f(arc.start, Math::Lerp(z1, z2, Smooth(t1))).v);
 		for (int j = 1; j < count; j++)
 		{
-			float t = Math::Lerp(t1, t2, j / (float) count);
+			float t = Math::Lerp(t1, t2, j / (float)count);
 			Vector2f vPrev = v;
 			float zi = Math::Lerp(z1, z2, Smooth(t));
 			v.Rotate(arc.center, angle);
@@ -528,7 +547,7 @@ void MainApp::DrawCurveLine(Graphics2D& g, const Biarc& horizontalArc,
 		float angle = -horizontalArc.angle / count;
 		for (int j = 1; j < count; j++)
 		{
-			float t = Math::Lerp(t1, t2, j / (float) count);
+			float t = Math::Lerp(t1, t2, j / (float)count);
 			point.xy.Rotate(horizontalArc.center, angle);
 			point.z = verticalCurve.GetHeight(t);
 			glVertex3fv(point.v);
@@ -544,7 +563,7 @@ void MainApp::DrawCurveLine(Graphics2D& g, const RoadCurveLine& curve, const Col
 	float tm = Math::Lerp(curve.t1, curve.t2,
 		curve.horizontalCurve.first.length /
 		(curve.horizontalCurve.first.length +
-		curve.horizontalCurve.second.length));
+			curve.horizontalCurve.second.length));
 
 	if (m_showDebug->enabled)
 	{
@@ -562,7 +581,7 @@ void MainApp::FillZippedArcs(Graphics2D& g, const Biarc& a, const Biarc& b, cons
 	float maxLength = Math::Max(a.length, b.length);
 	int count = 10;
 	float interval = 1.5f;
-	count = (int) ((maxLength / interval) + 0.5f);
+	count = (int)((maxLength / interval) + 0.5f);
 	count = Math::Max(2, count);
 	glBegin(GL_TRIANGLE_STRIP);
 	glColor3ubv(color.data());
@@ -570,7 +589,7 @@ void MainApp::FillZippedArcs(Graphics2D& g, const Biarc& a, const Biarc& b, cons
 	glVertex2fv(b.start.v);
 	for (int i = 1; i <= count; i++)
 	{
-		float t = (float) i / count;
+		float t = (float)i / count;
 		glVertex2fv(a.GetPoint(a.length * t).v);
 		glVertex2fv(b.GetPoint(b.length * t).v);
 	}
@@ -593,12 +612,12 @@ void MainApp::FillZippedCurves(Graphics2D& g, const RoadCurveLine& a,
 	{
 		float maxLength = Math::Max(a.horizontalCurve.arcs[k].length,
 			b.horizontalCurve.arcs[k].length);
-		int count = Math::Max(2, (int) ((maxLength / interval) + 0.5f));
+		int count = Math::Max(2, (int)((maxLength / interval) + 0.5f));
 		float offset1 = a.horizontalCurve.first.length * k;
 		float offset2 = b.horizontalCurve.first.length * k;
 		for (int i = 0; i < count; i++)
 		{
-			float t = (float) i / (float) count;
+			float t = (float)i / (float)count;
 			glVertex3fv(a.GetPoint(offset1 + a.horizontalCurve.arcs[k].length * t).v);
 			glVertex3fv(b.GetPoint(offset2 + b.horizontalCurve.arcs[k].length * t).v);
 		}
@@ -619,8 +638,8 @@ void MainApp::DrawGridFloor(const Vector3f& center, Meters squareSize, Meters gr
 
 	float startX = center.x - gridRadius;
 	float startZ = center.y - gridRadius;
-	int indexX = (int) Math::Floor(startX / (squareSize));
-	int indexZ = (int) Math::Floor(startZ / (squareSize));
+	int indexX = (int)Math::Floor(startX / (squareSize));
+	int indexZ = (int)Math::Floor(startZ / (squareSize));
 	startX = indexX * squareSize;
 	startZ = indexZ * squareSize;
 	float endX = startX + (gridRadius * 2.0f);
@@ -690,7 +709,7 @@ void MainApp::DrawVehicle(Graphics2D& g, Vehicle* vehicle)
 	m_debugDraw->DrawMesh(params.graphics.meshBody,
 		vehicle->GetBody()->GetBodyToWorld(), Color::GREEN);
 	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-	
+
 	m_debugDraw->DrawPoint(vehicle->GetBody()->GetBodyToWorld(),
 		vehicle->GetBody()->GetCenterOfMass(),
 		Color::MAGENTA, 6.0f);
@@ -708,7 +727,7 @@ void MainApp::DrawVehicle(Graphics2D& g, Vehicle* vehicle)
 			Matrix4f::CreateRotation(Vector3f::UNITX, -wheel->GetAngle()),
 			Vector3f(0.2f, 0.3f, 0.1f), Color::MAGENTA);
 
-		Matrix4f forceModelMatrix = 
+		Matrix4f forceModelMatrix =
 			wheel->GetWheelToWorld() *
 			Matrix4f::CreateTranslation(0, 0, -1) *
 			Matrix4f::CreateScale(forceScale);
@@ -725,6 +744,13 @@ void MainApp::DrawVehicle(Graphics2D& g, Vehicle* vehicle)
 			Vector3f(wheel->GetLateralForce(), wheel->GetLongitudinalForce(), 0),
 			Color::YELLOW, 4.0f);
 	}
+
+	m_debugDraw->DrawLine(Matrix4f::IDENTITY,
+		pos, pos + m_forwardVector * 10, Color::GREEN);
+	m_debugDraw->DrawLine(Matrix4f::IDENTITY,
+		pos, pos + m_leftVector * 10, Color::RED);
+	m_debugDraw->DrawLine(Matrix4f::IDENTITY,
+		pos, pos + m_upVector * 10, Color::BLUE);
 
 	glUseProgram(0);
 	glLineWidth(1.0f);
@@ -809,9 +835,9 @@ void MainApp::OnUpdate(float dt)
 	Keyboard* keyboard = GetKeyboard();
 	Window* window = GetWindow();
 	MouseState mouseState = mouse->GetMouseState();
-	Vector2f windowSize((float) window->GetWidth(), (float) window->GetHeight());
-	m_mousePosition.x = (float) mouseState.x;
-	m_mousePosition.y = (float) mouseState.y;
+	Vector2f windowSize((float)window->GetWidth(), (float)window->GetHeight());
+	m_mousePosition.x = (float)mouseState.x;
+	m_mousePosition.y = (float)mouseState.y;
 	m_mousePosition = m_camera.ToWorldSpace(m_mousePosition, windowSize);
 
 	bool ctrl = (keyboard->IsKeyDown(Keys::left_control) ||
@@ -827,7 +853,7 @@ void MainApp::OnUpdate(float dt)
 		Quit();
 		return;
 	}
-	
+
 	// F4: Toggle Fullscreen Mode
 	if (keyboard->IsKeyPressed(Keys::f4))
 		GetWindow()->SetFullscreen(!GetWindow()->IsFullscreen());
@@ -901,7 +927,7 @@ void MainApp::OnUpdate(float dt)
 		m_currentTool->m_network = m_network;
 		m_currentTool->m_mousePosition = m_cursorGroundPosition.xy;
 		m_currentTool->m_mousePositionInWindow = Vector2f(
-			(float) mouseState.x, (float) mouseState.y);
+			(float)mouseState.x, (float)mouseState.y);
 		m_currentTool->m_camera = &m_newCamera;
 		m_currentTool->m_window = GetWindow();
 
@@ -917,15 +943,50 @@ void MainApp::OnUpdate(float dt)
 		m_currentTool->Update(dt);
 	}
 
-	UpdateVehicleControls(dt);
+	//UpdateVehicleControls(dt);
+
+	m_lapTime += dt;
+	VehicleOperatingParams operatingParams;
+	//orientation = Quaternion::IDENTITY;
+	for (uint32 i = 0; i < m_simulationData.size(); i++)
+	{
+		if (m_simulationData[i].time > m_lapTime)
+		{
+			auto& data = m_simulationData[i];
+			Vector3f v = data.position - m_simulationData[0].position;
+			m_player->SetPosition(Vector3f(v.GetXZ(), v.y));
+			operatingParams.throttle = data.throttle;
+			operatingParams.steeringAngle = data.steering;
+			operatingParams.brake = data.brake;
+			m_rollVector.x = data.roll.x;
+			m_rollVector.y = data.roll.z;
+			m_rollVector.z = data.roll.y;
+			m_pitchVector.x = data.pitch.x;
+			m_pitchVector.y = data.pitch.z;
+			m_pitchVector.z = data.pitch.y;
+			Vector3f forward = m_pitchVector;
+			Vector3f left = m_rollVector;
+			Vector3f up = forward.Cross(left);
+			up.Normalize();
+			m_upVector = up;
+			m_leftVector = left;
+			m_forwardVector = forward;
+			Matrix3f m(-left, forward, up);
+			m_player->SetOrientation(m.ToQuaternion());
+			break;
+		}
+	}
+	m_player->SetOperatingParams(operatingParams);
 
 	// Update vehicles
-	m_physicsEngine->Simulate(dt);
-	m_player->Update(dt);
+	// m_physicsEngine->Simulate(dt);
+	// m_player->Update(dt);
+
+	// m_cameraPosition = m_player->GetPosition();
 
 	// Update the drivers
-	for (Driver* driver : m_drivers)
-		driver->Update(dt);
+	//for (Driver* driver : m_drivers)
+	//	driver->Update(dt);
 
 	UpdateCameraControls(dt);
 
@@ -1031,12 +1092,12 @@ void FillShape(Graphics2D& g, const Array<Biarc>& arcs, const Color& color)
 		if (!arc.IsStraight() && !arc.IsPoint())
 		{
 			Vector2f v = arc.start;
-			int count = (int) ((Math::Abs(arc.angle) / Math::TWO_PI) * 50) + 2;
+			int count = (int)((Math::Abs(arc.angle) / Math::TWO_PI) * 50) + 2;
 			//float angle = arc.angle / count;
 			//v.Rotate(arc.center, angle);
 			for (int j = 1; j < count; j++)
 			{
-				float t = j / (float) count;
+				float t = j / (float)count;
 				float angle = -arc.angle * t;
 				v = arc.start;
 				v.Rotate(arc.center, angle);
@@ -1055,8 +1116,8 @@ void MainApp::OnRender()
 {
 	Window* window = GetWindow();
 	MouseState mouseState = GetMouse()->GetMouseState();
-	Vector2f windowSize((float) window->GetWidth(),
-		(float) window->GetHeight());
+	Vector2f windowSize((float)window->GetWidth(),
+		(float)window->GetHeight());
 
 	glDisable(GL_DEPTH_TEST);
 	glEnable(GL_TEXTURE_2D);
@@ -1396,7 +1457,7 @@ void MainApp::OnRender()
 	// Draw HUD
 	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 	projection = Matrix4f::CreateOrthographic(0.0f,
-		(float) window->GetWidth(), (float) window->GetHeight(),
+		(float)window->GetWidth(), (float)window->GetHeight(),
 		0.0f, -1.0f, 1.0f);
 	glMatrixMode(GL_PROJECTION);
 	glLoadMatrixf(projection.m);
@@ -1407,10 +1468,10 @@ void MainApp::OnRender()
 			g.DrawRect(m_toolSelection->GetSelectionBox(), Color::GREEN);
 	}
 
-	int groupCount = (int) m_network->GetNodeGroups().size();
-	int connectionCount = (int) m_network->GetNodeGroupConnections().size();
-	int tieCount = (int) m_network->GetNodeGroupTies().size();
-	int intersectionCount = (int) m_network->GetIntersections().size();
+	int groupCount = (int)m_network->GetNodeGroups().size();
+	int connectionCount = (int)m_network->GetNodeGroupConnections().size();
+	int tieCount = (int)m_network->GetNodeGroupTies().size();
+	int intersectionCount = (int)m_network->GetIntersections().size();
 
 
 	String toolName = "(none)";
@@ -1436,13 +1497,15 @@ void MainApp::OnRender()
 		ss << std::left << std::setw(15) << label.str() <<
 			BOOL2ASCII(m_debugOptions[i]->enabled) << endl;
 	}
-	
+
 	ss << "" << endl;
 	auto operatingParams = m_player->GetOperatingParams();
 	ss << "Steering: " << operatingParams.steeringAngle << endl;
 	ss << "Throttle: " << operatingParams.throttle << endl;
 	ss << "Brake: " << operatingParams.brake << endl;
 	ss << "Vehicle Speed: " << metersPerSecondToMph(m_player->GetVelocity().Length()) << " MPH" << endl;
+	ss << "Position: " << m_player->GetPosition() << " MPH" << endl;
+	ss << "Velocity: " << m_player->GetVelocity() << " MPH" << endl;
 
 	g.DrawString(m_font, ss.str(), Vector2f(5, 5));
 

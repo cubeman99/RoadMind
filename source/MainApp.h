@@ -117,6 +117,14 @@ private:
 	Texture* m_backgroundTexture;
 	Vector2f m_backgroundPosition;
 	Vector2f m_backgroundSize;
+
+	Array<SimulationData> m_simulationData;
+	float m_lapTime;
+	Vector3f m_rollVector;
+	Vector3f m_pitchVector;
+	Vector3f m_upVector;
+	Vector3f m_leftVector;
+	Vector3f m_forwardVector;
 };
 
 

@@ -8,6 +8,45 @@
 #include "RoadNetwork.h"
 #include "Camera.h"
 
+struct SimulationData
+{
+	float time;
+	float lapTime;
+	float lapDistance;
+	float distance;
+	Vector3f position;
+	float speed;
+	Vector3f velocity;
+	Vector3f roll;
+	Vector3f pitch;
+	float suspensionPositionRearLeft;
+	float suspensionPositionRearRight;
+	float suspensionPositionFrontLeft;
+	float suspensionPositionFrontRight;
+	float suspensionVelocityRearLeft;
+	float suspensionVelocityRearRight;
+	float suspensionVelocityFrontLeft;
+	float suspensionVelocityFrontRight;
+	float wheelVelocityRearLeft;
+	float wheelVelocityRearRight;
+	float wheelVelocityFrontLeft;
+	float wheelVelocityFrontRight;
+	float throttle;
+	float steering;
+	float brake;
+	float clutch;
+	float gear;
+	float gForceLateral;
+	float gForceLongitudinal;
+	float lap;
+	float engineSpeed;
+	float unused1[22];
+	float totalLaps;
+	float trackLength;
+	float unused2[1];
+	float maxEngineSpeed;
+	float unused3[2];
+};
 
 class EditorTool
 {
