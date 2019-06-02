@@ -15,11 +15,15 @@ public:
 		return m_drivers;
 	}
 
+	float GetTrafficPercent();
+
 	void Clear();
 	void SpawnDriver();
+	void DeleteDriver(Driver* driver);
 	void Update(float dt);
 
 private:
 	RoadNetwork* m_network;
 	Array<Driver*> m_drivers;
+	float m_trafficPercent;
 };

@@ -23,10 +23,10 @@ MainApp::MainApp()
 	m_debugOptions.push_back(m_showCollisions = new DebugOption("Collisions", false));
 	m_debugOptions.push_back(m_showDrivingLines = new DebugOption("Paths", false));
 
-	m_showDebug->enabled = true;
+	m_showDebug->enabled = false;
 	m_showRoadSurface->enabled = false;
 	m_showRoadSurface->enabled = false;
-	m_showCollisions->enabled = true;
+	m_showCollisions->enabled = false;
 	m_showNodes->enabled = false;
 }
 
@@ -72,8 +72,8 @@ void MainApp::OnInitialize()
 	Reset();
 	m_network->Load(SAVE_FILE_PATH);
 
-	for (int i = 0; i < 50; i++)
-		m_drivingSystem->SpawnDriver();
+	//for (int i = 0; i < 50; i++)
+	//	m_drivingSystem->SpawnDriver();
 }
 
 void MainApp::Reset()
@@ -846,7 +846,7 @@ void MainApp::OnRender()
 	gridCenter.z = 0.0f;
 	gridCenter.xy = m_cameraPosition.xy;
 	Meters gridRadius = m_camera.m_viewHeight;
-	gridRadius = m_cameraDistance * 1.4f;
+	gridRadius = m_cameraDistance * 2.0f;
 	DrawGridFloor(gridCenter, 1.0f, gridRadius);
 
 	if (m_wireframeMode->enabled)
@@ -1088,16 +1088,35 @@ void MainApp::OnRender()
 	}
 
 	// Draw drivers
+	//glDepthMask(true);
+	//glEnable(GL_DEPTH_TEST);
+	//glClear(GL_DEPTH_BUFFER_BIT);
 	for (Driver* driver : m_drivingSystem->GetDrivers())
 	{
 		Meters radius = 0.75f;
 		float slowPercent = driver->GetSlowDownPercent();
 		Color driverColor = Color::Lerp(Color::GREEN, Color::RED, slowPercent);
 		Color outlineColor = Color::WHITE;
-		Color brakeColor = Color(80, 0, 0);
-		Color lightColor = Color(80, 80, 0);
-		if (driver->GetAcceleration() < 0.0f)
-			brakeColor = Color::RED;
+		Color brakeColorLeft = Color(80, 0, 0);
+		Color brakeColorRight = Color(80, 0, 0);
+		Color lightColorLeft = Color(80, 80, 0);
+		Color lightColorRight = Color(80, 80, 0);
+		auto lights = driver->GetLightState();
+		if (lights.braking)
+		{
+			brakeColorLeft = Color::RED;
+			brakeColorRight = Color::RED;
+		}
+		if (lights.leftBlinker)
+		{
+			lightColorLeft = Color::YELLOW;
+			brakeColorLeft = Color::YELLOW;
+		}
+		if (lights.rightBlinker)
+		{
+			lightColorRight = Color::YELLOW;
+			brakeColorRight = Color::YELLOW;
+		}
 		outlineColor = Color::Lerp(Color::GREEN, Color::RED, slowPercent);
 		if (driver->IsColliding())
 			outlineColor = Color::DARK_RED;
@@ -1113,35 +1132,38 @@ void MainApp::OnRender()
 			dir.Normalize();
 			Matrix3f dcm = Matrix3f(
 				Vector3f(dir.x, dir.y, 0.0f),
-				Vector3f(-dir.y, dir.x, 0.0f),
+				Vector3f(dir.y, -dir.x, 0.0f),
 				Vector3f::UNITZ);
 			g.SetTransformation(
 				Matrix4f::CreateTranslation(state.position[i]) * Matrix4f(dcm));
 			g.FillRect(-size.x * 0.5f, -size.y * 0.5f, size.x, size.y, driverColor);
+			lightLength = size.y * 0.2f;
 			if (i == 0)
 			{
-				g.FillRect(size.x * 0.5f - lightLength, -size.y * 0.5f, lightLength, size.y * 0.25f, lightColor);
-				g.FillRect(size.x * 0.5f - lightLength, size.y * 0.25f, lightLength, size.y * 0.25f, lightColor);
+				g.FillRect(size.x * 0.5f - lightLength, -size.y * 0.5f, lightLength, size.y * 0.25f, lightColorLeft);
+				g.FillRect(size.x * 0.5f - lightLength, size.y * 0.25f, lightLength, size.y * 0.25f, lightColorRight);
 			}
-			g.FillRect(-size.x * 0.5f, -size.y * 0.5f, lightLength, size.y * 0.25f, brakeColor);
-			g.FillRect(-size.x * 0.5f, size.y * 0.25f, lightLength, size.y * 0.25f, brakeColor);
+			g.FillRect(-size.x * 0.5f, -size.y * 0.5f, lightLength, size.y * 0.25f, brakeColorLeft);
+			g.FillRect(-size.x * 0.5f, size.y * 0.25f, lightLength, size.y * 0.25f, brakeColorRight);
 			if (i < params.trailerCount - 1)
 			{
-				g.DrawLine(Vector2f(-size.x * 0.5f, 0.0f),
+				/*g.DrawLine(Vector2f(-size.x * 0.5f, 0.0f),
 					Vector2f(-size.x * 0.5f - params.pivotOffset[0], 0.0f),
-					outlineColor);
+					outlineColor);*/
 			}
 			if (i > 0)
 			{
-				g.DrawLine(Vector2f(size.x * 0.5f, 0.0f),
+				/*g.DrawLine(Vector2f(size.x * 0.5f, 0.0f),
 					Vector2f(size.x * 0.5f + params.pivotOffset[0], 0.0f),
-					outlineColor);
+					outlineColor);*/
 				g.DrawCircle(Vector2f(size.x * 0.5f + params.pivotOffset[0], 0.0f),
 					size.y * 0.1f, outlineColor);
 			}
 			g.DrawRect(-size.x * 0.5f, -size.y * 0.5f, size.x, size.y, outlineColor);
 		}
 	}
+	//glDisable(GL_DEPTH_TEST);
+	//glDepthMask(false);
 	g.SetTransformation(Matrix4f::IDENTITY);
 
 	// Draw driver paths
@@ -1246,7 +1268,7 @@ void MainApp::OnRender()
 
 	using namespace std;
 	std::stringstream ss;
-	ss << "FPS: " << GetFPS() << endl;
+	//ss << "FPS: " << GetFPS() << endl;
 	ss << "---------------------------" << endl;
 	ss << "Tool: " << toolName << endl;
 	ss << endl;
@@ -1264,13 +1286,16 @@ void MainApp::OnRender()
 			BOOL2ASCII(m_debugOptions[i]->enabled) << endl;
 	}
 
-	g.DrawString(m_font, ss.str(), Vector2f(5, 5));
+	ss << "---------------------------" << endl;
+	ss << "Traffic: " << int(100 * m_drivingSystem->GetTrafficPercent() + 0.5f) << "%" << endl;
+
+	g.DrawString(m_font, ss.str(), Vector2f(5, 40));
 
 	if (m_currentTool == m_toolDraw)
 	{
 		for (int i = 0; i < m_toolDraw->GetLaneCount(); i++)
 		{
-			Vector2f v = Vector2f(200 + (i * 20.0f), 20.0f);
+			Vector2f v = Vector2f(10 + (i * 20.0f), 20.0f);
 			g.DrawCircle(v, 10, Color::WHITE);
 		}
 	}

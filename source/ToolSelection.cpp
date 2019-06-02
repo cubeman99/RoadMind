@@ -192,6 +192,33 @@ void ToolSelection::Update(float dt)
 			m_network->CreateIntersection(m_selection.GetNodeGroups());
 		}
 	}
+
+	// Page-Up/Down: Raise/lower
+	if (m_keyboard->IsKeyDown(Keys::page_up))
+	{
+		float amount = 0.0f;
+		if (m_keyboard->IsKeyDown(Keys::page_up))
+			amount += 1.0f;
+		if (m_keyboard->IsKeyDown(Keys::page_down))
+			amount -= 1.0f;
+		if (amount != 0.0f)
+		{
+			amount *= 10.0f * dt;
+			for (NodeGroup* group : m_selection.GetNodeGroups())
+			{
+				if (group->GetTie() != nullptr)
+				{
+					group->GetTie()->SetPosition(
+						group->GetTie()->GetPosition() + Vector3f(0, 0, amount));
+				}
+				else
+				{
+					group->SetPosition(
+						group->GetPosition() + Vector3f(0, 0, amount));
+				}
+			}
+		}
+	}
 }
 
 

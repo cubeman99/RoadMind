@@ -1,4 +1,5 @@
 #include "Driver.h"
+#include "DrivingSystem.h"
 
 
 //-----------------------------------------------------------------------------
@@ -14,31 +15,66 @@ Driver::Driver()
 {
 }
 
-Driver::Driver(RoadNetwork* network, Node* node)
+Driver::Driver(RoadNetwork* network, DrivingSystem* drivingSystem, Node* node)
 	: m_nodeCurrent(node)
 	, m_roadNetwork(network)
+	, m_drivingSystem(drivingSystem)
 	, m_distance(0.0f)
 	, m_speed(0.0f)
 	, m_acceleration(0.0f)
 	, m_desiredSpeed(20.0f)
+	, m_destroy(false)
+	, m_speedPrev(0.0f)
+	, m_brakeLightTimer(0.0f)
+	, m_blinkerTimer(0.0f)
 {
 	m_desiredSpeed = Random::NextFloat(10.0f, 20.0f);
+	m_speed = m_desiredSpeed;
 	m_distance = Random::NextFloat(0.0f, 3.0f);
 
-	m_vehicleParams.trailerCount = 1;
-	m_vehicleParams.acceleration = 20.0f;
-	m_vehicleParams.deceleration = 70.0f;
-	m_vehicleParams.size[0] = Vector3f(4.78f, 1.96f, 1.18f);
-	m_vehicleParams.maxSpeed = 25.0f;
+	DriverVehicleParams params;
+	Array<DriverVehicleParams> vehicles;
 
-	if (Random::NextInt(10) > 7)
-	{
-		m_vehicleParams.trailerCount = 2;
-		m_vehicleParams.size[0] = Vector3f(8.1f, 2.4f, 3.8f);
-		m_vehicleParams.size[1] = Vector3f(12.7f, 2.8f, 4.0f);
-		m_vehicleParams.pivotOffset[0] = -1.7f;
-		m_vehicleParams.pivotOffset[1] = -1.7f;
-	}
+	// Normal Car
+	params.trailerCount = 1;
+	params.acceleration = 20.0f;
+	params.deceleration = 70.0f;
+	params.size[0] = Vector3f(4.78f, 1.96f, 1.18f);
+	params.maxSpeed = 25.0f;
+	vehicles.push_back(params);
+	vehicles.push_back(params);
+	vehicles.push_back(params);
+	vehicles.push_back(params);
+	vehicles.push_back(params);
+	vehicles.push_back(params);
+	vehicles.push_back(params);
+	vehicles.push_back(params);
+
+	// Bus
+	params.trailerCount = 1;
+	params.size[0] = Vector3f(9.0f, 2.1f, 3.5f);
+	vehicles.push_back(params);
+	vehicles.push_back(params);
+
+	// 1-Trailer Truck
+	params.trailerCount = 2;
+	params.size[0] = Vector3f(8.1f, 2.4f, 3.8f);
+	params.size[1] = Vector3f(12.7f, 2.8f, 4.0f);
+	params.pivotOffset[0] = -1.7f;
+	vehicles.push_back(params);
+	vehicles.push_back(params);
+	
+	// 2-Trailer Truck
+	params.trailerCount = 3;
+	params.size[0] = Vector3f(3.0f, 2.4f, 3.8f);
+	params.size[1] = Vector3f(7.5f, 2.5f, 4.0f);
+	params.size[2] = Vector3f(7.5f, 2.5f, 4.0f);
+	params.pivotOffset[0] = 0.4f;
+	params.pivotOffset[1] = 0.4f;
+	vehicles.push_back(params);
+
+	m_vehicleParams = Random::Choose(vehicles);
+
 
 	if (node != nullptr)
 	{
@@ -294,6 +330,8 @@ void Driver::Update(float dt)
 			m_connection->RemoveDriver(this);
 			m_connection = nullptr;
 			Next();
+			if (m_path.size() == 0)
+				m_destroy = true;
 		}
 
 		if (m_path.size() > 0)
@@ -324,6 +362,47 @@ void Driver::Update(float dt)
 
 	if (m_path.size() == 0 && m_connection != nullptr) 
 		m_connection->RemoveDriver(this);
+
+	// Update brake light state
+
+	m_speedSamples.push_back(m_speed);
+	if (m_speedSamples.size() > 8)
+		m_speedSamples.erase(m_speedSamples.begin());
+	MetersPerSecond avgSpeed = 0.0f;
+	for (float sample : m_speedSamples)
+		avgSpeed += sample;
+	avgSpeed /= (MetersPerSecond) m_speedSamples.size();
+	float deltaSpeed = (avgSpeed - m_speedPrev) / dt;
+	m_speedPrev = avgSpeed;
+	
+	m_lightState.leftBlinker = false;
+	m_lightState.rightBlinker = false;
+	if (m_path.size() > 0)
+	{
+		int laneShift = m_path[0].GetLaneShift();
+		if (laneShift < 0)
+			m_lightState.leftBlinker = m_blinkerTimer >= 0.0f;
+		else if (laneShift > 0)
+			m_lightState.rightBlinker = m_blinkerTimer >= 0.0f;
+	}
+	m_blinkerTimer -= dt;
+	if (m_blinkerTimer < -0.3f)
+		m_blinkerTimer += 0.6f;
+
+	//if ((m_speed < mphToMetersPerSecond(5.0f) && deltaSpeed < FLT_EPSILON) ||
+	//	deltaSpeed < -1.0f)
+	if (deltaSpeed < -20.0f)
+		m_brakeLightTimer = 0.5f;
+	if (m_brakeLightTimer > 0.0f)
+	{
+		m_brakeLightTimer -= dt;
+		m_lightState.braking = true;
+	}
+	else
+	{
+		m_lightState.braking = false;
+	}
+	m_speedPrev = m_speed;
 
 	UpdateFutureStates();
 }

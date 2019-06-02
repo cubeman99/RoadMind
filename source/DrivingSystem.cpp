@@ -9,6 +9,7 @@
 DrivingSystem::DrivingSystem(RoadNetwork* network)
 	: m_network(network)
 {
+	m_trafficPercent = 0.0f;
 }
 
 DrivingSystem::~DrivingSystem()
@@ -23,17 +24,60 @@ void DrivingSystem::Clear()
 	m_drivers.clear();
 }
 
+float DrivingSystem::GetTrafficPercent()
+{
+	return m_trafficPercent;
+}
+
 void DrivingSystem::SpawnDriver()
 {
-	NodeGroup* nodeGroup = Random::ChooseFromSet(m_network->GetNodeGroups());
+	/*NodeGroup* nodeGroup = Random::ChooseFromSet(m_network->GetNodeGroups());
 	int index = Random::NextInt(nodeGroup->GetNumNodes());
 	Node* node = nodeGroup->GetNode(index);
 	Driver* driver = new Driver(m_network, node);
-	m_drivers.push_back(driver);
+	m_drivers.push_back(driver);*/
+
+	Set<Node*> nodes;
+	for (NodeGroupConnection* connection : m_network->GetNodeGroupConnections())
+	{
+		for (int i = 0; i < connection->GetInput().count; i++)
+		{
+			if (connection->GetInput().group->GetInputs().size() == 0)
+				nodes.insert(connection->GetInput().GetNode(i));
+		}
+	}
+	if (nodes.size() > 0)
+	{
+		Node* node = Random::ChooseFromSet(nodes);
+		Driver* driver = new Driver(m_network, this, node);
+		m_drivers.push_back(driver);
+	}
 }
+
+void DrivingSystem::DeleteDriver(Driver* driver)
+{
+	auto it = std::find(m_drivers.begin(), m_drivers.end(), driver);
+	if (it != m_drivers.end())
+		m_drivers.erase(it);
+	delete driver;
+}
+
 
 void DrivingSystem::Update(float dt)
 {
+	int destroyCount = 0;
+	for (unsigned int i = 0; i < m_drivers.size(); i++)
+	{
+		if (m_drivers[i]->m_destroy)
+		{
+			delete m_drivers[i];
+			m_drivers.erase(m_drivers.begin() + i);
+			i--;
+			destroyCount++;
+		}
+	}
+	for (int i = 0; i < destroyCount; i++)
+		SpawnDriver();
 
 	for (Driver* driver : m_drivers)
 		driver->IntegrateVelocity(dt);
@@ -41,6 +85,11 @@ void DrivingSystem::Update(float dt)
 		driver->CheckAvoidance();
 	for (Driver* driver : m_drivers)
 		driver->Update(dt);
+	m_trafficPercent = 0.0f;
+	for (Driver* driver : m_drivers)
+		m_trafficPercent += driver->GetSlowDownPercent();
+	if (m_drivers.size() > 0)
+		m_trafficPercent /= m_drivers.size();
 
 	for (Driver* a: m_drivers)
 	{

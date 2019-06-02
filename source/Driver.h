@@ -3,6 +3,9 @@
 
 #include "NodeGroupConnection.h"
 
+class DrivingSystem;
+
+
 class DriverPathNode
 {
 public:
@@ -34,6 +37,9 @@ public:
 	inline Meters GetDistance() const {
 		return m_drivingLine.Length();
 	}
+	inline int GetLaneShift() const {
+		return m_laneIndexEnd - m_laneIndexStart;
+	}
 
 private:
 	NodeGroupConnection* m_connection;
@@ -59,7 +65,7 @@ struct DriverCollisionState
 	{
 		Matrix3f dcm = Matrix3f(
 			Vector3f(direction[index].x, direction[index].y, 0.0f),
-			Vector3f(-direction[index].y, direction[index].x, 0.0f),
+			Vector3f(direction[index].y, -direction[index].x, 0.0f),
 			Vector3f::UNITZ);
 		return Matrix3f::CreateTranslation(position[index].xy) * dcm;
 	}
@@ -68,7 +74,7 @@ struct DriverCollisionState
 	{
 		Matrix3f dcm = Matrix3f(
 			Vector3f(direction[index].x, direction[index].y, 0.0f),
-			Vector3f(-direction[index].y, direction[index].x, 0.0f),
+			Vector3f(direction[index].y, -direction[index].x, 0.0f),
 			Vector3f::UNITZ);
 		return dcm.GetTranspose() * Matrix3f::CreateTranslation(-position[index].xy);
 	}
@@ -84,11 +90,21 @@ struct DriverVehicleParams
 	MetersPerSecondSq maxSpeed;
 };
 
+struct DriverLightState
+{
+	bool braking;
+	bool leftBlinker;
+	bool rightBlinker;
+};
+
 class Driver
 {
 public:
+	friend class DrivingSystem;
+
+public:
 	Driver();
-	Driver(RoadNetwork* network, Node* node);
+	Driver(RoadNetwork* network, DrivingSystem* drivingSystem, Node* node);
 	~Driver();
 
 	inline const Vector3f& GetPosition() const
@@ -146,18 +162,11 @@ public:
 		return m_futureStates[index];
 	}
 
-	inline void Push(Meters amount)
-	{
-		m_distance = Math::Max(0.0f, m_distance + amount);
-	}
-
-	inline bool IsColliding() const
-	{
-		return m_isColliding;
-	}
+	inline void Push(Meters amount) { m_distance = Math::Max(0.0f, m_distance + amount); }
+	inline bool IsColliding() const { return m_isColliding; }
+	inline const DriverLightState& GetLightState() const { return m_lightState; }
 
 	bool GetFuturePosition(Meters distance, Vector3f& position, Vector2f& direction);
-
 	void Next();
 	DriverPathNode Next(Node* node);
 	void CheckAvoidance();
@@ -178,8 +187,15 @@ private:
 	int m_laneIndexCurrent;
 	int m_laneIndexTarget; // Relative to node group lanes
 	RoadNetwork* m_roadNetwork;
+	DrivingSystem* m_drivingSystem;
 	Array<DriverPathNode> m_path;
 	NodeGroupConnection* m_connection;
+	bool m_destroy;
+	DriverLightState m_lightState;
+	Seconds m_brakeLightTimer;
+	Seconds m_blinkerTimer;
+	MetersPerSecond m_speedPrev;
+	Array<MetersPerSecond> m_speedSamples;
 
 	Meters m_distance;
 	MetersPerSecond m_speed;
