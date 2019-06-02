@@ -51,6 +51,14 @@ Vector2f BiarcPair::GetPoint(float distance) const
 		return second.GetPoint(distance - first.length);
 }
 
+Vector2f BiarcPair::GetTangent(float distance) const
+{
+	if (distance < first.length)
+		return first.GetTangent(distance);
+	else
+		return second.GetTangent(distance - first.length);
+}
+
 
 //-----------------------------------------------------------------------------
 // Static Methods

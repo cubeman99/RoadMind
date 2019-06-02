@@ -90,6 +90,9 @@
     <ClInclude Include="..\source\VehicleParams.h">
       <Filter>Source Files</Filter>
     </ClInclude>
+    <ClInclude Include="..\source\DrivingSystem.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\source\main.cpp">
@@ -151,6 +154,9 @@
     </ClCompile>
     <ClCompile Include="..\source\Camera.cpp">
       <Filter>Source Files\Core</Filter>
+    </ClCompile>
+    <ClCompile Include="..\source\DrivingSystem.cpp">
+      <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>

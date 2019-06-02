@@ -8,6 +8,8 @@
 #include "Biarc3.h"
 #include "RoadCurves.h"
 
+class Driver;
+
 
 //-----------------------------------------------------------------------------
 // Class:   NodeGroupConnection
@@ -41,12 +43,16 @@ public:
 	const Array<BiarcPair>& GetSeams(IOType type, LaneSide side) const;
 	Array<BiarcPair>& GetSeams(IOType type, LaneSide side);
 	Array<BiarcPair>& GetDrivingLines();
-	
+	BiarcPair GetDrivingLine(int fromLaneIndex, int toLaneIndex);
+	BiarcPair GetDrivingLine(int laneIndex);
+	Set<Driver*>& GetDrivers();
+
 	// Setters
 
 	void NodeGroupConnection::SetInput(const NodeSubGroup& input);
 	void NodeGroupConnection::SetOutput(const NodeSubGroup& output);
-
+	void AddDriver(Driver* driver);
+	void RemoveDriver(Driver* driver);
 
 	// Geometry
 
@@ -73,6 +79,7 @@ public:
 	Array<BiarcPair> m_seams[2][2];
 	Vector2f m_laneIntersectionPoint;
 	Vector2f m_edgeIntersectionPoint;
+	Set<Driver*> m_drivers;
 };
 
 

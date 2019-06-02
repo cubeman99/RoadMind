@@ -176,6 +176,26 @@ struct Biarc
 		}
 	}
 
+	inline Vector2f GetTangent(float distance) const
+	{
+		if (length == 0.0f)
+		{
+			return Vector2f(1.0f, 0.0f);
+		}
+		else if (IsStraight())
+		{
+			return ((end - start) / length);
+		}
+		else
+		{
+			Vector2f normal = (GetPoint(distance) - center) / radius;
+			normal = RightPerpendicular(normal);
+			if (angle < 0.0f)
+				normal = -normal;
+			return normal;
+		}
+	}
+
 	inline Vector2f GetMidPoint() const
 	{
 		return GetPoint(length * 0.5f);
@@ -243,6 +263,7 @@ public:
 	float Length() const;
 	BiarcPair Reverse() const;
 	Vector2f GetPoint(float distance) const;
+	Vector2f GetTangent(float distance) const;
 
 	//-------------------------------------------------------------------------
 	// Static methods

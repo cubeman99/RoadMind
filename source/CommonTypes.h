@@ -11,6 +11,7 @@ typedef Real Meters;
 typedef Real Radians;
 typedef Real Newtons;
 typedef Real MetersPerSecond;
+typedef Real MetersPerSecondSq;
 typedef Real RadiansPerSecond;
 typedef Real NewtonMeters;
 

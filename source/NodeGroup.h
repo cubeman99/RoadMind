@@ -33,6 +33,7 @@ public:
 	Vector3f GetLeftPosition() const;
 	Vector3f GetCenterPosition() const;
 	Node* GetNode(int index);
+	bool ContainsNode(Node* node);
 
 	// Static methods
 

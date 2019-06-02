@@ -119,6 +119,59 @@ Array<BiarcPair>& NodeGroupConnection::GetDrivingLines()
 	return m_drivingLines;
 }
 
+BiarcPair NodeGroupConnection::GetDrivingLine(int fromLaneIndex, int toLaneIndex)
+{
+	// Create the left edge
+	Node* nodes[2];
+	nodes[0] = GetInput().group->GetNode(GetInput().index);
+	nodes[1] = GetOutput().group->GetNode(GetOutput().index);
+	BiarcPair leftEdge = BiarcPair::Interpolate(
+		nodes[0]->m_position.xy, GetInput().group->GetDirection(),
+		nodes[1]->m_position.xy, GetOutput().group->GetDirection());
+
+	// Create the driving lane
+	Meters offsets[2] = {0, 0};
+	Meters widths[2] = {0, 0};
+	for (int i = 0; i <= fromLaneIndex; i++)
+	{
+		widths[0] = GetInput().group->GetNode(i)->GetWidth();
+		offsets[0] += widths[0];
+	}
+	for (int i = 0; i <= toLaneIndex; i++)
+	{
+		widths[1] = GetOutput().group->GetNode(i)->GetWidth();
+		offsets[1] += widths[1];
+	}
+	return BiarcPair::CreateParallel(leftEdge,
+		offsets[0] - (widths[0] * 0.5f),
+		offsets[1] - (widths[1] * 0.5f));
+}
+
+BiarcPair NodeGroupConnection::GetDrivingLine(int laneIndex)
+{
+	return GetDrivingLine(laneIndex, laneIndex);
+}
+
+Set<Driver*>& NodeGroupConnection::GetDrivers()
+{
+	return m_drivers;
+}
+
+
+//-----------------------------------------------------------------------------
+// Setters
+//-----------------------------------------------------------------------------
+
+void NodeGroupConnection::AddDriver(Driver* driver)
+{
+	m_drivers.insert(driver);
+}
+
+void NodeGroupConnection::RemoveDriver(Driver* driver)
+{
+	m_drivers.erase(driver);
+}
+
 
 //-----------------------------------------------------------------------------
 // Geometry

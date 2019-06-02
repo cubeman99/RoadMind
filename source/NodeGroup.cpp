@@ -47,6 +47,14 @@ Node* NodeSubGroup::GetNode(int index)
 	return group->GetNode(this->index + index);
 }
 
+bool NodeSubGroup::ContainsNode(Node* node)
+{
+	return (node->GetNodeGroup() == group &&
+		node->GetIndex() >= index && 
+		node->GetIndex() < index + count);
+}
+
+
 int NodeSubGroup::GetOverlap(const NodeSubGroup& a, const NodeSubGroup& b)
 {
 	return Math::Min(

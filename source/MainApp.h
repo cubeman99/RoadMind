@@ -13,6 +13,7 @@
 #include "Vehicle.h"
 #include "ToolSelection.h"
 #include "ToolDraw.h"
+#include "DrivingSystem.h"
 
 
 enum class EditMode
@@ -61,6 +62,7 @@ private:
 	Joystick* m_wheel;
 	SpriteFont* m_font;
 	RoadNetwork* m_network;
+	DrivingSystem* m_drivingSystem;
 
 	Vector2f m_mousePosition;
 
@@ -89,6 +91,7 @@ private:
 	DebugOption* m_showNodes;
 	DebugOption* m_showSeams;
 	DebugOption* m_showDrivingLines;
+	DebugOption* m_showCollisions;
 
 	EditMode m_editMode;
 
@@ -96,7 +99,6 @@ private:
 	ToolSelection* m_toolSelection;
 	ToolDraw* m_toolDraw;
 	Array<EditorTool*> m_tools;
-	Array<Driver*> m_drivers;
 
 	CameraState m_camera;
 	CameraState m_defaultCameraState;

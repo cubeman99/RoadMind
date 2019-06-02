@@ -20,13 +20,14 @@ MainApp::MainApp()
 	m_debugOptions.push_back(m_showDebug = new DebugOption("Debug", true));
 	m_debugOptions.push_back(m_showNodes = new DebugOption("Nodes", true));
 	m_debugOptions.push_back(m_showSeams = new DebugOption("Seams", false));
-	m_debugOptions.push_back(m_showDrivingLines = new DebugOption("Driving Lines", true));
+	m_debugOptions.push_back(m_showCollisions = new DebugOption("Collisions", false));
+	m_debugOptions.push_back(m_showDrivingLines = new DebugOption("Paths", false));
 
-	//m_showEdgeLines->enabled = true;
-	//m_showDebug->enabled = true;
-	//m_showRoadMarkings->enabled = false;
-	//m_showRoadSurface->enabled = false;
-	//m_showNodes->enabled = false;
+	m_showDebug->enabled = true;
+	m_showRoadSurface->enabled = false;
+	m_showRoadSurface->enabled = false;
+	m_showCollisions->enabled = true;
+	m_showNodes->enabled = false;
 }
 
 MainApp::~MainApp()
@@ -40,6 +41,7 @@ void MainApp::OnInitialize()
 
 	m_debugDraw = new DebugDraw();
 	m_network = new RoadNetwork();
+	m_drivingSystem = new DrivingSystem(m_network);
 	m_backgroundTexture = nullptr;
 
 	m_defaultCameraState.m_viewHeight = 50.0f;
@@ -48,7 +50,7 @@ void MainApp::OnInitialize()
 	m_defaultCameraState.m_aspectRatio = GetWindow()->GetAspectRatio();
 	m_camera = m_defaultCameraState;
 	m_camera.m_aspectRatio = GetWindow()->GetAspectRatio();
-	m_newCamera.SetAspectRatio(GetWindow()->GetAspectRatio());
+	m_newCamera.SetPerspective(GetWindow()->GetAspectRatio(), 1.0f, 1.0f, 1000.0f);
 
 	m_wheel = nullptr;
 	m_joystick = nullptr;
@@ -71,13 +73,7 @@ void MainApp::OnInitialize()
 	m_network->Load(SAVE_FILE_PATH);
 
 	for (int i = 0; i < 50; i++)
-	{
-		NodeGroup* nodeGroup = Random::ChooseFromSet(m_network->GetNodeGroups());
-		int index = Random::NextInt(nodeGroup->GetNumNodes());
-		Node* node = nodeGroup->GetNode(index);
-		Driver* driver = new Driver(m_network, node);
-		m_drivers.push_back(driver);
-	}
+		m_drivingSystem->SpawnDriver();
 }
 
 void MainApp::Reset()
@@ -442,6 +438,11 @@ void MainApp::FillZippedCurves(Graphics2D& g, const RoadCurveLine& a,
 void MainApp::DrawGridFloor(const Vector3f& center, Meters squareSize, Meters gridRadius)
 {
 	int majorTick = 10;
+	int majorMajorTick = 100;
+	Color colors[3];
+	colors[0] = Color(10, 10, 10);
+	colors[1] = Color(50, 50, 50);
+	colors[2] = Color(120, 120, 120);
 
 	// Snap the grid radius to the square size.
 	gridRadius = Math::Ceil(gridRadius / squareSize) * squareSize;
@@ -463,20 +464,24 @@ void MainApp::DrawGridFloor(const Vector3f& center, Meters squareSize, Meters gr
 	for (; x < center.x + gridRadius; x += squareSize, z += squareSize, indexX++, indexZ++)
 	{
 		// Draw line along z-axis.
-		Color color = Color(30, 30, 30);
+		int major = 0;
 		if (indexX % majorTick == 0)
-			color = Color(80, 80, 80);
-		glColor4ubv(color.data());
+			major = 1;
+		if (indexX % majorMajorTick == 0)
+			major = 2;
+		glColor4ubv(colors[major].data());
 		//glVertex3f(x, center.y, startZ);
 		//glVertex3f(x, center.y, endZ);
 		glVertex3f(x, startZ, center.z);
 		glVertex3f(x, endZ, center.z);
 
 		// Draw line along x-axis.
-		color = Color(30, 30, 30);
+		major = 0;
 		if (indexZ % majorTick == 0)
-			color = Color(80, 80, 80);
-		glColor4ubv(color.data());
+			major = 1;
+		if (indexZ % majorMajorTick == 0)
+			major = 2;
+		glColor4ubv(colors[major].data());
 		//glVertex3f(startX, center.y, z);
 		//glVertex3f(endX, center.y, z);
 		glVertex3f(startX, z, center.z);
@@ -508,10 +513,8 @@ void MainApp::OnQuit()
 	m_vehicleMesh = nullptr;
 	delete m_meshWheel;
 	m_meshWheel = nullptr;
-
-	for (Driver* driver : m_drivers)
-		delete driver;
-	m_drivers.clear();
+	delete m_drivingSystem;
+	m_drivingSystem = nullptr;
 
 	delete m_network;
 	m_network = nullptr;
@@ -614,6 +617,7 @@ void MainApp::OnUpdate(float dt)
 	if (ctrl && keyboard->IsKeyPressed(Keys::r))
 	{
 		m_toolDraw->CancelDragging();
+		m_drivingSystem->Clear();
 		m_network->ClearNodes();
 		Reset();
 	}
@@ -641,11 +645,8 @@ void MainApp::OnUpdate(float dt)
 	}
 
 	// Enter: Spawn driver
-	//if (keyboard->IsKeyPressed(Keys::enter) && m_hoverInfo.node != nullptr)
-	//{
-	//	Driver* driver = new Driver(m_network, m_hoverInfo.node);
-	//	m_drivers.push_back(driver);
-	//}
+	if (keyboard->IsKeyPressed(Keys::enter))
+		m_drivingSystem->SpawnDriver();
 
 	// Update the current tool
 	if (m_currentTool != nullptr)
@@ -672,8 +673,7 @@ void MainApp::OnUpdate(float dt)
 	}
 	
 	// Update the drivers
-	for (Driver* driver : m_drivers)
-		driver->Update(dt);
+	m_drivingSystem->Update(dt);
 
 	UpdateCameraControls(dt);
 
@@ -1018,12 +1018,6 @@ void MainApp::OnRender()
 				DrawArcs(g, connection->m_dividerLines[i], Color::WHITE);
 			DrawCurveLine(g, connection->m_visualEdgeLines[1], Color::WHITE);
 		}
-
-		if (m_showDrivingLines->enabled)
-		{
-			for (unsigned int i = 0; i < connection->GetDrivingLines().size(); i++)
-				DrawArcs(g, connection->GetDrivingLines()[i], Color::GREEN);
-		}
 	}
 
 	for (RoadIntersection* intersection : m_network->GetIntersections())
@@ -1093,13 +1087,93 @@ void MainApp::OnRender()
 		}
 	}
 
-
-	for (Driver* driver : m_drivers)
+	// Draw drivers
+	for (Driver* driver : m_drivingSystem->GetDrivers())
 	{
-		float radius = 1.75f * 0.5f;
-		g.DrawCircle(driver->GetPosition().xy, radius, Color::GREEN);
-		g.DrawLine(driver->GetPosition().xy, driver->GetPosition().xy +
-			driver->GetDirection() * radius, Color::BLACK);
+		Meters radius = 0.75f;
+		float slowPercent = driver->GetSlowDownPercent();
+		Color driverColor = Color::Lerp(Color::GREEN, Color::RED, slowPercent);
+		Color outlineColor = Color::WHITE;
+		Color brakeColor = Color(80, 0, 0);
+		Color lightColor = Color(80, 80, 0);
+		if (driver->GetAcceleration() < 0.0f)
+			brakeColor = Color::RED;
+		outlineColor = Color::Lerp(Color::GREEN, Color::RED, slowPercent);
+		if (driver->IsColliding())
+			outlineColor = Color::DARK_RED;
+		driverColor = Color::BLACK;
+		auto params = driver->GetVehicleParams();
+		Meters lightLength = 0.2f;
+		
+		for (int i = 0; i < params.trailerCount; i++)
+		{
+			auto state = driver->GetState();
+			Vector3f size = params.size[i];
+			Vector2f dir = state.direction[i];
+			dir.Normalize();
+			Matrix3f dcm = Matrix3f(
+				Vector3f(dir.x, dir.y, 0.0f),
+				Vector3f(-dir.y, dir.x, 0.0f),
+				Vector3f::UNITZ);
+			g.SetTransformation(
+				Matrix4f::CreateTranslation(state.position[i]) * Matrix4f(dcm));
+			g.FillRect(-size.x * 0.5f, -size.y * 0.5f, size.x, size.y, driverColor);
+			if (i == 0)
+			{
+				g.FillRect(size.x * 0.5f - lightLength, -size.y * 0.5f, lightLength, size.y * 0.25f, lightColor);
+				g.FillRect(size.x * 0.5f - lightLength, size.y * 0.25f, lightLength, size.y * 0.25f, lightColor);
+			}
+			g.FillRect(-size.x * 0.5f, -size.y * 0.5f, lightLength, size.y * 0.25f, brakeColor);
+			g.FillRect(-size.x * 0.5f, size.y * 0.25f, lightLength, size.y * 0.25f, brakeColor);
+			if (i < params.trailerCount - 1)
+			{
+				g.DrawLine(Vector2f(-size.x * 0.5f, 0.0f),
+					Vector2f(-size.x * 0.5f - params.pivotOffset[0], 0.0f),
+					outlineColor);
+			}
+			if (i > 0)
+			{
+				g.DrawLine(Vector2f(size.x * 0.5f, 0.0f),
+					Vector2f(size.x * 0.5f + params.pivotOffset[0], 0.0f),
+					outlineColor);
+				g.DrawCircle(Vector2f(size.x * 0.5f + params.pivotOffset[0], 0.0f),
+					size.y * 0.1f, outlineColor);
+			}
+			g.DrawRect(-size.x * 0.5f, -size.y * 0.5f, size.x, size.y, outlineColor);
+		}
+	}
+	g.SetTransformation(Matrix4f::IDENTITY);
+
+	// Draw driver paths
+	if (m_showDrivingLines->enabled)
+	{
+		for (Driver* driver : m_drivingSystem->GetDrivers())
+		{
+			if (driver == m_drivingSystem->GetDrivers()[0])
+			{
+				const Array<DriverPathNode>& path = driver->GetPath();
+				if (path.size() > 0)
+				{
+					for (unsigned int i = 0; i < path.size(); i++)
+						DrawArcs(g, path[i].GetDrivingLine(), Color::MAGENTA);
+				}
+			}
+		}
+	}
+
+	// Draw collision debug between drivers
+	if (m_showCollisions->enabled)
+	{
+		for (Driver* driver : m_drivingSystem->GetDrivers())
+		{
+			for (Driver* other : driver->m_collisions)
+			{
+				Vector2f arrowDir = other->GetPosition().xy - driver->GetPosition().xy;
+				arrowDir.Normalize();
+				DrawArrowHead(g, other->GetPosition().xy, arrowDir, r * 2.0f, Color::CYAN);
+				g.DrawLine(driver->GetPosition().xy, other->GetPosition().xy, Color::CYAN);
+			}
+		}
 	}
 
 	// Draw hovered-over nodes
@@ -1172,19 +1246,21 @@ void MainApp::OnRender()
 
 	using namespace std;
 	std::stringstream ss;
+	ss << "FPS: " << GetFPS() << endl;
+	ss << "---------------------------" << endl;
 	ss << "Tool: " << toolName << endl;
 	ss << endl;
 	ss << "Groups:        " << groupCount << endl;
 	ss << "Connections:   " << connectionCount << endl;
 	ss << "Ties:          " << tieCount << endl;
 	ss << "Intersections: " << intersectionCount << endl;
-	ss << "---------------------" << endl;
+	ss << "---------------------------" << endl;
 
 	for (unsigned int i = 0; i < m_debugOptions.size(); i++)
 	{
 		ostringstream label;
 		label << (i + 1) << ". " << m_debugOptions[i]->name << ":";
-		ss << std::left << std::setw(15) << label.str() <<
+		ss << std::left << std::setw(18) << label.str() <<
 			BOOL2ASCII(m_debugOptions[i]->enabled) << endl;
 	}
 
