@@ -5,6 +5,7 @@
 #include <cmgMath/cmg_math.h>
 #include "CommonTypes.h"
 #include "NodeGroup.h"
+#include "RoadSurface.h"
 #include <set>
 
 class Connection;
@@ -113,9 +114,11 @@ private:
 };
 
 
-class RoadIntersection
+class RoadIntersection : public RoadSurface
 {
+public:
 	friend class RoadNetwork;
+
 public:
 	// Constructors
 
@@ -131,10 +134,11 @@ public:
 
 	// Geometry
 
-	void UpdateGeometry();
+	virtual void UpdateGeometry() override;
 
 private:
-	void AddPoint(NodeGroup* group, IOType type);
+	void Construct(const Set<NodeGroup*>& nodeGroups);
+	RoadIntersectionPoint* AddPoint(NodeGroup* group, IOType type);
 
 	int m_id;
 	Vector2f m_centerPosition;
@@ -142,6 +146,7 @@ private:
 	// Sorted in clockwise order
 	Array<RoadIntersectionPoint*> m_points;
 	Array<RoadIntersectionEdge*> m_edges;
+	Set<NodeGroup*> m_nodeGroups;
 
 };
 

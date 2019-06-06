@@ -1161,6 +1161,13 @@ void MainApp::OnRender()
 			}
 			g.DrawRect(-size.x * 0.5f, -size.y * 0.5f, size.x, size.y, outlineColor);
 		}
+
+		g.SetTransformation(
+			Matrix4f::CreateTranslation(driver->GetPosition()) *
+			Matrix4f::CreateScale(0.1f, -0.1f, 1.0f));
+		std::stringstream ss;
+		ss << driver->GetId();
+		g.DrawString(m_font, ss.str(), Vector2f::ZERO, Color::WHITE, TextAlign::CENTERED);
 	}
 	//glDisable(GL_DEPTH_TEST);
 	//glDepthMask(false);
@@ -1276,6 +1283,7 @@ void MainApp::OnRender()
 	ss << "Connections:   " << connectionCount << endl;
 	ss << "Ties:          " << tieCount << endl;
 	ss << "Intersections: " << intersectionCount << endl;
+	ss << "Drivers:       " << m_drivingSystem->GetDrivers().size() << endl;
 	ss << "---------------------------" << endl;
 
 	for (unsigned int i = 0; i < m_debugOptions.size(); i++)

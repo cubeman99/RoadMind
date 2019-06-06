@@ -1,5 +1,6 @@
 #include "RoadIntersection.h"
 #include "NodeGroupConnection.h"
+#include <algorithm>
 
 
 //-----------------------------------------------------------------------------
@@ -45,10 +46,67 @@ Array<RoadIntersectionEdge*>& RoadIntersection::GetEdges()
 // Setters
 //-----------------------------------------------------------------------------
 
-void RoadIntersection::AddPoint(NodeGroup* group, IOType type)
+void RoadIntersection::Construct(const Set<NodeGroup*>& nodeGroups)
+{
+	for (unsigned int i = 0; i < m_points.size(); i++)
+		delete m_points[i];
+	m_points.clear();
+	for (unsigned int i = 0; i < m_edges.size(); i++)
+		delete m_edges[i];
+	m_edges.clear();
+	m_nodeGroups = nodeGroups;
+
+	// Get the center position of all node groups
+	m_centerPosition = Vector2f::ZERO;
+	int count = 0;
+	for (NodeGroup* group : m_nodeGroups)
+	{
+		group->m_intersection = this;
+		AddPoint(group, group->GetOutputs().empty() ? IOType::INPUT : IOType::OUTPUT);
+		if (group->m_twin == nullptr)
+		{
+			m_centerPosition += group->GetCenterPosition().xy;
+			count++;
+		}
+		else
+		{
+			m_centerPosition += group->GetPosition().xy * 2.0f;
+			count += 2;
+		}
+	}
+	m_centerPosition /= (float) count;
+
+	// Determine the angles of each group around the center
+	std::map<RoadIntersectionPoint*, float> groupAngles;
+	for (RoadIntersectionPoint* point : m_points)
+	{
+		Vector2f v = point->GetNodeGroup()->GetCenterPosition().xy -
+			m_centerPosition;
+		groupAngles[point] = Math::ATan2(v.y, v.x);
+	}
+
+	// Sort the node groups in counter-clockwise order around the center
+	// position
+	std::sort(m_points.begin(), m_points.end(),
+		[&](RoadIntersectionPoint* a, RoadIntersectionPoint* b) -> bool {
+		return (groupAngles[a] > groupAngles[b]);
+	});
+
+	// Create the edges
+	for (unsigned int i = 0; i < m_points.size(); i++)
+	{
+		RoadIntersectionPoint* left = m_points[(i + 1) % m_points.size()];
+		RoadIntersectionPoint* right = m_points[i];
+		if (left->GetNodeGroup()->GetTwin() != right->GetNodeGroup())
+			m_edges.push_back(new RoadIntersectionEdge(left, right));
+	}
+}
+
+RoadIntersectionPoint* RoadIntersection::AddPoint(NodeGroup* group, IOType type)
 {
 	RoadIntersectionPoint* point = new RoadIntersectionPoint(group, type);
 	m_points.push_back(point);
+	return point;
 }
 
 

@@ -1,52 +1,10 @@
-#ifndef _DRIVER_H_
-#define _DRIVER_H_
+#pragma once
 
 #include "NodeGroupConnection.h"
+#include "DriverPath.h"
 
 class DrivingSystem;
 
-
-class DriverPathNode
-{
-public:
-	DriverPathNode()
-		: m_connection(nullptr)
-	{}
-	DriverPathNode(NodeGroupConnection* connection,
-		int startLaneIndex, int endLaneIndex) 
-		: m_connection(connection)
-		, m_laneIndexStart(startLaneIndex)
-		, m_laneIndexEnd(endLaneIndex)
-	{
-		m_drivingLine = m_connection->GetDrivingLine(
-			startLaneIndex, endLaneIndex);
-	}
-
-	inline Node* GetStartNode() const {
-		return m_connection->GetInput().GetNode(m_laneIndexStart);
-	}
-	inline Node* GetEndNode() const {
-		return m_connection->GetOutput().GetNode(m_laneIndexEnd);
-	}
-	inline NodeGroupConnection* GetConnection() const {
-		return m_connection;
-	}
-	inline const BiarcPair& GetDrivingLine() const {
-		return m_drivingLine;
-	}
-	inline Meters GetDistance() const {
-		return m_drivingLine.Length();
-	}
-	inline int GetLaneShift() const {
-		return m_laneIndexEnd - m_laneIndexStart;
-	}
-
-private:
-	NodeGroupConnection* m_connection;
-	int m_laneIndexStart;
-	int m_laneIndexEnd; // Relative to connection left lane
-	BiarcPair m_drivingLine;
-};
 
 constexpr auto MAX_VEHICLE_TRAILERS = 3;
 constexpr auto DRIVER_MAX_FUTURE_STATES = 8;
@@ -104,8 +62,14 @@ public:
 
 public:
 	Driver();
-	Driver(RoadNetwork* network, DrivingSystem* drivingSystem, Node* node);
+	Driver(RoadNetwork* network, DrivingSystem* drivingSystem, Node* node, int id);
 	~Driver();
+
+	inline Vector3f GetFrontPostion() const
+	{
+		return Vector3f(m_position.xy + (m_direction *
+			m_vehicleParams.size[0].x * 0.5f), m_position.z);
+	}
 
 	inline const Vector3f& GetPosition() const
 	{
@@ -165,12 +129,13 @@ public:
 	inline void Push(Meters amount) { m_distance = Math::Max(0.0f, m_distance + amount); }
 	inline bool IsColliding() const { return m_isColliding; }
 	inline const DriverLightState& GetLightState() const { return m_lightState; }
+	inline int GetId() const { return m_id; }
 
 	bool GetFuturePosition(Meters distance, Vector3f& position, Vector2f& direction);
 	void Next();
 	DriverPathNode Next(Node* node);
 	void CheckAvoidance();
-	void CheckAvoidance(NodeGroupConnection* connection);
+	void CheckAvoidance(RoadSurface* surface);
 	void CheckAvoidance(Driver* driver);
 	void Update(float dt);
 	void UpdateFutureStates();
@@ -183,13 +148,14 @@ public:
 		const DriverCollisionState& b);
 
 private:
+	int m_id;
 	Node* m_nodeCurrent;
 	int m_laneIndexCurrent;
 	int m_laneIndexTarget; // Relative to node group lanes
 	RoadNetwork* m_roadNetwork;
 	DrivingSystem* m_drivingSystem;
 	Array<DriverPathNode> m_path;
-	NodeGroupConnection* m_connection;
+	RoadSurface* m_surface;
 	bool m_destroy;
 	DriverLightState m_lightState;
 	Seconds m_brakeLightTimer;
@@ -213,5 +179,3 @@ public:
 	bool m_isColliding;
 };
 
-
-#endif // _DRIVER_H_

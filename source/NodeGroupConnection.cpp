@@ -152,25 +152,11 @@ BiarcPair NodeGroupConnection::GetDrivingLine(int laneIndex)
 	return GetDrivingLine(laneIndex, laneIndex);
 }
 
-Set<Driver*>& NodeGroupConnection::GetDrivers()
-{
-	return m_drivers;
-}
-
 
 //-----------------------------------------------------------------------------
 // Setters
 //-----------------------------------------------------------------------------
 
-void NodeGroupConnection::AddDriver(Driver* driver)
-{
-	m_drivers.insert(driver);
-}
-
-void NodeGroupConnection::RemoveDriver(Driver* driver)
-{
-	m_drivers.erase(driver);
-}
 
 
 //-----------------------------------------------------------------------------

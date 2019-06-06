@@ -15,7 +15,7 @@ Driver::Driver()
 {
 }
 
-Driver::Driver(RoadNetwork* network, DrivingSystem* drivingSystem, Node* node)
+Driver::Driver(RoadNetwork* network, DrivingSystem* drivingSystem, Node* node, int id)
 	: m_nodeCurrent(node)
 	, m_roadNetwork(network)
 	, m_drivingSystem(drivingSystem)
@@ -27,6 +27,7 @@ Driver::Driver(RoadNetwork* network, DrivingSystem* drivingSystem, Node* node)
 	, m_speedPrev(0.0f)
 	, m_brakeLightTimer(0.0f)
 	, m_blinkerTimer(0.0f)
+	, m_id(id)
 {
 	m_desiredSpeed = Random::NextFloat(10.0f, 20.0f);
 	m_speed = m_desiredSpeed;
@@ -94,8 +95,8 @@ Driver::Driver(RoadNetwork* network, DrivingSystem* drivingSystem, Node* node)
 
 Driver::~Driver()
 {
-	if (m_connection != nullptr) 
-		m_connection->RemoveDriver(this);
+	if (m_surface != nullptr) 
+		m_surface->RemoveDriver(this);
 }
 
 bool Driver::GetFuturePosition(Meters distance, Vector3f& position, Vector2f& direction)
@@ -125,13 +126,36 @@ void Driver::Next()
 	if (m_path.size() > 0)
 		node = m_path.back().GetEndNode();
 	DriverPathNode next = Next(node);
-	if (next.GetConnection() != nullptr)
+	if (next.GetSurface() != nullptr)
 		m_path.push_back(next);
 }
 
 DriverPathNode Driver::Next(Node* node)
 {
 	NodeGroup* nodeGroup = node->GetNodeGroup();
+
+	if (nodeGroup->GetIntersection() != nullptr &&
+		nodeGroup->GetOutputs().size() == 0)
+	{
+		RoadIntersection* intersection = nodeGroup->GetIntersection();
+		Array<NodeGroup*> possibleGroups;
+		for (RoadIntersectionPoint* point : intersection->GetPoints())
+		{
+			if (point->GetIOType() == IOType::OUTPUT)
+				possibleGroups.push_back(point->GetNodeGroup());
+		}
+		if (possibleGroups.size() > 0)
+		{
+			NodeGroup* nextGroup = Random::Choose(possibleGroups);
+			Node* nextNode = nextGroup->GetNode(Random::NextInt(nextGroup->GetNumNodes()));
+			return DriverPathNode(intersection, node, nextNode);
+		}
+		else
+		{
+			return DriverPathNode();
+		}
+	}
+
 	Array<NodeGroupConnection*> possibleConnections;
 	for (NodeGroupConnection* connection : nodeGroup->GetOutputs())
 	{
@@ -169,9 +193,11 @@ void Driver::CheckAvoidance()
 	DriverPathNode current = m_path[0];
 
 	Node* node = current.GetStartNode();
+	if (m_surface != nullptr)
+		CheckAvoidance(m_surface);
 	for (NodeGroupConnection* connection : node->GetNodeGroup()->GetOutputs())
 	{
-		if (connection->GetInput().ContainsNode(node))
+		if (connection != connection && connection->GetInput().ContainsNode(node))
 			CheckAvoidance(connection);
 	}
 	node = current.GetEndNode();
@@ -181,6 +207,8 @@ void Driver::CheckAvoidance()
 			connection->GetInput().group != current.GetStartNode()->GetNodeGroup())
 			CheckAvoidance(connection);
 	}
+	if (node->GetNodeGroup()->GetIntersection() != nullptr)
+		CheckAvoidance(node->GetNodeGroup()->GetIntersection());
 	node = current.GetEndNode();
 	for (NodeGroupConnection* connection : node->GetNodeGroup()->GetOutputs())
 	{
@@ -189,14 +217,12 @@ void Driver::CheckAvoidance()
 	}
 }
 
-void Driver::CheckAvoidance(NodeGroupConnection* connection)
+void Driver::CheckAvoidance(RoadSurface* surface)
 {
-	for (Driver* driver : connection->GetDrivers())
+	for (Driver* driver : surface->GetDrivers())
 	{
 		if (driver != this)
-		{
 			CheckAvoidance(driver);
-		}
 	}
 }
 
@@ -205,10 +231,10 @@ void Driver::CheckAvoidance(Driver* driver)
 	Meters timeOfImpact = -1.0f;
 	
 	// Make sure we are behind the other driver
-	float bd = driver->GetPosition().xy.Dot(GetDirection()) -
-		GetPosition().xy.Dot(GetDirection());
-	float ad = GetPosition().xy.Dot(driver->GetDirection()) -
-		driver->GetPosition().xy.Dot(driver->GetDirection());
+	Vector3f front0 = GetFrontPostion();
+	Vector3f front1 = driver->GetFrontPostion();
+	float bd = front1.xy.Dot(GetDirection()) - front0.xy.Dot(GetDirection());
+	float ad = front0.xy.Dot(driver->GetDirection()) - front1.xy.Dot(driver->GetDirection());
 	if (bd < ad)
 		return;
 
@@ -327,8 +353,8 @@ void Driver::Update(float dt)
 			m_position.z = pathNode.GetEndNode()->GetPosition().z;
 			m_nodeCurrent = pathNode.GetEndNode();
 			m_path.erase(m_path.begin());
-			m_connection->RemoveDriver(this);
-			m_connection = nullptr;
+			m_surface->RemoveDriver(this);
+			m_surface = nullptr;
 			Next();
 			if (m_path.size() == 0)
 				m_destroy = true;
@@ -346,12 +372,12 @@ void Driver::Update(float dt)
 				pathNode.GetStartNode()->GetPosition().z,
 				pathNode.GetEndNode()->GetPosition().z,
 				t);
-			if (m_connection != pathNode.GetConnection())
+			if (m_surface != pathNode.GetSurface())
 			{
-				if (m_connection != nullptr) 
-					m_connection->RemoveDriver(this);
-				m_connection = pathNode.GetConnection();
-					m_connection->AddDriver(this);
+				if (m_surface != nullptr) 
+					m_surface->RemoveDriver(this);
+				m_surface = pathNode.GetSurface();
+					m_surface->AddDriver(this);
 			}
 		}
 	}
@@ -360,8 +386,8 @@ void Driver::Update(float dt)
 		Next();
 	}
 
-	if (m_path.size() == 0 && m_connection != nullptr) 
-		m_connection->RemoveDriver(this);
+	if (m_path.size() == 0 && m_surface != nullptr) 
+		m_surface->RemoveDriver(this);
 
 	// Update brake light state
 

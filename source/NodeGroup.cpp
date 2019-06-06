@@ -69,9 +69,10 @@ int NodeSubGroup::GetOverlap(const NodeSubGroup& a, const NodeSubGroup& b)
 
 NodeGroup::NodeGroup()
 	: m_metrics(nullptr)
+	, m_tie(nullptr)
+	, m_intersection(nullptr)
 	, m_position(Vector3f::ZERO)
 	, m_direction(Vector2f::UNITX)
-	, m_tie(nullptr)
 	, m_allowPassing(false)
 	, m_rightShoulderWidth(0.0f)
 	, m_leftShoulderWidth(0.0f)
@@ -119,6 +120,11 @@ const RoadMetrics* NodeGroup::GetMetrics() const
 NodeGroup* NodeGroup::GetTwin() const
 {
 	return m_twin;
+}
+
+RoadIntersection* NodeGroup::GetIntersection() const
+{
+	return m_intersection;
 }
 
 Node* NodeGroup::GetLeftNode() const

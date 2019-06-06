@@ -42,6 +42,8 @@ public:
 	void RemoveNodeFromGroup(NodeGroup* group, int count = 1);
 	void UntieNodeGroup(NodeGroup* nodeGroup);
 	void DeleteNodeGroup(NodeGroup* nodeGroup);
+	void DeleteIntersection(RoadIntersection* intersection);
+	void RemoveNodeGroupFromIntersection(NodeGroup* nodeGroup);
 	void DeleteNodeGroupConnection(NodeGroupConnection* connection);
 	void ClearNodes();
 

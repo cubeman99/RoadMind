@@ -26,4 +26,5 @@ private:
 	RoadNetwork* m_network;
 	Array<Driver*> m_drivers;
 	float m_trafficPercent;
+	int m_driverIdCounter;
 };

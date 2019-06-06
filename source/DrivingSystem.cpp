@@ -10,6 +10,7 @@ DrivingSystem::DrivingSystem(RoadNetwork* network)
 	: m_network(network)
 {
 	m_trafficPercent = 0.0f;
+	m_driverIdCounter = 1;
 }
 
 DrivingSystem::~DrivingSystem()
@@ -42,14 +43,17 @@ void DrivingSystem::SpawnDriver()
 	{
 		for (int i = 0; i < connection->GetInput().count; i++)
 		{
-			if (connection->GetInput().group->GetInputs().size() == 0)
+			NodeGroup* nodeGroup = connection->GetInput().group;
+			if (nodeGroup->GetInputs().size() == 0 &&
+					nodeGroup->GetIntersection() == nullptr)
 				nodes.insert(connection->GetInput().GetNode(i));
 		}
 	}
 	if (nodes.size() > 0)
 	{
 		Node* node = Random::ChooseFromSet(nodes);
-		Driver* driver = new Driver(m_network, this, node);
+		Driver* driver = new Driver(m_network, this, node, m_driverIdCounter);
+		m_driverIdCounter++;
 		m_drivers.push_back(driver);
 	}
 }

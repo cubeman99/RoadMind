@@ -7,15 +7,14 @@
 #include "NodeGroup.h"
 #include "Biarc3.h"
 #include "RoadCurves.h"
-
-class Driver;
+#include "RoadSurface.h"
 
 
 //-----------------------------------------------------------------------------
 // Class:   NodeGroupConnection
 // Purpose: Represents a one-way connection between two node (sub) groups.
 //-----------------------------------------------------------------------------
-class NodeGroupConnection
+class NodeGroupConnection : public RoadSurface
 {
 	friend class RoadNetwork;
 	friend class NodeGroup;
@@ -45,18 +44,15 @@ public:
 	Array<BiarcPair>& GetDrivingLines();
 	BiarcPair GetDrivingLine(int fromLaneIndex, int toLaneIndex);
 	BiarcPair GetDrivingLine(int laneIndex);
-	Set<Driver*>& GetDrivers();
 
 	// Setters
 
 	void NodeGroupConnection::SetInput(const NodeSubGroup& input);
 	void NodeGroupConnection::SetOutput(const NodeSubGroup& output);
-	void AddDriver(Driver* driver);
-	void RemoveDriver(Driver* driver);
 
 	// Geometry
 
-	void UpdateGeometry();
+	virtual void UpdateGeometry() override;
 
 
 public:
@@ -79,7 +75,6 @@ public:
 	Array<BiarcPair> m_seams[2][2];
 	Vector2f m_laneIntersectionPoint;
 	Vector2f m_edgeIntersectionPoint;
-	Set<Driver*> m_drivers;
 };
 
 

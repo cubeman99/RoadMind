@@ -8,6 +8,7 @@
 
 class NodeGroupTie;
 class NodeGroup;
+class RoadIntersection;
 
 
 //-----------------------------------------------------------------------------
@@ -48,6 +49,7 @@ public:
 class NodeGroup
 {
 	friend class RoadNetwork;
+	friend class RoadIntersection;
 	friend class NodeGroupTie;
 	friend class NodeGroupConnection;
 
@@ -65,6 +67,7 @@ public:
 	Vector2f GetRightDirection() const;
 	const RoadMetrics* GetMetrics() const;
 	NodeGroup* GetTwin() const;
+	RoadIntersection* GetIntersection() const;
 	Node* GetLeftNode() const;
 	Node* GetRightNode() const;
 	Node* GetNode(int index);
@@ -114,6 +117,7 @@ private:
 
 	NodeGroup* m_twin;
 	NodeGroupTie* m_tie;
+	RoadIntersection* m_intersection;
 
 	// Road rules
 	bool m_allowPassing;
