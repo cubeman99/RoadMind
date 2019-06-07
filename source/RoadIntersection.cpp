@@ -54,12 +54,11 @@ void RoadIntersection::Construct(const Set<NodeGroup*>& nodeGroups)
 	for (unsigned int i = 0; i < m_edges.size(); i++)
 		delete m_edges[i];
 	m_edges.clear();
-	m_nodeGroups = nodeGroups;
 
 	// Get the center position of all node groups
 	m_centerPosition = Vector2f::ZERO;
 	int count = 0;
-	for (NodeGroup* group : m_nodeGroups)
+	for (NodeGroup* group : nodeGroups)
 	{
 		group->m_intersection = this;
 		AddPoint(group, group->GetOutputs().empty() ? IOType::INPUT : IOType::OUTPUT);

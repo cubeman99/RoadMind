@@ -335,7 +335,7 @@ void RoadNetwork::DeleteNodeGroup(NodeGroup* nodeGroup)
 void RoadNetwork::RemoveNodeGroupFromIntersection(NodeGroup* nodeGroup)
 {
 	RoadIntersection* intersection = nodeGroup->GetIntersection();
-	if (intersection->m_nodeGroups.size() == 2)
+	if (intersection->GetPoints().size() == 2)
 	{
 		// Intersection is too small, delete it
 		DeleteIntersection(intersection);
@@ -343,8 +343,12 @@ void RoadNetwork::RemoveNodeGroupFromIntersection(NodeGroup* nodeGroup)
 	else
 	{
 		// Recreate the intersection without this node group
-		Set<NodeGroup*> groups = intersection->m_nodeGroups;
-		groups.erase(nodeGroup);
+		Set<NodeGroup*> groups;
+		for (RoadIntersectionPoint* point : intersection->GetPoints())
+		{
+			if (point->GetNodeGroup() != nodeGroup)
+				groups.insert(point->GetNodeGroup());
+		}
 		intersection->Construct(groups);
 		nodeGroup->m_intersection = nullptr;
 	}
@@ -353,8 +357,8 @@ void RoadNetwork::RemoveNodeGroupFromIntersection(NodeGroup* nodeGroup)
 void RoadNetwork::DeleteIntersection(RoadIntersection* intersection)
 {
 	// Disconnect node groups from the intersection
-	for (NodeGroup* group : intersection->m_nodeGroups)
-		group->m_intersection = nullptr;
+	for (RoadIntersectionPoint* point : intersection->GetPoints())
+		point->GetNodeGroup()->m_intersection = nullptr;
 
 	// Delete the intersection itself
 	m_intersections.erase(intersection);
@@ -640,7 +644,6 @@ bool RoadNetwork::Load(const Path& path)
 			intersection->m_points[j] = point;
 			file.Read(&point->m_ioType, sizeof(IOType));
 			point->m_nodeGroup = LoadPointer(file, m_nodeGroups);
-			intersection->m_nodeGroups.insert(point->m_nodeGroup);
 		}
 
 		// Read edges

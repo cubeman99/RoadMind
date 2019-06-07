@@ -25,12 +25,12 @@
     <Filter Include="Source Files\Core">
       <UniqueIdentifier>{e645ec3a-0379-4fb0-b600-4d2d97b57220}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Source Files\Driving">
+      <UniqueIdentifier>{980e4686-338c-4fc7-8aa7-680c0b61439e}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\source\CommonTypes.h">
-      <Filter>Source Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\source\Driver.h">
       <Filter>Source Files</Filter>
     </ClInclude>
     <ClInclude Include="..\source\Node.h">
@@ -90,21 +90,21 @@
     <ClInclude Include="..\source\VehicleParams.h">
       <Filter>Source Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\source\DrivingSystem.h">
-      <Filter>Source Files</Filter>
-    </ClInclude>
     <ClInclude Include="..\source\RoadSurface.h">
       <Filter>Source Files\Topology</Filter>
     </ClInclude>
+    <ClInclude Include="..\source\Driver.h">
+      <Filter>Source Files\Driving</Filter>
+    </ClInclude>
     <ClInclude Include="..\source\DriverPath.h">
-      <Filter>Source Files</Filter>
+      <Filter>Source Files\Driving</Filter>
+    </ClInclude>
+    <ClInclude Include="..\source\DrivingSystem.h">
+      <Filter>Source Files\Driving</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\source\main.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="..\source\Driver.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="..\source\Node.cpp">
@@ -161,11 +161,14 @@
     <ClCompile Include="..\source\Camera.cpp">
       <Filter>Source Files\Core</Filter>
     </ClCompile>
-    <ClCompile Include="..\source\DrivingSystem.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="..\source\RoadSurface.cpp">
       <Filter>Source Files\Topology</Filter>
+    </ClCompile>
+    <ClCompile Include="..\source\Driver.cpp">
+      <Filter>Source Files\Driving</Filter>
+    </ClCompile>
+    <ClCompile Include="..\source\DrivingSystem.cpp">
+      <Filter>Source Files\Driving</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>

@@ -23,11 +23,11 @@ MainApp::MainApp()
 	m_debugOptions.push_back(m_showCollisions = new DebugOption("Collisions", false));
 	m_debugOptions.push_back(m_showDrivingLines = new DebugOption("Paths", false));
 
-	m_showDebug->enabled = false;
 	m_showRoadSurface->enabled = false;
 	m_showRoadSurface->enabled = false;
 	m_showCollisions->enabled = false;
-	m_showNodes->enabled = false;
+	m_showDebug->enabled = true;
+	m_showNodes->enabled = true;
 }
 
 MainApp::~MainApp()

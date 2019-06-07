@@ -171,16 +171,12 @@ DriverPathNode Driver::Next(Node* node)
 
 	int index = Random::NextInt((int) possibleConnections.size());
 	NodeGroupConnection* connection = possibleConnections[index];
-	if (connection->GetDrivingLines().size() == 0)
-	{
-		connection = nullptr;
-		return DriverPathNode();
-	}
-
 	int fromLaneIndex = node->GetIndex() -
 		connection->GetInput().index;
+	int minToLaneIndex, maxToLaneIndex;
+	connection->GetLaneShiftRange(fromLaneIndex, minToLaneIndex, maxToLaneIndex);
 	NodeSubGroup output = connection->GetOutput();
-	int toLaneindex = fromLaneIndex - 1 + Random::NextInt(3);
+	int toLaneindex = Random::NextInt(minToLaneIndex, maxToLaneIndex + 1);
 	toLaneindex = Math::Clamp(toLaneindex, 0, output.count - 1);
 	return DriverPathNode(connection, fromLaneIndex, toLaneindex);
 }

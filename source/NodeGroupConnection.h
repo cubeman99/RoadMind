@@ -44,11 +44,13 @@ public:
 	Array<BiarcPair>& GetDrivingLines();
 	BiarcPair GetDrivingLine(int fromLaneIndex, int toLaneIndex);
 	BiarcPair GetDrivingLine(int laneIndex);
+	void GetLaneShiftRange(int fromLaneIndex, int& outLeftmostLane, int& rightmostLane);
 
 	// Setters
 
-	void NodeGroupConnection::SetInput(const NodeSubGroup& input);
-	void NodeGroupConnection::SetOutput(const NodeSubGroup& output);
+	void SetInput(const NodeSubGroup& input);
+	void SetOutput(const NodeSubGroup& output);
+	void CycleLaneSplit();
 
 	// Geometry
 
@@ -62,6 +64,7 @@ public:
 private:
 	void SetSeam(IOType end, LaneSide side, const BiarcPair& seam);
 	void AddSeam(IOType end, LaneSide side, const BiarcPair& seam);
+	void ConstrainLaneSplit();
 
 
 public:
@@ -75,6 +78,7 @@ public:
 	Array<BiarcPair> m_seams[2][2];
 	Vector2f m_laneIntersectionPoint;
 	Vector2f m_edgeIntersectionPoint;
+	Array<int> m_laneSplit;
 };
 
 

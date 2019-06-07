@@ -409,6 +409,8 @@ void ToolDraw::UdpateDragging(float dt)
 		if (m_keyboard->IsKeyDown(Keys::page_down))
 			m_dragInfo.nodeGroup->SetPosition(
 			m_dragInfo.nodeGroup->GetPosition() - Vector3f(0, 0, 1));
+		if (m_keyboard->IsKeyPressed(Keys::c))
+			m_dragInfo.connection->CycleLaneSplit();
 
 		if (m_snapInfo.subGroup.group == nullptr)
 		{

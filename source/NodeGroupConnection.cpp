@@ -94,15 +94,6 @@ NodeSubGroup& NodeGroupConnection::GetOutput()
 	return m_groups[(int) InputOutput::OUTPUT];
 }
 
-void NodeGroupConnection::SetInput(const NodeSubGroup& input)
-{
-	m_groups[(int) InputOutput::INPUT] = input;
-}
-
-void NodeGroupConnection::SetOutput(const NodeSubGroup& output)
-{
-	m_groups[(int) InputOutput::OUTPUT] = output;
-}
 
 const Array<BiarcPair>& NodeGroupConnection::GetSeams(IOType type, LaneSide side) const
 {
@@ -152,11 +143,88 @@ BiarcPair NodeGroupConnection::GetDrivingLine(int laneIndex)
 	return GetDrivingLine(laneIndex, laneIndex);
 }
 
+void NodeGroupConnection::GetLaneShiftRange(
+	int fromLaneIndex, int& outLeftmostLane, int& rightmostLane)
+{
+	int side1 = m_groups[1].count >= m_groups[0].count ? 0 : 1;
+	int side2 = 1 - side1;
+	int count1 = m_groups[side1].count;
+	int count2 = m_groups[side2].count;
+
+	if (m_groups[1].count <= m_groups[0].count)
+	{
+		int index = 0;
+		for (int i = 0; i < m_groups[1].count; i++)
+		{
+			if (index + m_laneSplit[i] > fromLaneIndex)
+			{
+				outLeftmostLane = Math::Max(0, i - 1);
+				rightmostLane = Math::Min(m_groups[1].count - 1, i + 1);
+				return;
+			}
+			index += m_laneSplit[i];
+		}
+	}
+	else
+	{
+		int index = 0;
+		for (int i = 0; i < m_groups[0].count; i++)
+		{
+			if (i == fromLaneIndex)
+			{
+				outLeftmostLane = Math::Max(0, index - 1);
+				rightmostLane = Math::Min(m_groups[1].count - 1, index + m_laneSplit[i]);
+				return;
+			}
+			index += m_laneSplit[i];
+		}
+	}
+}
+
 
 //-----------------------------------------------------------------------------
 // Setters
 //-----------------------------------------------------------------------------
 
+void NodeGroupConnection::SetInput(const NodeSubGroup& input)
+{
+	m_groups[(int) InputOutput::INPUT] = input;
+}
+
+void NodeGroupConnection::SetOutput(const NodeSubGroup& output)
+{
+	m_groups[(int) InputOutput::OUTPUT] = output;
+}
+
+void NodeGroupConnection::CycleLaneSplit()
+{
+	int side1 = m_groups[1].count >= m_groups[0].count ? 0 : 1;
+	int side2 = 1 - side1;
+	int count1 = m_groups[side1].count;
+	int count2 = m_groups[side2].count;
+
+	ConstrainLaneSplit();
+
+	m_laneSplit.push_back(m_laneSplit[0]);
+	m_laneSplit.erase(m_laneSplit.begin());
+}
+
+void NodeGroupConnection::ConstrainLaneSplit()
+{
+	int side1 = m_groups[1].count >= m_groups[0].count ? 0 : 1;
+	int side2 = 1 - side1;
+	int count1 = m_groups[side1].count;
+	int count2 = m_groups[side2].count;
+
+	m_laneSplit.resize(count1);
+	int remaining = count2;
+	for (int i = count1 - 1; i > 0; i--)
+	{
+		m_laneSplit[i] = Math::Clamp(m_laneSplit[i], 1, remaining - i);
+		remaining -= m_laneSplit[i];
+	}
+	m_laneSplit[0] = remaining;
+}
 
 
 //-----------------------------------------------------------------------------
@@ -182,56 +250,43 @@ void NodeGroupConnection::UpdateGeometry()
 	Node* nodes[2];
 	nodes[0] = GetInput().group->GetNode(GetInput().index);
 	nodes[1] = GetOutput().group->GetNode(GetOutput().index);
-	BiarcPair prev, lastPair, curr, drivingLine;
+	BiarcPair prev, curr;
 	prev = BiarcPair::Interpolate(
 		nodes[0]->m_position.xy, GetInput().group->GetDirection(),
 		nodes[1]->m_position.xy, GetOutput().group->GetDirection());
-	m_drivingLines.clear();
 	m_dividerLines.clear();
 	m_dividerLines.push_back(prev);
 
+	int side1 = m_groups[1].count >= m_groups[0].count ? 0 : 1;
+	int side2 = 1 - side1;
+	int count1 = m_groups[side1].count;
+	int count2 = m_groups[side2].count;
+	NodeSubGroup& group1 = m_groups[side1];
+	NodeSubGroup& group2 = m_groups[side2];
+
+	float scale = 1.0f;
+	if (side1 == 1)
+	{
+		m_dividerLines[0] = m_dividerLines[0].Reverse();
+		scale = -1.0f;
+	}
+
 	// Create the lane dividers
-	int minRightCount = Math::Min(GetInput().count, GetOutput().count);
-	int maxRightCount = Math::Max(GetInput().count, GetOutput().count);
-	for (int i = 0; i < minRightCount; i++)
+	int j = 0;
+	ConstrainLaneSplit();
+	for (int i = 0; i < count1; i++)
 	{
-		nodes[0] = GetInput().group->GetNode(i);
-		nodes[1] = GetOutput().group->GetNode(i);
-		curr = BiarcPair::CreateParallel(prev,
-			nodes[0]->GetWidth(), nodes[1]->GetWidth());
-		drivingLine = BiarcPair::CreateParallel(prev,
-			nodes[0]->GetWidth() * 0.5f, nodes[1]->GetWidth() * 0.5f);
-		m_dividerLines.push_back(curr);
-		m_drivingLines.push_back(drivingLine);
-		prev = curr;
+		Meters w0 = group1.group->GetNode(i)->GetWidth();
+		Meters w1 = 0.0f;
+		for (int k = 0; k < m_laneSplit[i]; k++)
+			w1 += group2.GetNode(j++)->GetWidth();
+		m_dividerLines.push_back(BiarcPair::CreateParallel(
+			m_dividerLines[i], w0 * scale, w1 * scale));
 	}
-	lastPair = prev;
-
-	for (int i = minRightCount; i < maxRightCount; i++)
+	if (side1 == 1)
 	{
-		float laneWidth;
-		if (i < GetInput().count)
-			laneWidth = GetInput().group->GetNode(i)->GetWidth();
-		else
-			laneWidth = GetOutput().group->GetNode(i)->GetWidth();
-		curr = BiarcPair::CreateParallel(prev, laneWidth, laneWidth);
-		drivingLine = BiarcPair::CreateParallel(prev,
-			laneWidth * 0.5f, laneWidth * 0.5f);
-		m_drivingLines.push_back(drivingLine);
-		prev = curr;
-	}
-
-	// Create the right edge
-	if (GetInput().count != GetOutput().count)
-	{
-		float offsets[2] = { 0.0f, 0.0f };
-		for (int k = 0; k < 2; k++)
-		{
-			for (int i = minRightCount; i < m_groups[k].count; i++)
-				offsets[k] += m_groups[k].group->GetNode(i)->GetWidth();
-		}
-		curr = BiarcPair::CreateParallel(lastPair, offsets[0], offsets[1]);
-		m_dividerLines.push_back(curr);
+		for (unsigned int i = 0; i < m_dividerLines.size(); i++)
+			m_dividerLines[i] = m_dividerLines[i].Reverse();
 	}
 
 	m_edgeLines[(int) LaneSide::LEFT] =

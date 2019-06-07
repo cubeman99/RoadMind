@@ -146,8 +146,6 @@ private:
 	// Sorted in clockwise order
 	Array<RoadIntersectionPoint*> m_points;
 	Array<RoadIntersectionEdge*> m_edges;
-	Set<NodeGroup*> m_nodeGroups;
-
 };
 
 
