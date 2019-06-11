@@ -55,6 +55,13 @@ struct DriverLightState
 	bool rightBlinker;
 };
 
+enum class DriverState
+{
+	DRIVING = 0,
+	STOPPING = 1,
+	STOPPED = 2,
+};
+
 class Driver
 {
 public:
@@ -125,6 +132,10 @@ public:
 	{
 		return m_futureStates[index];
 	}
+	inline DriverState GetMovementState() const
+	{
+		return m_state;
+	}
 
 	inline void Push(Meters amount) { m_distance = Math::Max(0.0f, m_distance + amount); }
 	inline bool IsColliding() const { return m_isColliding; }
@@ -132,6 +143,8 @@ public:
 	inline int GetId() const { return m_id; }
 
 	bool GetFuturePosition(Meters distance, Vector3f& position, Vector2f& direction);
+	void GetNextStop(Meters& outDistance, Node*& outNode, TrafficLightSignal& outSignal);
+
 	void Next();
 	DriverPathNode Next(Node* node);
 	void CheckAvoidance();
@@ -163,6 +176,10 @@ private:
 	MetersPerSecond m_speedPrev;
 	Array<MetersPerSecond> m_speedSamples;
 
+	DriverState m_state;
+	Seconds m_stopTimer;
+	Node* m_currentStopNode;
+
 	Meters m_distance;
 	MetersPerSecond m_speed;
 	MetersPerSecondSq m_acceleration;
@@ -171,11 +188,15 @@ private:
 	Vector2f m_velocity;
 	DriverCollisionState m_futureStates[DRIVER_MAX_FUTURE_STATES];
 
-	DriverVehicleParams m_vehicleParams;
+	DriverVehicleParams m_vehicleParams; // length, width, height
 
 	MetersPerSecond m_desiredSpeed;
 public:
+
+	// Debug
 	Array<Driver*> m_collisions;
+	int m_collisionIndex;
+	bool m_futureCollision;
 	bool m_isColliding;
 };
 

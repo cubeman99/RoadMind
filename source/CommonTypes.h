@@ -1,5 +1,4 @@
-#ifndef _COMMON_TYPES_H_
-#define _COMMON_TYPES_H_
+#pragma once
 
 #include <cmgMath/cmg_math.h>
 
@@ -35,7 +34,6 @@ typedef Real NewtonMeters;
 #define horsepowerToWatts(x)	(x * 0.00134102f)
 
 
-
 struct RoadMetrics
 {
 public:
@@ -49,17 +47,20 @@ public:
 	Meters parkingSpaceLength;
 };
 
+
 enum class AxleSide
 {
 	LEFT = 0,
 	RIGHT = 1,
 };
 
+
 enum class LaneDivider
 {
 	SOLID = 0,
 	DASHED = 1,
 };
+
 
 enum class LaneSide
 {
@@ -69,6 +70,7 @@ enum class LaneSide
 
 	CENTER = 2, // debug purposes
 };
+
 
 enum class InputOutput
 {
@@ -81,4 +83,21 @@ enum class InputOutput
 typedef InputOutput IOType;
 
 
-#endif // _COMMON_TYPES_H_
+enum class RightOfWay
+{
+	GIVE_WAY = -1,
+	NONE = 0,
+	RIGHT_OF_WAY = 1,
+};
+
+
+enum class TrafficLightSignal
+{
+	NONE = 0,
+	GO = 1,
+	STOP = 2,
+	GO_YIELD = 3,
+	STOP_SIGN = 4,
+	YELLOW = 5,
+};
+

@@ -71,12 +71,15 @@ NodeGroup::NodeGroup()
 	: m_metrics(nullptr)
 	, m_tie(nullptr)
 	, m_intersection(nullptr)
+	, m_inputIntersection(nullptr)
 	, m_position(Vector3f::ZERO)
 	, m_direction(Vector2f::UNITX)
 	, m_allowPassing(false)
+	, m_rightOfWay(RightOfWay::NONE)
 	, m_rightShoulderWidth(0.0f)
 	, m_leftShoulderWidth(0.0f)
 {
+	//m_rightOfWay = Random::NextBool() ? RightOfWay::NONE : RightOfWay::GIVE_WAY;
 }
 
 NodeGroup::~NodeGroup()
@@ -122,9 +125,11 @@ NodeGroup* NodeGroup::GetTwin() const
 	return m_twin;
 }
 
-RoadIntersection* NodeGroup::GetIntersection() const
+RoadIntersection* NodeGroup::GetIntersection(IOType type) const
 {
-	return m_intersection;
+	if (type == IOType::OUTPUT)
+		return m_intersection;
+	return m_inputIntersection;
 }
 
 Node* NodeGroup::GetLeftNode() const
@@ -214,6 +219,11 @@ bool NodeGroup::IsTied() const
 	return (m_tie != nullptr);
 }
 
+RightOfWay NodeGroup::GetRightOfWay() const
+{
+	return m_rightOfWay;
+}
+
 
 //-----------------------------------------------------------------------------
 // Setters
@@ -242,6 +252,11 @@ void NodeGroup::SetDirectionFromCenter(const Vector2f& direction)
 	m_direction = direction;
 	right = RightPerpendicular(direction);
 	m_position.xy = center - (right * width * 0.5f);
+}
+
+void NodeGroup::SetRightOfWay(RightOfWay rightOfWay)
+{
+	m_rightOfWay = rightOfWay;
 }
 
 

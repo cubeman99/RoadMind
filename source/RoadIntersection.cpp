@@ -8,6 +8,7 @@
 //-----------------------------------------------------------------------------
 
 RoadIntersection::RoadIntersection()
+	: m_trafficLightProgram(nullptr)
 {
 }
 
@@ -19,6 +20,8 @@ RoadIntersection::~RoadIntersection()
 	for (unsigned int i = 0; i < m_edges.size(); i++)
 		delete m_edges[i];
 	m_edges.clear();
+	delete m_trafficLightProgram;
+	m_trafficLightProgram = nullptr;
 }
 
 
@@ -41,10 +44,37 @@ Array<RoadIntersectionEdge*>& RoadIntersection::GetEdges()
 	return m_edges;
 }
 
+const TrafficLightProgram* RoadIntersection::GetTrafficLightProgram() const
+{
+	return m_trafficLightProgram;
+}
+
 
 //-----------------------------------------------------------------------------
 // Setters
 //-----------------------------------------------------------------------------
+
+TrafficLightProgram* RoadIntersection::CreateTrafficLightProgram()
+{
+	delete m_trafficLightProgram;
+	m_trafficLightProgram = new TrafficLightProgram();
+	for (unsigned int i = 0; i < m_points.size(); i++)
+	{
+		if (m_points[i]->GetIOType() == IOType::INPUT)
+		{
+			TrafficLightProgramState state;
+			NodeGroup* group = m_points[i]->GetNodeGroup();
+			for (int j = 0; j < group->GetNumNodes(); j++)
+			{
+				Node* node = group->GetNode(j);
+				state.AddTrigger(node);
+				state.SetSignal(node, TrafficLightSignal::GO);
+			}
+			m_trafficLightProgram->AddState(state);
+		}
+	}
+	return m_trafficLightProgram;
+}
 
 void RoadIntersection::Construct(const Set<NodeGroup*>& nodeGroups)
 {
@@ -60,8 +90,8 @@ void RoadIntersection::Construct(const Set<NodeGroup*>& nodeGroups)
 	int count = 0;
 	for (NodeGroup* group : nodeGroups)
 	{
-		group->m_intersection = this;
-		AddPoint(group, group->GetOutputs().empty() ? IOType::INPUT : IOType::OUTPUT);
+		IOType ioType = group->GetOutputs().empty() ? IOType::INPUT : IOType::OUTPUT;
+		AddPoint(group, ioType);
 		if (group->m_twin == nullptr)
 		{
 			m_centerPosition += group->GetCenterPosition().xy;
@@ -99,12 +129,16 @@ void RoadIntersection::Construct(const Set<NodeGroup*>& nodeGroups)
 		if (left->GetNodeGroup()->GetTwin() != right->GetNodeGroup())
 			m_edges.push_back(new RoadIntersectionEdge(left, right));
 	}
+
+	CreateTrafficLightProgram();
 }
 
 RoadIntersectionPoint* RoadIntersection::AddPoint(NodeGroup* group, IOType type)
 {
 	RoadIntersectionPoint* point = new RoadIntersectionPoint(group, type);
 	m_points.push_back(point);
+	if (type == IOType::INPUT)
+		group->m_intersection = this;
 	return point;
 }
 
@@ -112,6 +146,12 @@ RoadIntersectionPoint* RoadIntersection::AddPoint(NodeGroup* group, IOType type)
 //-----------------------------------------------------------------------------
 // Geometry
 //-----------------------------------------------------------------------------
+
+void RoadIntersection::Update(Seconds dt)
+{
+	if (m_trafficLightProgram != nullptr)
+		m_trafficLightProgram->Udpate(dt);
+}
 
 void RoadIntersection::UpdateGeometry()
 {

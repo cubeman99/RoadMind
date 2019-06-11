@@ -94,6 +94,7 @@
     <ClInclude Include="..\source\RoadSurface.h" />
     <ClInclude Include="..\source\ToolDraw.h" />
     <ClInclude Include="..\source\ToolSelection.h" />
+    <ClInclude Include="..\source\TrafficLight.h" />
     <ClInclude Include="..\source\Vehicle.h" />
     <ClInclude Include="..\source\VehicleParams.h" />
   </ItemGroup>
@@ -119,6 +120,7 @@
     <ClCompile Include="..\source\RoadSurface.cpp" />
     <ClCompile Include="..\source\ToolDraw.cpp" />
     <ClCompile Include="..\source\ToolSelection.cpp" />
+    <ClCompile Include="..\source\TrafficLight.cpp" />
     <ClCompile Include="..\source\Vehicle.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

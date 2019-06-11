@@ -5,6 +5,7 @@ INSTALL/
 
 # Save files
 *.gmt
+*.rdmd
 
 # User-specific files
 *.suo

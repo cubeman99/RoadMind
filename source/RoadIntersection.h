@@ -1,11 +1,11 @@
-#ifndef _ROAD_INTERSECTION_H_
-#define _ROAD_INTERSECTION_H_
+#pragma once
 
 #include <cmgCore/cmg_core.h>
 #include <cmgMath/cmg_math.h>
 #include "CommonTypes.h"
 #include "NodeGroup.h"
 #include "RoadSurface.h"
+#include "TrafficLight.h"
 #include <set>
 
 class Connection;
@@ -129,11 +129,13 @@ public:
 	Vector2f GetCenterPosition() const;
 	Array<RoadIntersectionPoint*>& GetPoints();
 	Array<RoadIntersectionEdge*>& GetEdges();
+	const TrafficLightProgram* GetTrafficLightProgram() const;
 
 	// Setters
+	TrafficLightProgram* CreateTrafficLightProgram();
 
 	// Geometry
-
+	void Update(Seconds dt);
 	virtual void UpdateGeometry() override;
 
 private:
@@ -142,11 +144,10 @@ private:
 
 	int m_id;
 	Vector2f m_centerPosition;
+	TrafficLightProgram* m_trafficLightProgram;
 
 	// Sorted in clockwise order
 	Array<RoadIntersectionPoint*> m_points;
 	Array<RoadIntersectionEdge*> m_edges;
 };
 
-
-#endif // _ROAD_INTERSECTION_H_

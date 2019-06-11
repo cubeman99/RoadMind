@@ -9,6 +9,7 @@
 NodeGroupConnection::NodeGroupConnection()
 	: m_metrics(nullptr)
 	, m_laneIntersectionPoint(Vector2f::ZERO)
+	, m_isGhost(false)
 {
 }
 
@@ -143,8 +144,8 @@ BiarcPair NodeGroupConnection::GetDrivingLine(int laneIndex)
 	return GetDrivingLine(laneIndex, laneIndex);
 }
 
-void NodeGroupConnection::GetLaneShiftRange(
-	int fromLaneIndex, int& outLeftmostLane, int& rightmostLane)
+void NodeGroupConnection::GetLaneOutputRange(
+	int fromLaneIndex, int& outToLaneIndex, int& outToLaneCount)
 {
 	int side1 = m_groups[1].count >= m_groups[0].count ? 0 : 1;
 	int side2 = 1 - side1;
@@ -158,8 +159,8 @@ void NodeGroupConnection::GetLaneShiftRange(
 		{
 			if (index + m_laneSplit[i] > fromLaneIndex)
 			{
-				outLeftmostLane = Math::Max(0, i - 1);
-				rightmostLane = Math::Min(m_groups[1].count - 1, i + 1);
+				outToLaneIndex = i;
+				outToLaneCount = 1;
 				return;
 			}
 			index += m_laneSplit[i];
@@ -172,14 +173,20 @@ void NodeGroupConnection::GetLaneShiftRange(
 		{
 			if (i == fromLaneIndex)
 			{
-				outLeftmostLane = Math::Max(0, index - 1);
-				rightmostLane = Math::Min(m_groups[1].count - 1, index + m_laneSplit[i]);
+				outToLaneIndex = index;
+				outToLaneCount = m_laneSplit[i];
 				return;
 			}
 			index += m_laneSplit[i];
 		}
 	}
 }
+
+bool NodeGroupConnection::IsGhost() const
+{
+	return m_isGhost;
+}
+
 
 
 //-----------------------------------------------------------------------------
@@ -194,6 +201,11 @@ void NodeGroupConnection::SetInput(const NodeSubGroup& input)
 void NodeGroupConnection::SetOutput(const NodeSubGroup& output)
 {
 	m_groups[(int) InputOutput::OUTPUT] = output;
+}
+
+void NodeGroupConnection::SetGhost(bool ghost)
+{
+	m_isGhost = ghost;
 }
 
 void NodeGroupConnection::CycleLaneSplit()
@@ -218,12 +230,12 @@ void NodeGroupConnection::ConstrainLaneSplit()
 
 	m_laneSplit.resize(count1);
 	int remaining = count2;
-	for (int i = count1 - 1; i > 0; i--)
+	for (int i = 0; i < count1 - 1; i++)
 	{
-		m_laneSplit[i] = Math::Clamp(m_laneSplit[i], 1, remaining - i);
+		m_laneSplit[i] = Math::Clamp(m_laneSplit[i], 1, remaining - (count1 - 1 - i));
 		remaining -= m_laneSplit[i];
 	}
-	m_laneSplit[0] = remaining;
+	m_laneSplit[count1 - 1] = remaining;
 }
 
 

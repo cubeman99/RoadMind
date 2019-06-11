@@ -41,12 +41,15 @@ void DrivingSystem::SpawnDriver()
 	Set<Node*> nodes;
 	for (NodeGroupConnection* connection : m_network->GetNodeGroupConnections())
 	{
-		for (int i = 0; i < connection->GetInput().count; i++)
+		if (!connection->IsGhost())
 		{
-			NodeGroup* nodeGroup = connection->GetInput().group;
-			if (nodeGroup->GetInputs().size() == 0 &&
-					nodeGroup->GetIntersection() == nullptr)
-				nodes.insert(connection->GetInput().GetNode(i));
+			for (int i = 0; i < connection->GetInput().count; i++)
+			{
+				NodeGroup* nodeGroup = connection->GetInput().group;
+				if (nodeGroup->GetInputs().size() == 0 &&
+						nodeGroup->GetIntersection(IOType::INPUT) == nullptr)
+					nodes.insert(connection->GetInput().GetNode(i));
+			}
 		}
 	}
 	if (nodes.size() > 0)

@@ -44,12 +44,14 @@ public:
 	Array<BiarcPair>& GetDrivingLines();
 	BiarcPair GetDrivingLine(int fromLaneIndex, int toLaneIndex);
 	BiarcPair GetDrivingLine(int laneIndex);
-	void GetLaneShiftRange(int fromLaneIndex, int& outLeftmostLane, int& rightmostLane);
+	void GetLaneOutputRange(int fromLaneIndex, int& outToLaneIndex, int& outToLaneCount);
+	bool IsGhost() const;
 
 	// Setters
 
 	void SetInput(const NodeSubGroup& input);
 	void SetOutput(const NodeSubGroup& output);
+	void SetGhost(bool ghost);
 	void CycleLaneSplit();
 
 	// Geometry
@@ -79,6 +81,7 @@ public:
 	Vector2f m_laneIntersectionPoint;
 	Vector2f m_edgeIntersectionPoint;
 	Array<int> m_laneSplit;
+	bool m_isGhost;
 };
 
 

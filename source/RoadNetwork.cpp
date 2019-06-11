@@ -433,6 +433,12 @@ void RoadNetwork::UpdateNodeGeometry()
 		intersection->UpdateGeometry();
 }
 
+void RoadNetwork::Simulate(Seconds dt)
+{
+	for (RoadIntersection* intersection : m_intersections)
+		intersection->Update(dt);
+}
+
 
 //-----------------------------------------------------------------------------
 // Save & Load
@@ -573,6 +579,7 @@ bool RoadNetwork::Load(const Path& path)
 		group->m_twin = LoadPointer(file, m_nodeGroups);
 		group->m_tie = LoadPointer(file, m_nodeGroupTies);
 		group->m_intersection = LoadPointer(file, m_intersections);
+		group->m_intersection = nullptr;
 
 		// Read individual nodes
 		file.Read(&count2, sizeof(unsigned int));
@@ -644,6 +651,10 @@ bool RoadNetwork::Load(const Path& path)
 			intersection->m_points[j] = point;
 			file.Read(&point->m_ioType, sizeof(IOType));
 			point->m_nodeGroup = LoadPointer(file, m_nodeGroups);
+			if (point->m_ioType == IOType::INPUT)
+				point->m_nodeGroup->m_intersection = intersection;
+			else
+				point->m_nodeGroup->m_inputIntersection = intersection;
 		}
 
 		// Read edges
@@ -660,6 +671,8 @@ bool RoadNetwork::Load(const Path& path)
 				edge->m_points[k] = intersection->m_points[index];
 			}
 		}
+
+		intersection->CreateTrafficLightProgram();
 	}
 
 	return true;

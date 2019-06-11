@@ -82,6 +82,8 @@ private:
 		}
 	};
 
+	bool m_paused;
+
 	Array<DebugOption*> m_debugOptions;
 	DebugOption* m_showDebug;
 	DebugOption* m_wireframeMode;

@@ -23,9 +23,6 @@ public:
 	// Constructors
 
 	Node();
-	Node(const Vector3f& position, const Vector2f& direction,
-		const Vector2f& leftDirection, const Vector2f& rightDirection,
-		float width);
 
 	// Getters
 
@@ -43,6 +40,23 @@ public:
 	Vector3f GetCenter() const;
 	Node* GetLeftNode() const;
 	Node* GetRightNode() const;
+	bool IsLeftMostLane() const;
+	bool IsRightMostLane() const;
+	bool HasStopSign() const;
+	TrafficLightSignal GetSignal() const;
+
+	// Setters
+
+	void SetWidth(float width);
+	void SetLeftPosition(const Vector3f& position);
+	void SetCenterPosition(const Vector3f& center);
+	void SetEndNormal(const Vector2f& normal);
+	
+	// Geometry
+
+	void UpdateGeometry();
+
+private:
 	int GetNumInputs() const;
 	int GetNumOutputs() const;
 	int GetNumConnections(InputOutput type) const;
@@ -55,21 +69,6 @@ public:
 	Connection* GetOutputConnection(Node* node) const;
 	LaneDivider GetLeftLaneDivider() const;
 	LaneDivider GetRightLaneDivider() const;
-	bool IsLeftMostLane() const;
-	bool IsRightMostLane() const;
-
-	// Setters
-
-	void SetPrevNode(Node* node);
-	void SetNextNode(Node* node);
-	void SetWidth(float width);
-	void SetLeftPosition(const Vector3f& position);
-	void SetCenterPosition(const Vector3f& center);
-	void SetEndNormal(const Vector2f& normal);
-	
-	// Geometry
-
-	void UpdateGeometry();
 
 private:
 	Meters m_width;
@@ -79,8 +78,8 @@ private:
 
 	int m_index;
 
-	void* m_signal; // Stop-light, stop-sign, yield-sign
 	void* m_laneMarking;
+	bool m_hasStopSign;
 
 	const RoadMetrics* m_metrics;
 	NodeGroup* m_nodeGroup;

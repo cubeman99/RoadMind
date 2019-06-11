@@ -118,10 +118,12 @@ void ToolDraw::OnLeftMousePressed()
 				m_dragInfo.inputGroup, m_dragInfo.nodeGroup);
 		}
 
+		m_dragInfo.connection->SetGhost(true);
 		m_dragInfo.state = DragState::POSITION;
 	}
 	else if (m_dragInfo.state == DragState::POSITION)
 	{
+		m_dragInfo.connection->SetGhost(false);
 		if (m_snapInfo.subGroup.group != nullptr)
 		{
 			if (m_snapInfo.reverse)
@@ -161,6 +163,7 @@ void ToolDraw::OnLeftMousePressed()
 				m_dragInfo.inputGroup, m_dragInfo.nodeGroup);
 			m_dragInfo.state = DragState::POSITION;
 		}
+		m_dragInfo.connection->SetGhost(true);
 	}
 }
 

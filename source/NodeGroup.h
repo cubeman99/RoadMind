@@ -67,7 +67,7 @@ public:
 	Vector2f GetRightDirection() const;
 	const RoadMetrics* GetMetrics() const;
 	NodeGroup* GetTwin() const;
-	RoadIntersection* GetIntersection() const;
+	RoadIntersection* GetIntersection(IOType type = IOType::OUTPUT) const;
 	Node* GetLeftNode() const;
 	Node* GetRightNode() const;
 	Node* GetNode(int index);
@@ -82,6 +82,7 @@ public:
 	Array<NodeGroupConnection*>& GetInputs();
 	Array<NodeGroupConnection*>& GetOutputs();
 	bool IsTied() const;
+	RightOfWay GetRightOfWay() const;
 
 	// Setters
 
@@ -89,6 +90,7 @@ public:
 	void SetAltitude(float z);
 	void SetDirection(const Vector2f& direction);
 	void SetDirectionFromCenter(const Vector2f& direction);
+	void SetRightOfWay(RightOfWay rightOfWay);
 
 	// Geometry
 
@@ -105,23 +107,27 @@ private:
 	void RemoveOutput(NodeGroupConnection* output);
 	void RemoveConnection(NodeGroupConnection* connection, int direction);
 
+private:
 	int m_id;
+
+	// Position
 	Vector3f m_position;
 	Vector2f m_direction;
+
+	// Connections
 	Array<Node*> m_nodes;
-
-	Array<NodeGroupConnection*> m_connections[2];
-
-	Meters m_leftShoulderWidth;
-	Meters m_rightShoulderWidth;
-
 	NodeGroup* m_twin;
 	NodeGroupTie* m_tie;
 	RoadIntersection* m_intersection;
+	RoadIntersection* m_inputIntersection;
+	Array<NodeGroupConnection*> m_connections[2];
 
 	// Road rules
 	bool m_allowPassing;
+	RightOfWay m_rightOfWay;
 
+	Meters m_leftShoulderWidth;
+	Meters m_rightShoulderWidth;
 	const RoadMetrics* m_metrics;
 };
 

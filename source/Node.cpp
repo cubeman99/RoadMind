@@ -1,6 +1,7 @@
 #include "Node.h"
 #include "Connection.h"
 #include "NodeGroup.h"
+#include "RoadIntersection.h"
 
 
 //-----------------------------------------------------------------------------
@@ -14,6 +15,7 @@ Node::Node()
 	, m_leftDivider(LaneDivider::DASHED)
 	, m_nodeGroup(nullptr)
 	, m_index(0)
+	, m_hasStopSign(false)
 {
 }
 
@@ -185,6 +187,22 @@ bool Node::IsLeftMostLane() const
 bool Node::IsRightMostLane() const
 {
 	return (m_index == m_nodeGroup->GetNumNodes() - 1);
+}
+
+
+bool Node::HasStopSign() const
+{
+	return m_hasStopSign;
+}
+
+TrafficLightSignal Node::GetSignal() const
+{
+	if (m_nodeGroup->GetIntersection() != nullptr &&
+		m_nodeGroup->GetIntersection()->GetTrafficLightProgram() != nullptr)
+	{
+		return m_nodeGroup->GetIntersection()->GetTrafficLightProgram()->GetSignal(this);
+	}
+	return TrafficLightSignal::NONE;
 }
 
 

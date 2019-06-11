@@ -52,6 +52,7 @@ public:
 
 	// Geometry
 	void UpdateNodeGeometry();
+	void Simulate(Seconds dt);
 
 
 private:

@@ -28,7 +28,10 @@ Driver::Driver(RoadNetwork* network, DrivingSystem* drivingSystem, Node* node, i
 	, m_brakeLightTimer(0.0f)
 	, m_blinkerTimer(0.0f)
 	, m_id(id)
+	, m_currentStopNode(nullptr)
 {
+	m_state = DriverState::DRIVING;
+
 	m_desiredSpeed = Random::NextFloat(10.0f, 20.0f);
 	m_speed = m_desiredSpeed;
 	m_distance = Random::NextFloat(0.0f, 3.0f);
@@ -42,6 +45,7 @@ Driver::Driver(RoadNetwork* network, DrivingSystem* drivingSystem, Node* node, i
 	params.deceleration = 70.0f;
 	params.size[0] = Vector3f(4.78f, 1.96f, 1.18f);
 	params.maxSpeed = 25.0f;
+	m_vehicleParams = params;
 	vehicles.push_back(params);
 	vehicles.push_back(params);
 	vehicles.push_back(params);
@@ -74,7 +78,7 @@ Driver::Driver(RoadNetwork* network, DrivingSystem* drivingSystem, Node* node, i
 	params.pivotOffset[1] = 0.4f;
 	vehicles.push_back(params);
 
-	m_vehicleParams = Random::Choose(vehicles);
+	//m_vehicleParams = Random::Choose(vehicles);
 
 
 	if (node != nullptr)
@@ -120,6 +124,28 @@ bool Driver::GetFuturePosition(Meters distance, Vector3f& position, Vector2f& di
 	return false;
 }
 
+void Driver::GetNextStop(Meters& outDistance, Node*& outNode, TrafficLightSignal& outSignal)
+{
+	outDistance = -m_distance - (m_vehicleParams.size[0].x * 0.5f);
+	for (unsigned int i = 0; i < m_path.size(); i++)
+	{
+		DriverPathNode pathNode = m_path[i];
+		outDistance += pathNode.GetDistance();
+		TrafficLightSignal signal = pathNode.GetEndNode()->GetSignal();
+		if (signal == TrafficLightSignal::STOP ||
+			signal == TrafficLightSignal::STOP_SIGN ||
+			signal == TrafficLightSignal::YELLOW)
+		{
+			outNode = pathNode.GetEndNode();
+			outSignal = signal;
+			return;
+		}
+	}
+	outDistance = -1.0f;
+	outNode = nullptr;
+	outSignal = TrafficLightSignal::NONE;
+}
+
 void Driver::Next()
 {
 	Node* node = m_nodeCurrent;
@@ -160,7 +186,8 @@ DriverPathNode Driver::Next(Node* node)
 	for (NodeGroupConnection* connection : nodeGroup->GetOutputs())
 	{
 		const NodeSubGroup& group = connection->GetInput();
-		if (node->GetIndex() >= group.index &&
+		if (!connection->IsGhost() &&
+			node->GetIndex() >= group.index &&
 			node->GetIndex() < group.index + group.count)
 		{
 			possibleConnections.push_back(connection);
@@ -173,12 +200,18 @@ DriverPathNode Driver::Next(Node* node)
 	NodeGroupConnection* connection = possibleConnections[index];
 	int fromLaneIndex = node->GetIndex() -
 		connection->GetInput().index;
-	int minToLaneIndex, maxToLaneIndex;
-	connection->GetLaneShiftRange(fromLaneIndex, minToLaneIndex, maxToLaneIndex);
+	int toLaneFirst, toLaneCount;
 	NodeSubGroup output = connection->GetOutput();
-	int toLaneindex = Random::NextInt(minToLaneIndex, maxToLaneIndex + 1);
-	toLaneindex = Math::Clamp(toLaneindex, 0, output.count - 1);
-	return DriverPathNode(connection, fromLaneIndex, toLaneindex);
+	connection->GetLaneOutputRange(fromLaneIndex, toLaneFirst, toLaneCount);
+	int toLaneNextFirst = Math::Max(0, toLaneFirst - 1);
+	int toLaneNextLast = Math::Min(output.count - 1, toLaneFirst + toLaneCount);
+	int toLaneindex = Random::NextInt(toLaneNextFirst, toLaneNextLast + 1);
+	int laneShift = 0;
+	if (toLaneindex < toLaneFirst)
+		laneShift = -1;
+	else if (toLaneindex >= toLaneFirst + toLaneCount)
+		laneShift = 1;
+	return DriverPathNode(connection, fromLaneIndex, toLaneindex, laneShift);
 }
 
 void Driver::CheckAvoidance()
@@ -225,31 +258,67 @@ void Driver::CheckAvoidance(RoadSurface* surface)
 void Driver::CheckAvoidance(Driver* driver)
 {
 	Meters timeOfImpact = -1.0f;
-	
+
+	RightOfWay myRightOfWay = RightOfWay::NONE;
+	RightOfWay otherRightOfWay = RightOfWay::NONE;
+	myRightOfWay = m_path[0].GetStartNode()->GetNodeGroup()->GetRightOfWay();
+	otherRightOfWay = driver->m_path[0].GetStartNode()->GetNodeGroup()->GetRightOfWay();
+
 	// Make sure we are behind the other driver
 	Vector3f front0 = GetFrontPostion();
 	Vector3f front1 = driver->GetFrontPostion();
-	float bd = front1.xy.Dot(GetDirection()) - front0.xy.Dot(GetDirection());
-	float ad = front0.xy.Dot(driver->GetDirection()) - front1.xy.Dot(driver->GetDirection());
-	if (bd < ad)
+	Meters distToOther = front1.xy.Dot(GetDirection()) - front0.xy.Dot(GetDirection());
+	Meters distToMe = front0.xy.Dot(driver->GetDirection()) - front1.xy.Dot(driver->GetDirection());
+	if (distToOther < 0.0f)
 		return;
 
+	if ((int) myRightOfWay >= (int) otherRightOfWay)
+	{
+		// Make sure we are even more behind than the other driver
+		if (distToOther < distToMe)
+			return;
+	}
+
 	// Determine time of collision
+	bool staticCollision = false;
+	bool futureCollision = false;
 	for (unsigned int i = 0; i < DRIVER_MAX_FUTURE_STATES; i++)
 	{
 		if (Driver::CheckCollision(
 				m_vehicleParams, m_futureStates[i],
-				driver->m_vehicleParams, driver->m_futureStates[0]) ||
-			(i > 0 && Driver::CheckCollision(
-				m_vehicleParams, m_futureStates[i],
-				driver->m_vehicleParams, driver->m_futureStates[i])))
+				driver->m_vehicleParams, driver->m_futureStates[0]))
 		{
 			timeOfImpact = driver->m_futureStates[i].time;
 			if (i == 0)
+			{
 				m_isColliding = true;
+				m_collisions.push_back(driver);
+			}
+			staticCollision = true;
+			m_collisionIndex = i;
+			m_futureCollision = false;
 			break;
 		}
 	}
+	if (!staticCollision)
+	{
+		for (unsigned int i = 1; i < DRIVER_MAX_FUTURE_STATES; i++)
+		{
+			if (Driver::CheckCollision(
+				m_vehicleParams, m_futureStates[i],
+				driver->m_vehicleParams, driver->m_futureStates[i]))
+			{
+				timeOfImpact = driver->m_futureStates[i].time;
+				futureCollision = true;
+				m_collisionIndex = i;
+				m_futureCollision = true;
+				break;
+			}
+		}
+	}
+
+	if ((int) myRightOfWay > (int) otherRightOfWay && !staticCollision)
+		return;
 
 	Meters distOfImpact = timeOfImpact * m_speed;
 	if (timeOfImpact < 0.0f)
@@ -257,10 +326,18 @@ void Driver::CheckAvoidance(Driver* driver)
 	if (timeOfImpact > DRIVER_COLLISION_LOOK_AHEAD)
 		return;
 
+	//distOfImpact = distToOther;
+	MetersPerSecondSq deceleration = 0.0f;
+	if (distOfImpact > FLT_EPSILON)
+		deceleration = Math::Max(0.01f, (m_speed * m_speed) / (2.0f * distOfImpact)) * 1.2f;
+	m_acceleration = Math::Min(m_acceleration, -deceleration);
 	m_collisions.push_back(driver);
-	m_acceleration = -m_vehicleParams.deceleration;
+	//m_acceleration = -m_vehicleParams.deceleration;
 	if (m_isColliding)
+	{
 		m_speed = 0.0f;
+		m_acceleration = 0.0f;
+	}
 }
 
 bool Driver::CheckCollision(
@@ -270,19 +347,20 @@ bool Driver::CheckCollision(
 	const DriverCollisionState& b)
 {
 	Vector2f c1, c2, c3, c4, mins, maxs;
+	Vector2f stretch(1.3f, 1.1f);
 	for (int i = 0; i < paramsA.trailerCount; i++)
 	{
 		Vector2f posA = a.position[i].xy;
 		Vector2f dirA = a.direction[i];
-		Vector2f sizeA = paramsA.size[i].xy * 0.5f;
+		Vector2f sizeA = paramsA.size[i].xy * 0.5f * stretch;
 
 		for (int j = 0; j < paramsB.trailerCount; j++)
 		{
 			Vector2f posB = b.position[j].xy;
 			Vector2f dirB = b.direction[j];
-			Vector2f sizeB = paramsB.size[j].xy * 0.5f;
-			
-			if (posA.DistToSqr(posB) > sizeA.LengthSquared() + sizeB.LengthSquared())
+			Vector2f sizeB = paramsB.size[j].xy * 0.5f * stretch;
+
+			if (posA.DistTo(posB) > sizeA.Length() + sizeB.Length())
 				continue;
 
 			bool touching = true;
@@ -298,7 +376,7 @@ bool Driver::CheckCollision(
 			maxs.y = Math::Max(Math::Max(c1.y, c2.y), Math::Max(c3.y, c4.y));
 			if (maxs.x < -sizeB.x || mins.x > sizeB.x ||
 				maxs.y < -sizeB.y || mins.y > sizeB.y)
-				touching =false;
+				touching = false;
 
 			t = a.GetTransformInv(i) * b.GetTransform(j);
 			c1 = t.TransformVector(Vector2f(sizeB.x, sizeB.y));
@@ -327,6 +405,85 @@ bool Driver::CheckCollision(
 
 void Driver::Update(float dt)
 {
+	MetersPerSecondSq minBrakeRate = 10.0f;
+	MetersPerSecondSq maxBrakeRate = 20.0f;
+	Meters distanceToStopSign;
+	Node* stopNode;
+	TrafficLightSignal signal;
+	GetNextStop(distanceToStopSign, stopNode, signal);
+
+	if (m_state == DriverState::DRIVING)
+	{
+		if (m_collisions.empty())
+		{
+			if (m_speed < m_desiredSpeed)
+				m_acceleration = m_vehicleParams.acceleration;
+			else if (m_speed > m_desiredSpeed)
+				m_acceleration = -m_vehicleParams.deceleration;
+			if (Math::Abs(m_speed - m_desiredSpeed) < m_acceleration * dt)
+				m_acceleration = 0.0f;
+		}
+
+		Meters maxBrakingDistance = (m_speed * m_speed) / (2.0f * minBrakeRate);
+		Meters minBrakingDistance = (m_speed * m_speed) / (2.0f * maxBrakeRate);
+		if (distanceToStopSign >= 0.0f &&
+			distanceToStopSign <= maxBrakingDistance &&
+			!(signal == TrafficLightSignal::YELLOW &&
+				distanceToStopSign < minBrakingDistance))
+		{
+				m_currentStopNode = stopNode;
+				m_state = DriverState::STOPPING;
+		}
+	}
+	if (m_state == DriverState::STOPPING)
+	{
+		MetersPerSecondSq deceleration = 1.0f;
+		if (deceleration > FLT_EPSILON)
+			deceleration = Math::Max(
+				0.1f, (m_speed * m_speed) / (2.0f * distanceToStopSign));
+		m_acceleration = Math::Min(m_acceleration, -deceleration);
+		if (distanceToStopSign < 0.1f)
+		{
+			m_speed = 0.0f;
+			m_state = DriverState::STOPPED;
+			m_stopTimer = 1.0f;
+		}
+		if (m_currentStopNode->GetSignal() != TrafficLightSignal::STOP &&
+			m_currentStopNode->GetSignal() != TrafficLightSignal::STOP_SIGN &&
+			m_currentStopNode->GetSignal() != TrafficLightSignal::YELLOW)
+		{
+			m_state = DriverState::DRIVING;
+			m_currentStopNode = nullptr;
+		}
+	}
+	if (m_state == DriverState::STOPPED)
+	{
+		m_acceleration = 0.0f;
+		m_stopTimer -= dt;
+		if (m_currentStopNode->GetSignal() != TrafficLightSignal::STOP &&
+			m_currentStopNode->GetSignal() != TrafficLightSignal::STOP_SIGN &&
+			m_currentStopNode->GetSignal() != TrafficLightSignal::YELLOW)
+		{
+			m_state = DriverState::DRIVING;
+			m_currentStopNode = nullptr;
+		}
+		else if (m_stopTimer <= 0.0f &&
+			m_currentStopNode->GetSignal() == TrafficLightSignal::STOP_SIGN)
+		{
+			if (stopNode != m_currentStopNode)
+			{
+				m_currentStopNode = nullptr;
+				m_state = DriverState::DRIVING;
+			}
+		}
+		else
+		{
+			m_speed = 0.0f;
+		}
+	}
+
+	CMG_ASSERT(!std::isnan(m_acceleration));
+
 	m_speed += m_acceleration * dt;
 	if (m_speed < 0.0f)
 		m_speed = 0.0f;
@@ -394,7 +551,7 @@ void Driver::Update(float dt)
 	for (float sample : m_speedSamples)
 		avgSpeed += sample;
 	avgSpeed /= (MetersPerSecond) m_speedSamples.size();
-	float deltaSpeed = (avgSpeed - m_speedPrev) / dt;
+	float deltaSpeed = -(avgSpeed - m_speedPrev) / dt;
 	m_speedPrev = avgSpeed;
 	
 	m_lightState.leftBlinker = false;
@@ -411,9 +568,7 @@ void Driver::Update(float dt)
 	if (m_blinkerTimer < -0.3f)
 		m_blinkerTimer += 0.6f;
 
-	//if ((m_speed < mphToMetersPerSecond(5.0f) && deltaSpeed < FLT_EPSILON) ||
-	//	deltaSpeed < -1.0f)
-	if (deltaSpeed < -20.0f)
+	if (deltaSpeed < -20.0f || m_speed < mphToMetersPerSecond(0.3f))
 		m_brakeLightTimer = 0.5f;
 	if (m_brakeLightTimer > 0.0f)
 	{
@@ -494,16 +649,11 @@ void Driver::IntegrateVelocity(float dt)
 {
 	if (m_path.size() == 0)
 		return;
-
-	if (m_speed < m_desiredSpeed)
-		m_acceleration = m_vehicleParams.acceleration;
-	else if (m_speed > m_desiredSpeed)
-		m_acceleration = -m_vehicleParams.deceleration;
-	if (Math::Abs(m_speed - m_desiredSpeed) < m_acceleration * dt)
-		m_acceleration = 0.0f;
+	m_acceleration = 0.0f;
 
 	// Reset collision debug info
 	m_isColliding = false;
+	m_collisionIndex = -1;
 	m_collisions.clear();
 
 	UpdateFutureStates();
