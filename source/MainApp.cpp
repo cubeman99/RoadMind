@@ -24,10 +24,16 @@ MainApp::MainApp()
 	m_debugOptions.push_back(m_showDrivingLines = new DebugOption("Paths", false));
 
 	m_showRoadSurface->enabled = false;
-	m_showRoadSurface->enabled = false;
 	m_showCollisions->enabled = false;
 	m_showDebug->enabled = true;
 	m_showNodes->enabled = true;
+
+	m_showRoadMarkings->enabled = true;
+	m_showEdgeLines->enabled = true;
+	m_showNodes->enabled = false;
+	m_showSeams->enabled = true;
+	m_wireframeMode->enabled = false;
+	m_showRoadSurface->enabled = true;
 }
 
 MainApp::~MainApp()
@@ -44,7 +50,10 @@ void MainApp::OnInitialize()
 	m_network = new RoadNetwork();
 	m_drivingSystem = new DrivingSystem(m_network);
 	m_backgroundTexture = nullptr;
-
+	TextureParams params;
+	params.SetWrap(TextureWrap::REPEAT);
+	m_roadTexture = Texture::LoadTexture(ASSETS_PATH "textures/asphalt.png", params);
+	
 	m_defaultCameraState.m_viewHeight = 50.0f;
 	m_defaultCameraState.m_position = Vector2f::ZERO;
 	m_defaultCameraState.m_rotation = 0.0f;
@@ -515,6 +524,9 @@ void MainApp::OnQuit()
 	delete m_meshWheel;
 	m_meshWheel = nullptr;
 	delete m_drivingSystem;
+	delete m_roadTexture;
+	m_roadTexture = nullptr;
+
 	m_drivingSystem = nullptr;
 
 	delete m_network;
@@ -601,6 +613,13 @@ void MainApp::OnUpdate(float dt)
 	{
 		m_network->Load(SAVE_FILE_PATH);
 		std::cout << "Loaded " << SAVE_FILE_PATH << std::endl;
+	}
+
+	// Home: reset camera
+	if (keyboard->IsKeyPressed(Keys::home))
+	{
+		m_camera.m_position = m_defaultCameraState.m_position;
+		m_camera.m_rotation = m_defaultCameraState.m_rotation;
 	}
 
 	// Number keys: debug options
@@ -788,6 +807,97 @@ void FillShape(Graphics2D& g, const Array<Vector2f>& points, const Color& color)
 	glEnd();
 }
 
+void FillShape2(Graphics2D& g, const Array<Vector2f>& left, const Array<Vector2f>& right, const Color& color)
+{
+	const Array<Vector2f>* sides[2] = { &left, &right };
+	Array<Vector2f> vertices;
+	unsigned int head[2] = { 1, 0 };
+	Vector2f a, b, c;
+	int side = 0;
+	bool prevConvex = true;
+	Vector2f mins = left[0];
+	for (unsigned int axis = 0; axis < 2; axis++)
+	{
+		for (unsigned int i = 0; i < left.size(); i++)
+			mins[axis] = Math::Min(mins[axis], left[i][axis]);
+		for (unsigned int i = 0; i < right.size(); i++)
+			mins[axis] = Math::Min(mins[axis], right[i][axis]);
+	}
+
+	while (head[0] < left.size() && head[1] < right.size())
+	{
+		int other = 1 - side;
+
+		// Remove equivilant vertices
+		a = sides[side]->at(head[side] - 1);
+		b = sides[side]->at(head[side]);
+		if (a.DistToSqr(b) < 0.001f)
+		{
+			head[side] += 1;
+			continue;
+		}
+		a = sides[side]->at(head[side] - 1);
+		b = sides[other]->at(head[other]);
+		if (a.DistToSqr(b) < 0.001f)
+		{
+			head[side] += 1;
+			continue;
+		}
+
+		// Define the triangle in clockwise order
+		if (side == 0)
+		{
+			a = sides[other]->at(head[other]);
+			b = sides[side]->at(head[side] - 1);
+			c = sides[side]->at(head[side]);
+		}
+		else
+		{
+			a = sides[side]->at(head[side] - 1);
+			b = sides[other]->at(head[other]);
+			c = sides[side]->at(head[side]);
+		}
+
+		// If this triangle will be concave, then switch to the other side
+		Convexity convexity = GetConvexity(a, b, c);
+		if (prevConvex && convexity == Convexity::CONCAVE)
+		{
+			head[side] -= 1;
+			head[other] += 1;
+			prevConvex = false;
+			side = other;
+			continue;
+		}
+		prevConvex = true;
+
+		vertices.push_back(a);
+		vertices.push_back(b);
+		vertices.push_back(c);
+
+		// Switch to the other side
+		if (head[other] < sides[other]->size() - 1)
+			side = other;
+		head[side] += 1;
+	}
+
+	// Draw the shape
+	glBegin(GL_TRIANGLES);
+	glColor4ubv(color.data());
+	Vector2f texOffset = Vector2f::ZERO;
+	for (unsigned int axis = 0; axis < 2; axis++)
+	{
+		if (mins[axis] < 0)
+			texOffset[axis] += (int) (mins[axis] - 5);
+	}
+	for (unsigned int i = 0; i < vertices.size(); i++)
+	{
+		Vector2f texCoord = (vertices[i] / 5.0f) + texOffset;
+		glTexCoord2fv(texCoord.v);
+		glVertex2fv(vertices[i].v);
+	}
+	glEnd();
+}
+
 void FillShape(Graphics2D& g, const Array<Biarc>& arcs, const Color& color)
 {
 	Array<Vector2f> vertices;
@@ -816,6 +926,44 @@ void FillShape(Graphics2D& g, const Array<Biarc>& arcs, const Color& color)
 		vertices.push_back(arc.end);
 	}
 	FillShape(g, vertices, color);
+}
+
+
+void FillShape2(Graphics2D& g, const Array<Biarc>& left, const Array<Biarc>& right, const Color& color)
+{
+	Array<Vector2f> vertices[2];
+	const Array<Biarc>* sides[2] = { &left, &right };
+
+	for (int side = 0; side < 2; side++)
+	{
+		for (unsigned int i = 0; i < sides[side]->size(); i++)
+		{
+			Biarc arc = sides[side]->at(i);
+			if (arc.IsPoint())
+				continue;
+			if (i == 0)
+				vertices[side].push_back(arc.start);
+			if (!arc.IsStraight() && !arc.IsPoint())
+			{
+				Vector2f v = arc.start;
+				int count = (int)((Math::Abs(arc.angle) / Math::TWO_PI) * 50) + 2;
+				//float angle = arc.angle / count;
+				//v.Rotate(arc.center, angle);
+				for (int j = 1; j < count; j++)
+				{
+					float t = j / (float)count;
+					float angle = -arc.angle * t;
+					v = arc.start;
+					v.Rotate(arc.center, angle);
+					//Vector2f vPrev = v;
+					//v.Rotate(arc.center, angle);
+					vertices[side].push_back(v);
+				}
+			}
+			vertices[side].push_back(arc.end);
+		}
+	}
+	FillShape2(g, vertices[0], vertices[1], color);
 }
 
 
@@ -877,6 +1025,8 @@ void MainApp::OnRender()
 	RoadMetrics metrics = m_network->GetMetrics();
 
 	// Draw road surfaces
+	RandomNumberGenerator rng;
+	rng.SetSeed(1);
 	if (m_showRoadSurface->enabled)
 	{
 		// Draw lane surfaces
@@ -900,46 +1050,52 @@ void MainApp::OnRender()
 				leftEdge = connection->GetLeftVisualShoulderLine();
 			}
 
-			FillZippedCurves(g, leftEdge, rightEdge, colorRoadFill);
+			//FillZippedCurves(g, leftEdge, rightEdge, colorRoadFill);
 
-			/*
-			Color c(Vector3f(Random::NextFloat(0.5f, 1.0f),
-			Random::NextFloat(0.5f, 1.0f),
-			Random::NextFloat(0.5f, 1.0f)));
+			
+			Color c(Vector3f(rng.NextFloat(0.5f, 1.0f),
+			rng.NextFloat(0.5f, 1.0f),
+			rng.NextFloat(0.5f, 1.0f)));
 
-			auto seamsIL = surface->GetSeams(IOType::INPUT, LaneSide::LEFT);
-			auto seamsIR = surface->GetSeams(IOType::INPUT, LaneSide::RIGHT);
-			auto seamsOL = surface->GetSeams(IOType::OUTPUT, LaneSide::LEFT);
-			auto seamsOR = surface->GetSeams(IOType::OUTPUT, LaneSide::RIGHT);
+			auto seamsIL = connection->GetSeams(IOType::INPUT, LaneSide::LEFT);
+			auto seamsIR = connection->GetSeams(IOType::INPUT, LaneSide::RIGHT);
+			auto seamsOL = connection->GetSeams(IOType::OUTPUT, LaneSide::LEFT);
+			auto seamsOR = connection->GetSeams(IOType::OUTPUT, LaneSide::RIGHT);
 
-			Array<Biarc> surfaceContour;
-			for (auto it = seamsIR.rbegin(); it != seamsIR.rend(); it++)
-			{
-			surfaceContour.push_back(it->second.Reverse());
-			surfaceContour.push_back(it->first.Reverse());
-			}
+			Array<Biarc> leftContour;
+			Array<Biarc> rightContour;
+
+			// Left
 			for (auto it = seamsIL.begin(); it != seamsIL.end(); it++)
 			{
-			surfaceContour.push_back(it->first);
-			surfaceContour.push_back(it->second);
+				leftContour.push_back(it->first);
+				leftContour.push_back(it->second);
 			}
-			surfaceContour.push_back(leftEdge.first);
-			surfaceContour.push_back(leftEdge.second);
+			leftContour.push_back(leftEdge.horizontalCurve.first);
+			leftContour.push_back(leftEdge.horizontalCurve.second);
 			for (auto it = seamsOL.begin(); it != seamsOL.end(); it++)
 			{
-			surfaceContour.push_back(it->first);
-			surfaceContour.push_back(it->second);
+				leftContour.push_back(it->first);
+				leftContour.push_back(it->second);
 			}
-			for (auto it = seamsOR.rbegin(); it != seamsOR.rend(); it++)
-			{
-			surfaceContour.push_back(it->second.Reverse());
-			surfaceContour.push_back(it->first.Reverse());
-			}
-			surfaceContour.push_back(rightEdge.second.Reverse());
-			surfaceContour.push_back(rightEdge.first.Reverse());
 
-			FillShape(g, surfaceContour, colorRoadFill);
-			*/
+			// Right
+			for (auto it = seamsIR.begin(); it != seamsIR.end(); it++)
+			{
+				rightContour.push_back(it->first);
+				rightContour.push_back(it->second);
+			}
+			rightContour.push_back(rightEdge.horizontalCurve.first);
+			rightContour.push_back(rightEdge.horizontalCurve.second);
+			for (auto it = seamsOR.begin(); it != seamsOR.end(); it++)
+			{
+				rightContour.push_back(it->first);
+				rightContour.push_back(it->second);
+			}
+
+			glBindTexture(GL_TEXTURE_2D, m_roadTexture->GetGLTextureID());
+			FillShape2(g, leftContour, rightContour, Color::WHITE);
+			glBindTexture(GL_TEXTURE_2D, 0);
 		}
 
 		// Draw intersection surfaces

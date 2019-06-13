@@ -114,12 +114,15 @@ private:
 	Vector3f m_cursorGroundPositionPrev;
 
 	Texture* m_backgroundTexture;
+	Texture* m_roadTexture;
 	Vector2f m_backgroundPosition;
 	Vector2f m_backgroundSize;
 };
 
 
 void FillShape(Graphics2D& g, const Array<Vector2f>& points, const Color& color);
+void FillShape2(Graphics2D& g, const Array<Vector2f>& left, const Array<Vector2f>& right, const Color& color);
 void FillShape(Graphics2D& g, const Array<Biarc>& arcs, const Color& color);
+void FillShape2(Graphics2D& g, const Array<Biarc>& arcs, const Color& color);
 
 #endif // _ANIM_APP_H_

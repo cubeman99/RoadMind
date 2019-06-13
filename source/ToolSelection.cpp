@@ -194,28 +194,25 @@ void ToolSelection::Update(float dt)
 	}
 
 	// Page-Up/Down: Raise/lower
+	float amount = 0.0f;
 	if (m_keyboard->IsKeyDown(Keys::page_up))
+		amount += 1.0f;
+	if (m_keyboard->IsKeyDown(Keys::page_down))
+		amount -= 1.0f;
+	if (amount != 0.0f)
 	{
-		float amount = 0.0f;
-		if (m_keyboard->IsKeyDown(Keys::page_up))
-			amount += 1.0f;
-		if (m_keyboard->IsKeyDown(Keys::page_down))
-			amount -= 1.0f;
-		if (amount != 0.0f)
+		amount *= 10.0f * dt;
+		for (NodeGroup* group : m_selection.GetNodeGroups())
 		{
-			amount *= 10.0f * dt;
-			for (NodeGroup* group : m_selection.GetNodeGroups())
+			if (group->GetTie() != nullptr)
 			{
-				if (group->GetTie() != nullptr)
-				{
-					group->GetTie()->SetPosition(
-						group->GetTie()->GetPosition() + Vector3f(0, 0, amount));
-				}
-				else
-				{
-					group->SetPosition(
-						group->GetPosition() + Vector3f(0, 0, amount));
-				}
+				group->GetTie()->SetPosition(
+					group->GetTie()->GetPosition() + Vector3f(0, 0, amount));
+			}
+			else
+			{
+				group->SetPosition(
+					group->GetPosition() + Vector3f(0, 0, amount));
 			}
 		}
 	}

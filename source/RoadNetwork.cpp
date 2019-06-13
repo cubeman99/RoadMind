@@ -478,16 +478,15 @@ bool RoadNetwork::Save(const Path& path)
 			file.Write(&node->m_position, sizeof(Vector3f));
 			file.Write(&node->m_direction, sizeof(Vector2f));
 			file.Write(&node->m_leftDivider, sizeof(node->m_leftDivider));
-			file.Write(&node->m_index, sizeof(node->m_index));
 		}
 
 		// Save input & output connections
-		for (unsigned int i = 0; i < 2; i++)
+		for (unsigned int inOut = 0; inOut < 2; inOut++)
 		{
-			count = group->m_connections[i].size();
+			count = group->m_connections[inOut].size();
 			file.Write(&count, sizeof(unsigned int));
-			for (unsigned int j = 0; j < group->m_connections[i].size(); j++)
-				SavePointer(file, group->m_connections[i][j]);
+			for (unsigned int j = 0; j < group->m_connections[inOut].size(); j++)
+				SavePointer(file, group->m_connections[inOut][j]);
 		}
 	}
 
@@ -568,7 +567,7 @@ bool RoadNetwork::Load(const Path& path)
 	// Read node groups
 	file.Read(&m_nodeGroupIdCounter, sizeof(int));
 	file.Read(&count, sizeof(unsigned int));
-	for (unsigned int i = 0; i < count; i++)
+	for (unsigned int nodeGroupIndex = 0; nodeGroupIndex < count; nodeGroupIndex++)
 	{
 		NodeGroup* group = LoadPointer(file, m_nodeGroups);
 		file.Read(&group->m_position, sizeof(Vector3f));
@@ -589,21 +588,21 @@ bool RoadNetwork::Load(const Path& path)
 			Node* node = new Node();
 			group->m_nodes[j] = node;
 			node->m_nodeGroup = group;
+			node->m_index = j;
 			file.Read(&node->m_width, sizeof(Meters));
 			file.Read(&node->m_position, sizeof(Vector3f));
 			file.Read(&node->m_direction, sizeof(Vector2f));
 			file.Read(&node->m_leftDivider, sizeof(node->m_leftDivider));
-			file.Read(&node->m_index, sizeof(node->m_leftDivider));
-			node->m_index = j;
 		}
 
 		// Read input & output connections
-		for (unsigned int i = 0; i < 2; i++)
+		for (unsigned int inOut = 0; inOut < 2; inOut++)
 		{
 			file.Read(&count2, sizeof(unsigned int));
-			group->m_connections[i].resize(count2);
+			Array<NodeGroupConnection*>& connections = group->m_connections[inOut];
+			connections.resize(count2);
 			for (unsigned int j = 0; j < count2; j++)
-				group->m_connections[i][j] = LoadPointer(file, m_nodeGroupConnections);
+				connections[j] = LoadPointer(file, m_nodeGroupConnections);
 		}
 	}
 
@@ -636,7 +635,7 @@ bool RoadNetwork::Load(const Path& path)
 	}
 
 	// Read intersections
-	file.Read(&m_nodeGroupConnectionIdCounter, sizeof(int));
+	file.Read(&m_intersectionIdCounter, sizeof(int));
 	file.Read(&count, sizeof(unsigned int));
 	for (unsigned int i = 0; i < count; i++)
 	{
