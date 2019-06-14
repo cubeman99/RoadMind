@@ -1,5 +1,4 @@
-#ifndef _GEOMETRY_APP_H_
-#define _GEOMETRY_APP_H_
+#pragma once
 
 #include <cmgApplication/cmg_application.h>
 #include <cmgMath/cmg_math.h>
@@ -61,5 +60,3 @@ private:
 	Vector3f m_forwardVector;
 };
 
-
-#endif // _GEOMETRY_APP_H_

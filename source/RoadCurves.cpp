@@ -164,6 +164,16 @@ Vector3f RoadCurveLine::GetPoint(float distance) const
 	return point;
 }
 
+Vector3f RoadCurveLine::GetNormal(float distance) const
+{
+	Vector3f normal;
+	float slope = verticalCurve.GetSlope(distance);
+	normal.xy = horizontalCurve.GetTangent(distance) * -slope;
+	normal.z = 1.0f;
+	normal.Normalize();
+	return normal;
+}
+
 
 Vector3f RoadCurveLine::Start() const
 {

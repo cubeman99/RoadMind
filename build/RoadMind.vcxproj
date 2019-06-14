@@ -80,6 +80,7 @@
     <ClInclude Include="..\source\DriverPath.h" />
     <ClInclude Include="..\source\DrivingApp.h" />
     <ClInclude Include="..\source\DrivingSystem.h" />
+    <ClInclude Include="..\source\Geometry.h" />
     <ClInclude Include="..\source\RoadCurves.h" />
     <ClInclude Include="..\source\Driver.h" />
     <ClInclude Include="..\source\GeometryApp.h" />
@@ -105,6 +106,7 @@
     <ClCompile Include="..\source\Connection.cpp" />
     <ClCompile Include="..\source\DrivingApp.cpp" />
     <ClCompile Include="..\source\DrivingSystem.cpp" />
+    <ClCompile Include="..\source\Geometry.cpp" />
     <ClCompile Include="..\source\RoadCurves.cpp" />
     <ClCompile Include="..\source\Driver.cpp" />
     <ClCompile Include="..\source\GeometryApp.cpp" />

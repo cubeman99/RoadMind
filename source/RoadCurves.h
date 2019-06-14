@@ -55,6 +55,7 @@ struct RoadCurveLine
 		float h1, float h2, float slope1, float slope2);
 	float Length() const;
 	Vector3f GetPoint(float distance) const;
+	Vector3f GetNormal(float distance) const;
 	Vector3f Start() const;
 	Vector3f Middle() const;
 	Vector3f End() const;

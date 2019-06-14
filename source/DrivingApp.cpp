@@ -515,7 +515,7 @@ void DrivingApp::OnRender()
 
 
 	// Draw the player
-	//DrawVehicle(g, m_player);
+	DrawVehicle(g, m_player);
 
 
 	/*

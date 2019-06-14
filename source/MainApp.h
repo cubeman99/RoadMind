@@ -117,6 +117,12 @@ private:
 	Texture* m_roadTexture;
 	Vector2f m_backgroundPosition;
 	Vector2f m_backgroundSize;
+	ProfileSection m_profiling;
+	ProfileSection* m_profileGeometry;
+	ProfileSection* m_profileDrivers;
+	ProfileSection* m_profileDraw;
+	ProfileSection* m_profileNetworkSimulation;
+
 };
 
 

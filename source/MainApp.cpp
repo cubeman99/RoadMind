@@ -12,6 +12,7 @@ static const char* SAVE_FILE_PATH = "road_network.rdmd";
 #define ASSETS_PATH "C:/workspace/c++/cmg/RoadMind/assets/"
 
 MainApp::MainApp()
+	: m_profiling("root")
 {
 	m_debugOptions.push_back(m_showRoadMarkings = new DebugOption("Markings", true));
 	m_debugOptions.push_back(m_showEdgeLines = new DebugOption("Edges", true));
@@ -34,6 +35,11 @@ MainApp::MainApp()
 	m_showSeams->enabled = true;
 	m_wireframeMode->enabled = true;
 	m_showRoadSurface->enabled = true;
+
+	m_profileGeometry = m_profiling.GetSubSection("Geometry");
+	m_profileNetworkSimulation = m_profiling.GetSubSection("Simulation");
+	m_profileDrivers = m_profiling.GetSubSection("Drivers");
+	m_profileDraw = m_profiling.GetSubSection("Drawing");
 }
 
 MainApp::~MainApp()
@@ -50,10 +56,14 @@ void MainApp::OnInitialize()
 	m_network = new RoadNetwork();
 	m_drivingSystem = new DrivingSystem(m_network);
 	m_backgroundTexture = nullptr;
+
+	// Load assets
 	TextureParams params;
 	params.SetWrap(TextureWrap::REPEAT);
 	m_roadTexture = Texture::LoadTexture(ASSETS_PATH "textures/asphalt.png", params);
-	
+	Mesh::Load(ASSETS_PATH "toyota_ae86.obj", m_vehicleMesh);
+	m_font = SpriteFont::LoadBuiltInFont(BuiltInFonts::FONT_CONSOLE);
+
 	m_defaultCameraState.m_viewHeight = 50.0f;
 	m_defaultCameraState.m_position = Vector2f::ZERO;
 	m_defaultCameraState.m_rotation = 0.0f;
@@ -66,8 +76,6 @@ void MainApp::OnInitialize()
 	m_joystick = nullptr;
 	//m_wheel = GetInputManager()->AddDevice<Joystick>();
 	//m_joystick = GetInputManager()->AddDevice<Joystick>();
-
-	m_font = SpriteFont::LoadBuiltInFont(BuiltInFonts::FONT_CONSOLE);
 
 	// Create the editor tools
 	m_editMode = EditMode::CREATE;
@@ -581,6 +589,8 @@ void MainApp::OnDropFile(const String& fileName)
 
 void MainApp::OnUpdate(float dt)
 {
+	m_profiling.Reset();
+
 	Mouse* mouse = GetMouse();
 	Keyboard* keyboard = GetKeyboard();
 	Window* window = GetWindow();
@@ -714,11 +724,19 @@ void MainApp::OnUpdate(float dt)
 
 	UpdateCameraControls(dt);
 
+	m_profileGeometry->StartInvocation();
 	m_network->UpdateNodeGeometry();
+	m_profileGeometry->StopInvocation();
+
 	if (!m_paused)
 	{
+		m_profileNetworkSimulation->StartInvocation();
 		m_network->Simulate(dt);
+		m_profileNetworkSimulation->StopInvocation();
+
+		m_profileDrivers->StartInvocation();
 		m_drivingSystem->Update(dt);
+		m_profileDrivers->StopInvocation();
 	}
 
 	if (keyboard->IsKeyPressed(Keys::f6))
@@ -1012,6 +1030,8 @@ void MainApp::OnRender()
 	Vector2f windowSize((float)window->GetWidth(),
 		(float)window->GetHeight());
 
+	m_profileDraw->StartInvocation();
+
 	glDisable(GL_DEPTH_TEST);
 	glEnable(GL_TEXTURE_2D);
 	glBindTexture(GL_TEXTURE_2D, 0);
@@ -1035,6 +1055,10 @@ void MainApp::OnRender()
 	glMatrixMode(GL_PROJECTION);
 	//glLoadMatrixf((projection * view).m);
 	glLoadMatrixf(m_newCamera.GetViewProjectionMatrix().m);
+
+	Matrix4f viewProjection = m_newCamera.GetViewProjectionMatrix();
+	m_debugDraw->SetViewProjection(viewProjection);
+	m_debugDraw->SetShaded(true);
 
 	if (m_backgroundTexture != nullptr)
 	{
@@ -1076,6 +1100,13 @@ void MainApp::OnRender()
 		int index = 0;
 		for (NodeGroupConnection* connection : m_network->GetNodeGroupConnections())
 		{
+			m_debugDraw->DrawMesh(connection->GetMesh(), Matrix4f::IDENTITY,
+				colorRoadFill); 
+			m_debugDraw->DrawFilledSphere(
+				Matrix4f::CreateTranslation(connection->GetInput().group->GetCenterPosition()),
+				1.0f, Color::MAGENTA);
+			continue;
+
 			NodeGroupConnection* twin = connection->GetTwin();
 			RoadCurveLine leftEdge;
 			RoadCurveLine rightEdge = connection->GetRightVisualShoulderLine();
@@ -1093,7 +1124,6 @@ void MainApp::OnRender()
 			}
 
 			//FillZippedCurves(g, leftEdge, rightEdge, colorRoadFill);
-
 			
 			Color c(Vector3f(rng.NextFloat(0.5f, 1.0f),
 			rng.NextFloat(0.5f, 1.0f),
@@ -1145,6 +1175,7 @@ void MainApp::OnRender()
 			FillShape(g, contour, colorRoadFill);
 		}
 	}
+	m_debugDraw->BeginImmediate();
 
 	// Draw road markings
 	Matrix4f tt = Matrix4f::CreateTranslation(0.0f, 0.0f, 0.1f);
@@ -1376,8 +1407,15 @@ void MainApp::OnRender()
 				Vector3f(dir.x, dir.y, 0.0f),
 				Vector3f(dir.y, -dir.x, 0.0f),
 				Vector3f::UNITZ);
-			g.SetTransformation(Matrix4f::CreateTranslation(0.0f, 0.0f, 0.2f) *
-				Matrix4f::CreateTranslation(state.position[i]) * Matrix4f(dcm));
+			Matrix4f modelMatrix = Matrix4f::CreateTranslation(0.0f, 0.0f, 0.2f) *
+				Matrix4f::CreateTranslation(state.position[i]) * Matrix4f(dcm);
+			g.SetTransformation(modelMatrix);
+
+			m_debugDraw->DrawMesh(m_vehicleMesh, modelMatrix *
+				Matrix4f::CreateRotation(Vector3f::UNITZ, -Math::HALF_PI) *
+				Matrix4f::CreateTranslation(0.0f, 0.0f, 0.5f),
+				outlineColor); 
+			m_debugDraw->BeginImmediate(modelMatrix);
 			
 			g.FillRect(-size.x * 0.5f, -size.y * 0.5f, size.x, size.y, driverColor);
 			lightLength = size.y * 0.2f;
@@ -1515,9 +1553,18 @@ void MainApp::OnRender()
 	if (m_currentTool == m_toolSelection)
 		toolName = "Selection Tool";
 
+	m_profileDraw->StopInvocation();
+
 	using namespace std;
 	std::stringstream ss;
 	//ss << "FPS: " << GetFPS() << endl;
+	ss << "---------------------------" << endl;
+	ss << "Profiling:" << endl;
+	for (auto it = m_profiling.subsections_begin(); it != m_profiling.subsections_end(); it++)
+	{
+		ss << "" << std::setw(14) << (*it)->GetName() << ": " << std::setw(8);
+		ss << std::fixed << std::setprecision(4) << (*it)->GetAverageTime() * 1000.0f  << " ms" << endl;
+	}
 	ss << "---------------------------" << endl;
 	ss << "Tool: " << toolName << endl;
 	ss << endl;

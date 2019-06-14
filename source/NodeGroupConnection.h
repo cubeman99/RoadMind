@@ -3,6 +3,7 @@
 
 #include <cmgCore/cmg_core.h>
 #include <cmgMath/cmg_math.h>
+#include <cmgGraphics/cmg_graphics.h>
 #include "CommonTypes.h"
 #include "NodeGroup.h"
 #include "Biarc3.h"
@@ -48,6 +49,7 @@ public:
 	void GetLaneOutputRange(int fromLaneIndex, int& outToLaneIndex, int& outToLaneCount);
 	bool IsGhost() const;
 	float GetLinearSlope() const;
+	Mesh* GetMesh();
 
 	// Setters
 
@@ -59,7 +61,7 @@ public:
 	// Geometry
 
 	virtual void UpdateGeometry() override;
-
+	void CreateMesh();
 
 public:
 	int m_id;
@@ -84,6 +86,7 @@ public:
 	Vector2f m_edgeIntersectionPoint;
 	Array<int> m_laneSplit;
 	bool m_isGhost;
+	Mesh* m_mesh;
 };
 
 

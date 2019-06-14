@@ -1,5 +1,6 @@
 #include "NodeGroupConnection.h"
 #include "NodeGroupTie.h"
+#include "Geometry.h"
 
 
 //-----------------------------------------------------------------------------
@@ -10,11 +11,15 @@ NodeGroupConnection::NodeGroupConnection()
 	: m_metrics(nullptr)
 	, m_laneIntersectionPoint(Vector2f::ZERO)
 	, m_isGhost(false)
+	, m_mesh(nullptr)
 {
+	m_mesh = new Mesh();
 }
 
 NodeGroupConnection::~NodeGroupConnection()
 {
+	delete m_mesh;
+	m_mesh = nullptr;
 }
 
 
@@ -204,6 +209,10 @@ float NodeGroupConnection::GetLinearSlope() const
 		return dy / dx;
 }
 
+Mesh* NodeGroupConnection::GetMesh()
+{
+	return m_mesh;
+}
 
 //-----------------------------------------------------------------------------
 // Setters
@@ -344,5 +353,52 @@ void NodeGroupConnection::UpdateGeometry()
 	m_seams[0][1].clear();
 	m_seams[1][0].clear();
 	m_seams[1][1].clear();
+
+	CreateMesh();
 }
 
+void NodeGroupConnection::CreateMesh()
+{
+	NodeGroupConnection* twin = GetTwin();
+	RoadCurveLine leftEdge;
+	RoadCurveLine rightEdge = GetRightVisualShoulderLine();
+
+	if (twin != nullptr)
+	{
+		if (GetId() < twin->GetId())
+			leftEdge = twin->GetRightVisualShoulderLine().Reverse();
+		else
+			return;
+	}
+	else
+	{
+		leftEdge = GetLeftVisualShoulderLine();
+	}
+
+	//FillZippedCurves(g, leftEdge, rightEdge, colorRoadFill);
+
+
+	auto seamsIL = GetSeams(IOType::INPUT, LaneSide::LEFT);
+	auto seamsIR = GetSeams(IOType::INPUT, LaneSide::RIGHT);
+	auto seamsOL = GetSeams(IOType::OUTPUT, LaneSide::LEFT);
+	auto seamsOR = GetSeams(IOType::OUTPUT, LaneSide::RIGHT);
+
+	Array<RoadCurveLine> leftContour;
+	Array<RoadCurveLine> rightContour;
+
+	// Left
+	for (auto it = seamsIL.begin(); it != seamsIL.end(); it++)
+		leftContour.push_back(*it);
+	leftContour.push_back(leftEdge);
+	for (auto it = seamsOL.begin(); it != seamsOL.end(); it++)
+		leftContour.push_back(*it);
+
+	// Right
+	for (auto it = seamsIR.begin(); it != seamsIR.end(); it++)
+		rightContour.push_back(*it);
+	rightContour.push_back(rightEdge);
+	for (auto it = seamsOR.begin(); it != seamsOR.end(); it++)
+		rightContour.push_back(*it);
+
+	Geometry::ZipArcs(m_mesh, leftContour, rightContour);
+}
