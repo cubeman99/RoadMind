@@ -46,7 +46,7 @@ public:
 // Class:   NodeGroup
 // Purpose: Represents a group of adjacent lane nodes with a shared direction.
 //-----------------------------------------------------------------------------
-class NodeGroup
+class NodeGroup : public IPosition
 {
 	friend class RoadNetwork;
 	friend class RoadIntersection;
@@ -83,6 +83,7 @@ public:
 	Array<NodeGroupConnection*>& GetOutputs();
 	bool IsTied() const;
 	RightOfWay GetRightOfWay() const;
+	float GetSlope() const;
 
 	// Setters
 
@@ -106,6 +107,7 @@ private:
 	void RemoveInput(NodeGroupConnection* input);
 	void RemoveOutput(NodeGroupConnection* output);
 	void RemoveConnection(NodeGroupConnection* connection, int direction);
+	void UpdateConnectionSorting(bool search = true);
 
 private:
 	int m_id;
@@ -113,6 +115,7 @@ private:
 	// Position
 	Vector3f m_position;
 	Vector2f m_direction;
+	float m_slope;
 
 	// Connections
 	Array<Node*> m_nodes;

@@ -224,6 +224,11 @@ RightOfWay NodeGroup::GetRightOfWay() const
 	return m_rightOfWay;
 }
 
+float NodeGroup::GetSlope() const
+{
+	return m_slope;
+}
+
 
 //-----------------------------------------------------------------------------
 // Setters
@@ -327,7 +332,7 @@ static bool IntersectArcs(Biarc& a, Biarc& b, Biarc& seam)
 	return true;
 }
 
-static bool IntersectArcPairs(RoadCurveLine& pair1, RoadCurveLine& pair2, bool reverse, BiarcPair& seam)
+static bool IntersectArcPairs(RoadCurveLine& pair1, RoadCurveLine& pair2, bool reverse, RoadCurveLine& seam)
 {
 	if (reverse)
 	{
@@ -341,47 +346,63 @@ static bool IntersectArcPairs(RoadCurveLine& pair1, RoadCurveLine& pair2, bool r
 	}
 	RoadCurveLine originalPair1 = pair1;
 	RoadCurveLine originalPair2 = pair2;
+	seam.verticalCurve = pair1.verticalCurve;
 
 	if (IntersectArcs(pair1.horizontalCurve.second,
-		pair2.horizontalCurve.second, seam.second))
+		pair2.horizontalCurve.second, seam.horizontalCurve.second))
 	{
 		pair1.horizontalCurve.first = Biarc::CreatePoint(
 			pair1.horizontalCurve.second.start);
 		pair2.horizontalCurve.first = pair1.horizontalCurve.first;
-		seam.first = originalPair1.horizontalCurve.first;
+		seam.horizontalCurve.first = originalPair1.horizontalCurve.first;
 	}
 	else if (IntersectArcs(pair1.horizontalCurve.first,
-		pair2.horizontalCurve.second, seam.first))
+		pair2.horizontalCurve.second, seam.horizontalCurve.first))
 	{
 		pair2.horizontalCurve.first = Biarc::CreatePoint(
 			pair2.horizontalCurve.second.start);
-		seam.second = Biarc::CreatePoint(seam.first.end);
+		seam.horizontalCurve.second = Biarc::CreatePoint(seam.horizontalCurve.first.end);
 	}
 	else if (IntersectArcs(pair1.horizontalCurve.second,
-		pair2.horizontalCurve.first, seam.second))
+		pair2.horizontalCurve.first, seam.horizontalCurve.second))
 	{
 		pair1.horizontalCurve.first = Biarc::CreatePoint(
 			pair1.horizontalCurve.second.start);
-		seam.first = originalPair1.horizontalCurve.first;
+		seam.horizontalCurve.first = originalPair1.horizontalCurve.first;
 	}
 	else if (IntersectArcs(pair1.horizontalCurve.first,
-		pair2.horizontalCurve.first, seam.first))
+		pair2.horizontalCurve.first, seam.horizontalCurve.first))
 	{
-		seam.second = Biarc::CreatePoint(seam.first.end);
+		seam.horizontalCurve.second = Biarc::CreatePoint(seam.horizontalCurve.first.end);
 	}
 	else
 	{
 		return false;
 	}
 
-	pair1.t1 = Math::Lerp(pair1.t2, pair1.t1, pair1.Length() / originalPair1.Length());
-	pair2.t1 = Math::Lerp(pair2.t2, pair2.t1, pair2.Length() / originalPair2.Length());
+	pair2.verticalCurve.height1 = pair1.verticalCurve.GetHeightFromDistance(
+		seam.horizontalCurve.Length());
+	pair2.verticalCurve.slope1 = pair1.verticalCurve.GetSlope(
+		seam.horizontalCurve.Length());
+	pair2.verticalCurve.CubicInterpolatation(
+		pair2.verticalCurve.slope1,
+		pair2.verticalCurve.slope2,
+		pair2.horizontalCurve.Length());
+	//pair2.verticalCurve.Slice(pair2.Length() - originalPair2.Length());
+	pair1.verticalCurve.Slice(seam.Length());
+	seam.verticalCurve.length = seam.horizontalCurve.Length();
+	//pair2.verticalCurve.height1 = pair1.verticalCurve.GetHeight(seam.Length() / originalPair1.Length());
+	//pair1.verticalCurve.height1 = pair2.verticalCurve.height1;
+	//seam.verticalCurve.height2 = pair2.verticalCurve.height1;
+	//pair1.t1 = Math::Lerp(pair1.t2, pair1.t1, pair1.Length() / originalPair1.Length());
+	//pair2.t1 = Math::Lerp(pair2.t2, pair2.t1, pair2.Length() / originalPair2.Length());
 	return true;
 }
 
-bool NodeGroup::IntersectConnections(NodeGroupConnection* a, NodeGroupConnection* b, IOType end)
+bool NodeGroup::IntersectConnections(
+	NodeGroupConnection* a, NodeGroupConnection* b, IOType end)
 {
-	BiarcPair seam;
+	RoadCurveLine seam;
 	bool reverse = (end == IOType::INPUT);
 	IOType otherEnd = (end == IOType::INPUT ? IOType::OUTPUT : IOType::INPUT);
 
@@ -419,15 +440,43 @@ void NodeGroup::UpdateGeometry()
 		node->m_direction = m_direction;
 		nodePosition.xy += node->m_width * right;
 	}
+
+	// Determine the slope
+	m_slope = 0.0f;
+	if (!m_connections[0].empty() && !m_connections[1].empty())
+	{
+		// The node group's slope will be most gradual linear slope
+		// of all its connections
+		m_slope = m_connections[1][0]->GetLinearSlope();
+		bool up = false;
+		bool down = false;
+		for (unsigned int side = 0; side < 2; side++)
+		{
+			for (unsigned int i = 0; i < m_connections[side].size(); i++)
+			{
+				float connectionSlope = m_connections[side][i]->GetLinearSlope();
+				if (connectionSlope > 0)
+					up = true;
+				else
+					down = true;
+				if (Math::Abs(connectionSlope) < Math::Abs(m_slope))
+					m_slope = connectionSlope;
+			}
+		}
+
+		// If grade direction changes between any connections then use a flat slope
+		if (up && down)
+			m_slope = 0.0f;
+	}
 }
 
 void NodeGroup::UpdateIntersectionGeometry()
 {
 	unsigned int first, last, i, j;
-	BiarcPair seam;
+	RoadCurveLine seam;
 
 	// Intersect shoulder edges between tied connections
-	if (m_twin != nullptr)
+	/*if (m_twin != nullptr)
 	{
 		auto outputs = GetOutputs();
 		for (unsigned int i = 0; i < outputs.size() &&
@@ -452,14 +501,13 @@ void NodeGroup::UpdateIntersectionGeometry()
 				break;
 			}
 		}
-	}
+	}*/
 
 	// Check for overlap between neighboring connections
 	for (int inOut = 0; inOut < 2; inOut++)
 	{
 		Array<NodeGroupConnection*>& connections = m_connections[inOut];
 		bool reverse = (inOut == 0);
-
 		// Intersect lane edges
 		for (first = 0; first < connections.size(); first = last - 1)
 		{
@@ -476,7 +524,6 @@ void NodeGroup::UpdateIntersectionGeometry()
 				last = first + 2;
 				continue;
 			}
-
 
 			// Intersect the lane-edge arc geometry for the overlapping
 			// connections
@@ -560,12 +607,15 @@ void NodeGroup::InsertConnection(NodeGroupConnection* connection, int direction)
 	Array<NodeGroupConnection*>& connections = m_connections[direction];
 	int opposite = 1 - direction;
 
+	// Insert the connection in sorted order
+	// Left-most lanes come first
 	for (unsigned int i = 0; i < connections.size(); i++)
 	{
 		if (connection->m_groups[opposite].index <=
 			connections[i]->m_groups[opposite].index &&
 			connection->m_groups[opposite].count <=
-			connections[i]->m_groups[opposite].count)
+			connections[i]->m_groups[opposite].count &&
+			connections[i]->GetTwin() == nullptr)
 		{
 			connections.insert(connections.begin() + i, connection);
 			return;
@@ -573,6 +623,33 @@ void NodeGroup::InsertConnection(NodeGroupConnection* connection, int direction)
 	}
 
 	connections.push_back(connection);
+}
+
+void NodeGroup::UpdateConnectionSorting(bool search)
+{
+	// Connections with twins must be FIRST in the list so their edges
+	// do not get clipped, but instead they clip other connections.
+	for (int direction = 0; direction < 2; direction++)
+	{
+		Array<NodeGroupConnection*>& connections = m_connections[direction];
+		for (unsigned int i = 0; i < connections.size(); i++)
+		{
+			NodeGroupConnection* connection = connections[i];
+			if (connection->GetSubGroup((IOType) (1 - direction)).index != 0)
+				break;
+			if (connection->GetTwin() != nullptr)
+			{
+				connections.erase(connections.begin() + i);
+				connections.insert(connections.begin(), connection);
+				if (search)
+				{
+					connection->GetSubGroup((IOType) direction).group->
+						UpdateConnectionSorting(false);
+				}
+				break;
+			}
+		}
+	}
 }
 
 void NodeGroup::RemoveInput(NodeGroupConnection* input)

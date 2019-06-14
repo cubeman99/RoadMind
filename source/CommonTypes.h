@@ -101,3 +101,11 @@ enum class TrafficLightSignal
 	YELLOW = 5,
 };
 
+class IPosition
+{
+public:
+	IPosition() {}
+	virtual const Vector3f& GetPosition() const = 0;
+	virtual void SetPosition(const Vector3f& position) = 0;
+};
+

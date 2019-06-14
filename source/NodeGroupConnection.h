@@ -37,15 +37,17 @@ public:
 	RoadCurveLine GetLeftVisualShoulderLine() const;
 	RoadCurveLine GetRightVisualShoulderLine() const;
 	NodeGroupConnection* GetTwin();
+	NodeSubGroup& GetSubGroup(IOType type);
 	NodeSubGroup& GetInput();
 	NodeSubGroup& GetOutput();
-	const Array<BiarcPair>& GetSeams(IOType type, LaneSide side) const;
-	Array<BiarcPair>& GetSeams(IOType type, LaneSide side);
+	const Array<RoadCurveLine>& GetSeams(IOType type, LaneSide side) const;
+	Array<RoadCurveLine>& GetSeams(IOType type, LaneSide side);
 	Array<BiarcPair>& GetDrivingLines();
 	BiarcPair GetDrivingLine(int fromLaneIndex, int toLaneIndex);
 	BiarcPair GetDrivingLine(int laneIndex);
 	void GetLaneOutputRange(int fromLaneIndex, int& outToLaneIndex, int& outToLaneCount);
 	bool IsGhost() const;
+	float GetLinearSlope() const;
 
 	// Setters
 
@@ -64,8 +66,8 @@ public:
 	const RoadMetrics* m_metrics;
 
 private:
-	void SetSeam(IOType end, LaneSide side, const BiarcPair& seam);
-	void AddSeam(IOType end, LaneSide side, const BiarcPair& seam);
+	void SetSeam(IOType end, LaneSide side, const RoadCurveLine& seam);
+	void AddSeam(IOType end, LaneSide side, const RoadCurveLine& seam);
 	void ConstrainLaneSplit();
 
 
@@ -77,7 +79,7 @@ public:
 	std::vector<BiarcPair> m_drivingLines;
 	RoadCurveLine m_visualEdgeLines[2];
 	RoadCurveLine m_visualShoulderLines[2];
-	Array<BiarcPair> m_seams[2][2];
+	Array<RoadCurveLine> m_seams[2][2];
 	Vector2f m_laneIntersectionPoint;
 	Vector2f m_edgeIntersectionPoint;
 	Array<int> m_laneSplit;

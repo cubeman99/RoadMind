@@ -53,7 +53,7 @@ private:
 	void DrawArcs(Graphics2D& g, const BiarcPair& arcs, const Color& color);
 	void DrawArc(Graphics2D& g, const Biarc& arc, float z1, float z2, float t1, float t2, const Color& color);
 	void DrawArcs(Graphics2D& g, const BiarcPair& arcs, float z1, float z2, const Color& color);
-	void DrawCurveLine(Graphics2D& g, const Biarc& horizontalArc, const VerticalCurve& verticalCurve, float t1, float t2, const Color& color);
+	void DrawCurveLine(Graphics2D& g, const Biarc& horizontalArc, const VerticalCurve& verticalCurve, float offset, const Color& color);
 	void DrawCurveLine(Graphics2D& g, const RoadCurveLine& arcs, const Color& color);
 	void FillZippedArcs(Graphics2D& g, const Biarc& a, const Biarc& b, const Color& color);
 	void FillZippedCurves(Graphics2D& g, const RoadCurveLine& a, const RoadCurveLine& b, const Color& color);
@@ -121,8 +121,8 @@ private:
 
 
 void FillShape(Graphics2D& g, const Array<Vector2f>& points, const Color& color);
-void FillShape2(Graphics2D& g, const Array<Vector2f>& left, const Array<Vector2f>& right, const Color& color);
 void FillShape(Graphics2D& g, const Array<Biarc>& arcs, const Color& color);
-void FillShape2(Graphics2D& g, const Array<Biarc>& arcs, const Color& color);
+void FillShape2(Graphics2D& g, const Array<Vector3f>& left, const Array<Vector3f>& right, const Color& color);
+void FillShape2(Graphics2D& g, const Array<RoadCurveLine>& left, const Array<RoadCurveLine>& right, const Color& color);
 
 #endif // _ANIM_APP_H_

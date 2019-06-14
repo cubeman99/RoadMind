@@ -11,7 +11,7 @@
 // Class:   NodeGroupTie
 // Purpose: Ties together two node groups of opposite directions.
 //-----------------------------------------------------------------------------
-class NodeGroupTie
+class NodeGroupTie : public IPosition
 {
 	friend class RoadNetwork;
 

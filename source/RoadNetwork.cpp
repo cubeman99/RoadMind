@@ -297,6 +297,8 @@ NodeGroupTie* RoadNetwork::TieNodeGroups(NodeGroup* a, NodeGroup* b)
 	a->m_twin = b;
 	b->m_tie = tie;
 	b->m_twin = a;
+	a->UpdateConnectionSorting();
+	b->UpdateConnectionSorting();
 	return tie;
 }
 
@@ -633,6 +635,8 @@ bool RoadNetwork::Load(const Path& path)
 		file.Read(&connection->GetOutput().count, sizeof(int));
 		connection->GetOutput().group = LoadPointer(file, m_nodeGroups);
 	}
+	for (NodeGroup* group : m_nodeGroups)
+		group->UpdateConnectionSorting();
 
 	// Read intersections
 	file.Read(&m_intersectionIdCounter, sizeof(int));

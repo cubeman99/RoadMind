@@ -28,11 +28,11 @@ MainApp::MainApp()
 	m_showDebug->enabled = true;
 	m_showNodes->enabled = true;
 
-	m_showRoadMarkings->enabled = true;
+	m_showRoadMarkings->enabled = false;
 	m_showEdgeLines->enabled = true;
 	m_showNodes->enabled = false;
 	m_showSeams->enabled = true;
-	m_wireframeMode->enabled = false;
+	m_wireframeMode->enabled = true;
 	m_showRoadSurface->enabled = true;
 }
 
@@ -350,31 +350,34 @@ void MainApp::DrawArcs(Graphics2D& g, const BiarcPair& arcs, float z1, float z2,
 }
 
 void MainApp::DrawCurveLine(Graphics2D& g, const Biarc& horizontalArc,
-	const VerticalCurve& verticalCurve, float t1, float t2, const Color& color)
+	const VerticalCurve& verticalCurve, float offset, const Color& color)
 {
 	glBegin(GL_LINE_STRIP);
 	glColor4ubv(color.data());
-	glVertex3fv(Vector3f(horizontalArc.start, verticalCurve.GetHeight(t1)).v);
+	glVertex3fv(Vector3f(horizontalArc.start,
+		verticalCurve.GetHeightFromDistance(offset)).v);
 
 	if (!horizontalArc.IsStraight())
 	{
-		Vector3f point(horizontalArc.start, verticalCurve.GetHeight(t1));
+		Vector3f point(horizontalArc.start, 0.0f);
 		int count = 10;
 		float angle = -horizontalArc.angle / count;
 		for (int j = 1; j < count; j++)
 		{
-			float t = Math::Lerp(t1, t2, j / (float)count);
+			float t = j / (float) count;
 			point.xy.Rotate(horizontalArc.center, angle);
-			point.z = verticalCurve.GetHeight(t);
+			point.z = verticalCurve.GetHeightFromDistance(offset + (horizontalArc.length * t));
 			glVertex3fv(point.v);
 		}
 	}
 
-	glVertex3fv(Vector3f(horizontalArc.end, verticalCurve.GetHeight(t2)).v);
+	glVertex3fv(Vector3f(horizontalArc.end,
+		verticalCurve.GetHeightFromDistance(offset + horizontalArc.length)).v);
 	glEnd();
 }
 
-void MainApp::DrawCurveLine(Graphics2D& g, const RoadCurveLine& curve, const Color& color)
+void MainApp::DrawCurveLine(Graphics2D& g,
+	const RoadCurveLine& curve, const Color& color)
 {
 	float tm = Math::Lerp(curve.t1, curve.t2,
 		curve.horizontalCurve.first.length /
@@ -388,11 +391,14 @@ void MainApp::DrawCurveLine(Graphics2D& g, const RoadCurveLine& curve, const Col
 		DrawPoint(g, curve.End(), color);
 	}
 
-	DrawCurveLine(g, curve.horizontalCurve.first, curve.verticalCurve, curve.t1, tm, color);
-	DrawCurveLine(g, curve.horizontalCurve.second, curve.verticalCurve, tm, curve.t2, color);
+	DrawCurveLine(g, curve.horizontalCurve.first,
+		curve.verticalCurve, 0.0f, color);
+	DrawCurveLine(g, curve.horizontalCurve.second,
+		curve.verticalCurve, curve.horizontalCurve.first.length, color);
 }
 
-void MainApp::FillZippedArcs(Graphics2D& g, const Biarc& a, const Biarc& b, const Color& color)
+void MainApp::FillZippedArcs(Graphics2D& g,
+	const Biarc& a, const Biarc& b, const Color& color)
 {
 	float maxLength = Math::Max(a.length, b.length);
 	int count = 10;
@@ -807,15 +813,15 @@ void FillShape(Graphics2D& g, const Array<Vector2f>& points, const Color& color)
 	glEnd();
 }
 
-void FillShape2(Graphics2D& g, const Array<Vector2f>& left, const Array<Vector2f>& right, const Color& color)
+void FillShape2(Graphics2D& g, const Array<Vector3f>& left, const Array<Vector3f>& right, const Color& color)
 {
-	const Array<Vector2f>* sides[2] = { &left, &right };
-	Array<Vector2f> vertices;
+	const Array<Vector3f>* sides[2] = { &left, &right };
+	Array<Vector3f> vertices;
 	unsigned int head[2] = { 1, 0 };
-	Vector2f a, b, c;
+	Vector3f a, b, c;
 	int side = 0;
 	bool prevConvex = true;
-	Vector2f mins = left[0];
+	Vector3f mins = left[0];
 	for (unsigned int axis = 0; axis < 2; axis++)
 	{
 		for (unsigned int i = 0; i < left.size(); i++)
@@ -831,14 +837,14 @@ void FillShape2(Graphics2D& g, const Array<Vector2f>& left, const Array<Vector2f
 		// Remove equivilant vertices
 		a = sides[side]->at(head[side] - 1);
 		b = sides[side]->at(head[side]);
-		if (a.DistToSqr(b) < 0.001f)
+		if (a.xy.DistToSqr(b.xy) < 0.001f)
 		{
 			head[side] += 1;
 			continue;
 		}
 		a = sides[side]->at(head[side] - 1);
 		b = sides[other]->at(head[other]);
-		if (a.DistToSqr(b) < 0.001f)
+		if (a.xy.DistToSqr(b.xy) < 0.001f)
 		{
 			head[side] += 1;
 			continue;
@@ -859,7 +865,7 @@ void FillShape2(Graphics2D& g, const Array<Vector2f>& left, const Array<Vector2f
 		}
 
 		// If this triangle will be concave, then switch to the other side
-		Convexity convexity = GetConvexity(a, b, c);
+		Convexity convexity = GetConvexity(a.xy, b.xy, c.xy);
 		if (prevConvex && convexity == Convexity::CONCAVE)
 		{
 			head[side] -= 1;
@@ -891,9 +897,9 @@ void FillShape2(Graphics2D& g, const Array<Vector2f>& left, const Array<Vector2f
 	}
 	for (unsigned int i = 0; i < vertices.size(); i++)
 	{
-		Vector2f texCoord = (vertices[i] / 5.0f) + texOffset;
+		Vector2f texCoord = (vertices[i].xy / 5.0f) + texOffset;
 		glTexCoord2fv(texCoord.v);
-		glVertex2fv(vertices[i].v);
+		glVertex3fv(vertices[i].v);
 	}
 	glEnd();
 }
@@ -929,20 +935,52 @@ void FillShape(Graphics2D& g, const Array<Biarc>& arcs, const Color& color)
 }
 
 
-void FillShape2(Graphics2D& g, const Array<Biarc>& left, const Array<Biarc>& right, const Color& color)
+void FillShape2(Graphics2D& g, const Array<RoadCurveLine>& left, const Array<RoadCurveLine>& right, const Color& color)
 {
-	Array<Vector2f> vertices[2];
-	const Array<Biarc>* sides[2] = { &left, &right };
+	Array<Vector3f> vertices[2];
+	const Array<RoadCurveLine>* sides[2] = { &left, &right };
 
 	for (int side = 0; side < 2; side++)
 	{
 		for (unsigned int i = 0; i < sides[side]->size(); i++)
 		{
-			Biarc arc = sides[side]->at(i);
-			if (arc.IsPoint())
-				continue;
-			if (i == 0)
+			const RoadCurveLine& curve = sides[side]->at(i);
+			float dist = 0.0f;
+			vertices[side].push_back(curve.Start());
+			for (unsigned int half = 0; half < 2; half++)
+			{
+				Biarc arc = curve.horizontalCurve.arcs[half];
+				if (arc.IsPoint())
+					continue;
+				if (!arc.IsStraight() && !arc.IsPoint())
+				{
+					Vector2f v = arc.start;
+					int count = (int)((Math::Abs(arc.angle) / Math::TWO_PI) * 50) + 2;
+					//float angle = arc.angle / count;
+					for (int j = 1; j < count; j++)
+					{
+						float t = j / (float) count;
+						float angle = -arc.angle * t;
+						v = arc.start;
+						v.Rotate(arc.center, angle);
+						float distAlongCurve = dist + (arc.length * t);
+						//float curveT = distAlongCurve / curve.Length();
+						//float z = curve.verticalCurve.GetHeight(curveT);
+						float z = curve.verticalCurve.GetHeightFromDistance(distAlongCurve);
+						vertices[side].push_back(Vector3f(v, z));
+					}
+				}
+				if (half == 0)
+					vertices[side].push_back(curve.Middle());
+				dist += arc.length;
+			}
+			vertices[side].push_back(curve.End());
+			continue;/*
+
+			if (vertices[side].size() == 0)
 				vertices[side].push_back(arc.start);
+			if (arc.IsPoint() && (vertices[side].size() > 0 || i + 1 < sides[side]->size()))
+				continue;
 			if (!arc.IsStraight() && !arc.IsPoint())
 			{
 				Vector2f v = arc.start;
@@ -960,7 +998,7 @@ void FillShape2(Graphics2D& g, const Array<Biarc>& left, const Array<Biarc>& rig
 					vertices[side].push_back(v);
 				}
 			}
-			vertices[side].push_back(arc.end);
+			vertices[side].push_back(arc.end);*/
 		}
 	}
 	FillShape2(g, vertices[0], vertices[1], color);
@@ -1009,6 +1047,10 @@ void MainApp::OnRender()
 	float r = 0.2f;
 	float r2 = 0.4f;
 	Color c = Color::WHITE;
+
+	glDepthMask(true);
+	glEnable(GL_DEPTH_TEST);
+	glClear(GL_DEPTH_BUFFER_BIT);
 
 	Vector3f gridCenter;
 	gridCenter.z = 0.0f;
@@ -1062,36 +1104,22 @@ void MainApp::OnRender()
 			auto seamsOL = connection->GetSeams(IOType::OUTPUT, LaneSide::LEFT);
 			auto seamsOR = connection->GetSeams(IOType::OUTPUT, LaneSide::RIGHT);
 
-			Array<Biarc> leftContour;
-			Array<Biarc> rightContour;
+			Array<RoadCurveLine> leftContour;
+			Array<RoadCurveLine> rightContour;
 
 			// Left
 			for (auto it = seamsIL.begin(); it != seamsIL.end(); it++)
-			{
-				leftContour.push_back(it->first);
-				leftContour.push_back(it->second);
-			}
-			leftContour.push_back(leftEdge.horizontalCurve.first);
-			leftContour.push_back(leftEdge.horizontalCurve.second);
+				leftContour.push_back(*it);
+			leftContour.push_back(leftEdge);
 			for (auto it = seamsOL.begin(); it != seamsOL.end(); it++)
-			{
-				leftContour.push_back(it->first);
-				leftContour.push_back(it->second);
-			}
+				leftContour.push_back(*it);
 
 			// Right
 			for (auto it = seamsIR.begin(); it != seamsIR.end(); it++)
-			{
-				rightContour.push_back(it->first);
-				rightContour.push_back(it->second);
-			}
-			rightContour.push_back(rightEdge.horizontalCurve.first);
-			rightContour.push_back(rightEdge.horizontalCurve.second);
+				rightContour.push_back(*it);
+			rightContour.push_back(rightEdge);
 			for (auto it = seamsOR.begin(); it != seamsOR.end(); it++)
-			{
-				rightContour.push_back(it->first);
-				rightContour.push_back(it->second);
-			}
+				rightContour.push_back(*it);
 
 			glBindTexture(GL_TEXTURE_2D, m_roadTexture->GetGLTextureID());
 			FillShape2(g, leftContour, rightContour, Color::WHITE);
@@ -1119,6 +1147,10 @@ void MainApp::OnRender()
 	}
 
 	// Draw road markings
+	Matrix4f tt = Matrix4f::CreateTranslation(0.0f, 0.0f, 0.1f);
+	g.SetTransformation(tt);
+	glMatrixMode(GL_MODELVIEW);
+	glLoadMatrixf(tt.data());
 	for (NodeGroupConnection* connection : m_network->GetNodeGroupConnections())
 	{
 		NodeGroupConnection* twin = connection->GetTwin();
@@ -1143,14 +1175,14 @@ void MainApp::OnRender()
 		// Draw seams
 		if (m_showSeams->enabled)
 		{
-			for (BiarcPair seam : connection->GetSeams(IOType::INPUT, LaneSide::LEFT))
-				DrawArcs(g, seam, Color::MAGENTA);
-			for (BiarcPair seam : connection->GetSeams(IOType::INPUT, LaneSide::RIGHT))
-				DrawArcs(g, seam, Color::MAGENTA);
-			for (BiarcPair seam : connection->GetSeams(IOType::OUTPUT, LaneSide::LEFT))
-				DrawArcs(g, seam, Color::MAGENTA);
-			for (BiarcPair seam : connection->GetSeams(IOType::OUTPUT, LaneSide::RIGHT))
-				DrawArcs(g, seam, Color::MAGENTA);
+			for (RoadCurveLine seam : connection->GetSeams(IOType::INPUT, LaneSide::LEFT))
+				DrawCurveLine(g, seam, Color::MAGENTA);
+			for (RoadCurveLine seam : connection->GetSeams(IOType::INPUT, LaneSide::RIGHT))
+				DrawCurveLine(g, seam, Color::MAGENTA);
+			for (RoadCurveLine seam : connection->GetSeams(IOType::OUTPUT, LaneSide::LEFT))
+				DrawCurveLine(g, seam, Color::MAGENTA);
+			for (RoadCurveLine seam : connection->GetSeams(IOType::OUTPUT, LaneSide::RIGHT))
+				DrawCurveLine(g, seam, Color::MAGENTA);
 		}
 
 		// Draw lane divider lines
@@ -1224,6 +1256,7 @@ void MainApp::OnRender()
 			}
 		}
 	}
+	g.SetTransformation(Matrix4f::IDENTITY);
 
 	// Draw node groups
 	for (NodeGroup* group : m_network->GetNodeGroups())
@@ -1274,9 +1307,6 @@ void MainApp::OnRender()
 	}
 
 	// Draw drivers
-	//glDepthMask(true);
-	//glEnable(GL_DEPTH_TEST);
-	//glClear(GL_DEPTH_BUFFER_BIT);
 	for (Driver* driver : m_drivingSystem->GetDrivers())
 	{
 		Meters radius = 0.75f;
@@ -1326,7 +1356,7 @@ void MainApp::OnRender()
 							Vector3f(dir.x, dir.y, 0.0f),
 							Vector3f(dir.y, -dir.x, 0.0f),
 							Vector3f::UNITZ);
-						g.SetTransformation(
+						g.SetTransformation(Matrix4f::CreateTranslation(0.0f, 0.0f, 0.2f) *
 							Matrix4f::CreateTranslation(state.position[j]) * Matrix4f(dcm));
 						Color futureColor = Color::GRAY;
 						futureColor = driver->m_futureCollision ? Color::YELLOW : Color::MAGENTA;
@@ -1346,8 +1376,9 @@ void MainApp::OnRender()
 				Vector3f(dir.x, dir.y, 0.0f),
 				Vector3f(dir.y, -dir.x, 0.0f),
 				Vector3f::UNITZ);
-			g.SetTransformation(
+			g.SetTransformation(Matrix4f::CreateTranslation(0.0f, 0.0f, 0.2f) *
 				Matrix4f::CreateTranslation(state.position[i]) * Matrix4f(dcm));
+			
 			g.FillRect(-size.x * 0.5f, -size.y * 0.5f, size.x, size.y, driverColor);
 			lightLength = size.y * 0.2f;
 			if (i == 0)
@@ -1383,8 +1414,8 @@ void MainApp::OnRender()
 		//ss << driver->GetAcceleration();
 		g.DrawString(m_font, ss.str(), Vector2f::ZERO, Color::WHITE, TextAlign::CENTERED);
 	}
-	//glDisable(GL_DEPTH_TEST);
-	//glDepthMask(false);
+	glDisable(GL_DEPTH_TEST);
+	glDepthMask(false);
 	g.SetTransformation(Matrix4f::IDENTITY);
 
 	// Draw driver paths

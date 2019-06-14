@@ -204,16 +204,11 @@ void ToolSelection::Update(float dt)
 		amount *= 10.0f * dt;
 		for (NodeGroup* group : m_selection.GetNodeGroups())
 		{
-			if (group->GetTie() != nullptr)
-			{
-				group->GetTie()->SetPosition(
-					group->GetTie()->GetPosition() + Vector3f(0, 0, amount));
-			}
-			else
-			{
-				group->SetPosition(
-					group->GetPosition() + Vector3f(0, 0, amount));
-			}
+			IPosition* posObject = (group->GetTie() != nullptr ?
+				(IPosition*) group->GetTie() : (IPosition*) group);
+			Vector3f pos = posObject->GetPosition();
+			pos.z = Math::Max(0.0f, pos.z + amount);
+			posObject->SetPosition(pos);
 		}
 	}
 }

@@ -85,6 +85,11 @@ NodeGroupConnection* NodeGroupConnection::GetTwin()
 	return nullptr;
 }
 
+NodeSubGroup& NodeGroupConnection::GetSubGroup(IOType type)
+{
+	return m_groups[(int) type];
+}
+
 NodeSubGroup& NodeGroupConnection::GetInput()
 {
 	return m_groups[(int) InputOutput::INPUT];
@@ -96,12 +101,12 @@ NodeSubGroup& NodeGroupConnection::GetOutput()
 }
 
 
-const Array<BiarcPair>& NodeGroupConnection::GetSeams(IOType type, LaneSide side) const
+const Array<RoadCurveLine>& NodeGroupConnection::GetSeams(IOType type, LaneSide side) const
 {
 	return m_seams[(int) type][(int) side];
 }
 
-Array<BiarcPair>& NodeGroupConnection::GetSeams(IOType type, LaneSide side)
+Array<RoadCurveLine>& NodeGroupConnection::GetSeams(IOType type, LaneSide side)
 {
 	return m_seams[(int) type][(int) side];
 }
@@ -187,6 +192,17 @@ bool NodeGroupConnection::IsGhost() const
 	return m_isGhost;
 }
 
+float NodeGroupConnection::GetLinearSlope() const
+{
+	Vector3f center0 = m_groups[0].GetCenterPosition();
+	Vector3f center1 = m_groups[1].GetCenterPosition();
+	Meters dy = center1.z - center0.z;
+	Meters dx = (m_visualEdgeLines[0].Length() + m_visualEdgeLines[1].Length()) * 0.5f;
+	if (dx < FLT_EPSILON)
+		return 0.0f;
+	else
+		return dy / dx;
+}
 
 
 //-----------------------------------------------------------------------------
@@ -243,16 +259,16 @@ void NodeGroupConnection::ConstrainLaneSplit()
 // Geometry
 //-----------------------------------------------------------------------------
 
-void NodeGroupConnection::SetSeam(IOType end, LaneSide side, const BiarcPair& seam)
+void NodeGroupConnection::SetSeam(IOType end, LaneSide side, const RoadCurveLine& seam)
 {
-	Array<BiarcPair>& seams = GetSeams(end, side);
+	Array<RoadCurveLine>& seams = GetSeams(end, side);
 	seams.resize(1);
 	seams[0] = seam;
 }
 
-void NodeGroupConnection::AddSeam(IOType end, LaneSide side, const BiarcPair& seam)
+void NodeGroupConnection::AddSeam(IOType end, LaneSide side, const RoadCurveLine& seam)
 {
-	Array<BiarcPair>& seams = GetSeams(end, side);
+	Array<RoadCurveLine>& seams = GetSeams(end, side);
 	seams.push_back(seam);
 }
 
@@ -301,6 +317,7 @@ void NodeGroupConnection::UpdateGeometry()
 			m_dividerLines[i] = m_dividerLines[i].Reverse();
 	}
 
+	// Create the left and right edges
 	m_edgeLines[(int) LaneSide::LEFT] =
 		BiarcPair::CreateParallel(m_dividerLines.front(),
 		-GetInput().group->GetLeftShoulderWidth(),
@@ -309,13 +326,19 @@ void NodeGroupConnection::UpdateGeometry()
 		BiarcPair::CreateParallel(m_dividerLines.back(),
 		GetInput().group->GetRightShoulderWidth(),
 		GetOutput().group->GetRightShoulderWidth());
+	if (GetTwin() != nullptr)
+	{
+		m_edgeLines[(int) LaneSide::LEFT] = m_dividerLines[0];
+	}
 
-	VerticalCurve verticalCurve(GetInput().group->GetPosition().z,
-		GetOutput().group->GetPosition().z);
-	m_visualEdgeLines[0] = RoadCurveLine(m_dividerLines.front(), verticalCurve);
-	m_visualEdgeLines[1] = RoadCurveLine(m_dividerLines.back(), verticalCurve);
-	m_visualShoulderLines[0] = RoadCurveLine(m_edgeLines[0], verticalCurve);
-	m_visualShoulderLines[1] = RoadCurveLine(m_edgeLines[1], verticalCurve);
+	float h1 = GetInput().group->GetPosition().z;
+	float h2 = GetOutput().group->GetPosition().z;
+	float slope1 = GetInput().group->GetSlope();
+	float slope2 = GetOutput().group->GetSlope();
+	m_visualEdgeLines[0] = RoadCurveLine(m_dividerLines.front(), h1, h2, slope1, slope2);
+	m_visualEdgeLines[1] = RoadCurveLine(m_dividerLines.back(), h1, h2, slope1, slope2);
+	m_visualShoulderLines[0] = RoadCurveLine(m_edgeLines[0], h1, h2, slope1, slope2);
+	m_visualShoulderLines[1] = RoadCurveLine(m_edgeLines[1], h1, h2, slope1, slope2);
 
 	m_seams[0][0].clear();
 	m_seams[0][1].clear();
