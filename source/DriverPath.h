@@ -36,9 +36,13 @@ public:
 		, m_nodeStart(startNode)
 		, m_nodeEnd(endNode)
 	{
-		m_drivingLine = BiarcPair::Interpolate(
+		m_drivingLine.horizontalCurve = BiarcPair::Interpolate(
 			startNode->GetCenter().xy, startNode->GetDirection(),
 			endNode->GetCenter().xy, endNode->GetDirection());
+		m_drivingLine.verticalCurve = VerticalCurve(
+			startNode->GetCenter().z, endNode->GetCenter().z);
+		m_drivingLine.verticalCurve.LinearInterpolatation(
+			m_drivingLine.horizontalCurve.Length());
 	}
 
 	inline Node* GetStartNode() const {
@@ -50,7 +54,7 @@ public:
 	inline RoadSurface* GetSurface() const {
 		return m_surface;
 	}
-	inline const BiarcPair& GetDrivingLine() const {
+	inline const RoadCurveLine& GetDrivingLine() const {
 		return m_drivingLine;
 	}
 	inline Meters GetDistance() const {
@@ -68,6 +72,6 @@ private:
 	int m_laneIndexStart;
 	int m_laneIndexEnd; // Relative to connection left lane
 	int m_laneShift;
-	BiarcPair m_drivingLine;
+	RoadCurveLine m_drivingLine;
 };
 

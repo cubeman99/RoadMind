@@ -113,7 +113,7 @@ public:
 		m_speed = speed;
 	}
 
-	inline const BiarcPair& GetDrivingLine() const
+	inline const RoadCurveLine& GetDrivingLine() const
 	{
 		return m_path[0].GetDrivingLine();
 	}
@@ -135,6 +135,11 @@ public:
 	inline DriverState GetMovementState() const
 	{
 		return m_state;
+	}
+
+	inline const Matrix3f& GetOrientation() const
+	{
+		return m_orientation;
 	}
 
 	inline void Push(Meters amount) { m_distance = Math::Max(0.0f, m_distance + amount); }
@@ -186,6 +191,7 @@ private:
 	Vector3f m_position;
 	Vector2f m_direction;
 	Vector2f m_velocity;
+	Matrix3f m_orientation;
 	DriverCollisionState m_futureStates[DRIVER_MAX_FUTURE_STATES];
 
 	DriverVehicleParams m_vehicleParams; // length, width, height

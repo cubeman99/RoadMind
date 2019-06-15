@@ -431,6 +431,8 @@ void RoadNetwork::UpdateNodeGeometry()
 		connection->UpdateGeometry();
 	for (NodeGroup* group : m_nodeGroups)
 		group->UpdateIntersectionGeometry();
+	for (NodeGroupConnection* connection : m_nodeGroupConnections)
+		connection->CreateMesh();
 	for (RoadIntersection* intersection : m_intersections)
 		intersection->UpdateGeometry();
 }

@@ -113,9 +113,8 @@ bool Driver::GetFuturePosition(Meters distance, Vector3f& position, Vector2f& di
 		if (currentDistance + pathNode.GetDistance() >= distance)
 		{
 			Meters distOnNode = distance - currentDistance;
-			position = Vector3f::ZERO;
-			position.xy = pathNode.GetDrivingLine().GetPoint(distOnNode);
-			direction = pathNode.GetDrivingLine().GetTangent(distOnNode);
+			position = pathNode.GetDrivingLine().GetPoint(distOnNode);
+			direction = pathNode.GetDrivingLine().horizontalCurve.GetTangent(distOnNode);
 			return true;
 		}
 
@@ -496,14 +495,13 @@ void Driver::Update(float dt)
 		m_distance += m_speed * dt;
 
 		DriverPathNode pathNode = m_path.front();
-		BiarcPair drivingLine = pathNode.GetDrivingLine();
+		RoadCurveLine drivingLine = pathNode.GetDrivingLine();
 		Meters length = drivingLine.Length();
 
 		if (m_distance >= length)
 		{
 			m_distance -= length;
-			m_position.xy = drivingLine.second.end;
-			m_position.z = pathNode.GetEndNode()->GetPosition().z;
+			m_position = drivingLine.End();
 			m_nodeCurrent = pathNode.GetEndNode();
 			m_path.erase(m_path.begin());
 			m_surface->RemoveDriver(this);
@@ -519,12 +517,10 @@ void Driver::Update(float dt)
 			drivingLine = pathNode.GetDrivingLine();
 			length = drivingLine.Length();
 			float t = m_distance / length;
-			m_position.xy = drivingLine.GetPoint(m_distance);
-			m_direction = drivingLine.GetTangent(m_distance);
-			m_position.z = Math::Lerp(
-				pathNode.GetStartNode()->GetPosition().z,
-				pathNode.GetEndNode()->GetPosition().z,
-				t);
+			m_position = drivingLine.GetPoint(m_distance);
+			m_direction = drivingLine.horizontalCurve.GetTangent(m_distance);
+			Vector3f forward = drivingLine.GetTangent(m_distance);
+			m_orientation = Matrix3f::CreateLookAt(forward, Vector3f::UNITZ);
 			if (m_surface != pathNode.GetSurface())
 			{
 				if (m_surface != nullptr) 
@@ -609,10 +605,10 @@ void Driver::UpdateFutureStates()
 			{
 				Meters distOnNode = distance - currentDistance;
 				state.position[0] = Vector3f::ZERO;
-				state.position[0].xy =
+				state.position[0] =
 					m_path[pathIndex].GetDrivingLine().GetPoint(distOnNode);
 				state.direction[0] = 
-					m_path[pathIndex].GetDrivingLine().GetTangent(distOnNode);
+					m_path[pathIndex].GetDrivingLine().horizontalCurve.GetTangent(distOnNode);
 				break;
 			}
 			currentDistance += m_path[pathIndex].GetDistance();

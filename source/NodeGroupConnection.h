@@ -31,21 +31,21 @@ public:
 	
 	int GetId() const;
 	const RoadMetrics* GetMetrics() const;
-	BiarcPair GetLeftEdgeLine() const;
-	BiarcPair GetRightEdgeLine() const;
-	RoadCurveLine GetLeftVisualEdgeLine() const;
-	RoadCurveLine GetRightVisualEdgeLine() const;
-	RoadCurveLine GetLeftVisualShoulderLine() const;
-	RoadCurveLine GetRightVisualShoulderLine() const;
+	const RoadCurveLine& GetVisualEdgeLine(LaneSide side) const;
+	const RoadCurveLine& GetLeftVisualEdgeLine() const;
+	const RoadCurveLine& GetRightVisualEdgeLine() const;
+	int GetDividerLineCount() const;
+	const RoadCurveLine& GetVisualDividerLine(int index) const;
+	const RoadCurveLine& GetLeftVisualShoulderLine() const;
+	const RoadCurveLine& GetRightVisualShoulderLine() const;
 	NodeGroupConnection* GetTwin();
 	NodeSubGroup& GetSubGroup(IOType type);
 	NodeSubGroup& GetInput();
 	NodeSubGroup& GetOutput();
 	const Array<RoadCurveLine>& GetSeams(IOType type, LaneSide side) const;
 	Array<RoadCurveLine>& GetSeams(IOType type, LaneSide side);
-	Array<BiarcPair>& GetDrivingLines();
-	BiarcPair GetDrivingLine(int fromLaneIndex, int toLaneIndex);
-	BiarcPair GetDrivingLine(int laneIndex);
+	RoadCurveLine GetDrivingLine(int fromLaneIndex, int toLaneIndex);
+	RoadCurveLine GetDrivingLine(int laneIndex);
 	void GetLaneOutputRange(int fromLaneIndex, int& outToLaneIndex, int& outToLaneCount);
 	bool IsGhost() const;
 	float GetLinearSlope() const;
@@ -74,18 +74,19 @@ private:
 
 
 public:
-	// Input and Output groups
-	NodeSubGroup m_groups[2];
-	BiarcPair m_edgeLines[2];
-	std::vector<BiarcPair> m_dividerLines;
-	std::vector<BiarcPair> m_drivingLines;
-	RoadCurveLine m_visualEdgeLines[2];
+	// Properties
+	bool m_isGhost;
+	Array<int> m_laneSplit;
+	NodeSubGroup m_groups[2]; // Input and Output groups
+
+	// Generated geometry
+	RoadCurveLine m_leftLaneEdge;
+	RoadCurveLine* m_visualEdgeLines[2];
+	Array<RoadCurveLine> m_visualDividerLines;
 	RoadCurveLine m_visualShoulderLines[2];
 	Array<RoadCurveLine> m_seams[2][2];
-	Vector2f m_laneIntersectionPoint;
-	Vector2f m_edgeIntersectionPoint;
-	Array<int> m_laneSplit;
-	bool m_isGhost;
+
+	// Meshes
 	Mesh* m_mesh;
 };
 

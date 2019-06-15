@@ -405,117 +405,6 @@ void MainApp::DrawCurveLine(Graphics2D& g,
 		curve.verticalCurve, curve.horizontalCurve.first.length, color);
 }
 
-void MainApp::FillZippedArcs(Graphics2D& g,
-	const Biarc& a, const Biarc& b, const Color& color)
-{
-	float maxLength = Math::Max(a.length, b.length);
-	int count = 10;
-	float interval = 1.5f;
-	count = (int)((maxLength / interval) + 0.5f);
-	count = Math::Max(2, count);
-	glBegin(GL_TRIANGLE_STRIP);
-	glColor3ubv(color.data());
-	glVertex2fv(a.start.v);
-	glVertex2fv(b.start.v);
-	for (int i = 1; i <= count; i++)
-	{
-		float t = (float)i / count;
-		glVertex2fv(a.GetPoint(a.length * t).v);
-		glVertex2fv(b.GetPoint(b.length * t).v);
-	}
-	glVertex2fv(a.end.v);
-	glVertex2fv(b.end.v);
-	glEnd();
-}
-
-void MainApp::FillZippedCurves(Graphics2D& g, const RoadCurveLine& a,
-	const RoadCurveLine& b, const Color& color)
-{
-	float interval = 1.5f;
-
-	glBegin(GL_TRIANGLE_STRIP);
-	glColor3ubv(color.data());
-	//glVertex3fv(a.Start().v);
-	//glVertex3fv(b.Start().v);
-
-	for (int k = 0; k < 2; k++)
-	{
-		float maxLength = Math::Max(a.horizontalCurve.arcs[k].length,
-			b.horizontalCurve.arcs[k].length);
-		int count = Math::Max(2, (int)((maxLength / interval) + 0.5f));
-		float offset1 = a.horizontalCurve.first.length * k;
-		float offset2 = b.horizontalCurve.first.length * k;
-		for (int i = 0; i < count; i++)
-		{
-			float t = (float)i / (float)count;
-			glVertex3fv(a.GetPoint(offset1 + a.horizontalCurve.arcs[k].length * t).v);
-			glVertex3fv(b.GetPoint(offset2 + b.horizontalCurve.arcs[k].length * t).v);
-		}
-	}
-
-	glVertex3fv(a.End().v);
-	glVertex3fv(b.End().v);
-	glEnd();
-
-}
-
-void MainApp::DrawGridFloor(const Vector3f& center, Meters squareSize, Meters gridRadius)
-{
-	int majorTick = 10;
-	int majorMajorTick = 100;
-	Color colors[3];
-	colors[0] = Color(10, 10, 10);
-	colors[1] = Color(50, 50, 50);
-	colors[2] = Color(120, 120, 120);
-
-	// Snap the grid radius to the square size.
-	gridRadius = Math::Ceil(gridRadius / squareSize) * squareSize;
-
-	float startX = center.x - gridRadius;
-	float startZ = center.y - gridRadius;
-	int indexX = (int)Math::Floor(startX / (squareSize));
-	int indexZ = (int)Math::Floor(startZ / (squareSize));
-	startX = indexX * squareSize;
-	startZ = indexZ * squareSize;
-	float endX = startX + (gridRadius * 2.0f);
-	float endZ = startZ + (gridRadius * 2.0f);
-	float x = startX;
-	float z = startZ;
-
-	// Draw a grid of perpendicular lines.
-	glDepthMask(false);
-	glBegin(GL_LINES);
-	for (; x < center.x + gridRadius; x += squareSize, z += squareSize, indexX++, indexZ++)
-	{
-		// Draw line along z-axis.
-		int major = 0;
-		if (indexX % majorTick == 0)
-			major = 1;
-		if (indexX % majorMajorTick == 0)
-			major = 2;
-		glColor4ubv(colors[major].data());
-		//glVertex3f(x, center.y, startZ);
-		//glVertex3f(x, center.y, endZ);
-		glVertex3f(x, startZ, center.z);
-		glVertex3f(x, endZ, center.z);
-
-		// Draw line along x-axis.
-		major = 0;
-		if (indexZ % majorTick == 0)
-			major = 1;
-		if (indexZ % majorMajorTick == 0)
-			major = 2;
-		glColor4ubv(colors[major].data());
-		//glVertex3f(startX, center.y, z);
-		//glVertex3f(endX, center.y, z);
-		glVertex3f(startX, z, center.z);
-		glVertex3f(endX, z, center.z);
-	}
-	glEnd();
-	glDepthMask(true);
-}
-
-
 
 //-----------------------------------------------------------------------------
 // Overridden Methods
@@ -831,97 +720,6 @@ void FillShape(Graphics2D& g, const Array<Vector2f>& points, const Color& color)
 	glEnd();
 }
 
-void FillShape2(Graphics2D& g, const Array<Vector3f>& left, const Array<Vector3f>& right, const Color& color)
-{
-	const Array<Vector3f>* sides[2] = { &left, &right };
-	Array<Vector3f> vertices;
-	unsigned int head[2] = { 1, 0 };
-	Vector3f a, b, c;
-	int side = 0;
-	bool prevConvex = true;
-	Vector3f mins = left[0];
-	for (unsigned int axis = 0; axis < 2; axis++)
-	{
-		for (unsigned int i = 0; i < left.size(); i++)
-			mins[axis] = Math::Min(mins[axis], left[i][axis]);
-		for (unsigned int i = 0; i < right.size(); i++)
-			mins[axis] = Math::Min(mins[axis], right[i][axis]);
-	}
-
-	while (head[0] < left.size() && head[1] < right.size())
-	{
-		int other = 1 - side;
-
-		// Remove equivilant vertices
-		a = sides[side]->at(head[side] - 1);
-		b = sides[side]->at(head[side]);
-		if (a.xy.DistToSqr(b.xy) < 0.001f)
-		{
-			head[side] += 1;
-			continue;
-		}
-		a = sides[side]->at(head[side] - 1);
-		b = sides[other]->at(head[other]);
-		if (a.xy.DistToSqr(b.xy) < 0.001f)
-		{
-			head[side] += 1;
-			continue;
-		}
-
-		// Define the triangle in clockwise order
-		if (side == 0)
-		{
-			a = sides[other]->at(head[other]);
-			b = sides[side]->at(head[side] - 1);
-			c = sides[side]->at(head[side]);
-		}
-		else
-		{
-			a = sides[side]->at(head[side] - 1);
-			b = sides[other]->at(head[other]);
-			c = sides[side]->at(head[side]);
-		}
-
-		// If this triangle will be concave, then switch to the other side
-		Convexity convexity = GetConvexity(a.xy, b.xy, c.xy);
-		if (prevConvex && convexity == Convexity::CONCAVE)
-		{
-			head[side] -= 1;
-			head[other] += 1;
-			prevConvex = false;
-			side = other;
-			continue;
-		}
-		prevConvex = true;
-
-		vertices.push_back(a);
-		vertices.push_back(b);
-		vertices.push_back(c);
-
-		// Switch to the other side
-		if (head[other] < sides[other]->size() - 1)
-			side = other;
-		head[side] += 1;
-	}
-
-	// Draw the shape
-	glBegin(GL_TRIANGLES);
-	glColor4ubv(color.data());
-	Vector2f texOffset = Vector2f::ZERO;
-	for (unsigned int axis = 0; axis < 2; axis++)
-	{
-		if (mins[axis] < 0)
-			texOffset[axis] += (int) (mins[axis] - 5);
-	}
-	for (unsigned int i = 0; i < vertices.size(); i++)
-	{
-		Vector2f texCoord = (vertices[i].xy / 5.0f) + texOffset;
-		glTexCoord2fv(texCoord.v);
-		glVertex3fv(vertices[i].v);
-	}
-	glEnd();
-}
-
 void FillShape(Graphics2D& g, const Array<Biarc>& arcs, const Color& color)
 {
 	Array<Vector2f> vertices;
@@ -953,76 +751,6 @@ void FillShape(Graphics2D& g, const Array<Biarc>& arcs, const Color& color)
 }
 
 
-void FillShape2(Graphics2D& g, const Array<RoadCurveLine>& left, const Array<RoadCurveLine>& right, const Color& color)
-{
-	Array<Vector3f> vertices[2];
-	const Array<RoadCurveLine>* sides[2] = { &left, &right };
-
-	for (int side = 0; side < 2; side++)
-	{
-		for (unsigned int i = 0; i < sides[side]->size(); i++)
-		{
-			const RoadCurveLine& curve = sides[side]->at(i);
-			float dist = 0.0f;
-			vertices[side].push_back(curve.Start());
-			for (unsigned int half = 0; half < 2; half++)
-			{
-				Biarc arc = curve.horizontalCurve.arcs[half];
-				if (arc.IsPoint())
-					continue;
-				if (!arc.IsStraight() && !arc.IsPoint())
-				{
-					Vector2f v = arc.start;
-					int count = (int)((Math::Abs(arc.angle) / Math::TWO_PI) * 50) + 2;
-					//float angle = arc.angle / count;
-					for (int j = 1; j < count; j++)
-					{
-						float t = j / (float) count;
-						float angle = -arc.angle * t;
-						v = arc.start;
-						v.Rotate(arc.center, angle);
-						float distAlongCurve = dist + (arc.length * t);
-						//float curveT = distAlongCurve / curve.Length();
-						//float z = curve.verticalCurve.GetHeight(curveT);
-						float z = curve.verticalCurve.GetHeightFromDistance(distAlongCurve);
-						vertices[side].push_back(Vector3f(v, z));
-					}
-				}
-				if (half == 0)
-					vertices[side].push_back(curve.Middle());
-				dist += arc.length;
-			}
-			vertices[side].push_back(curve.End());
-			continue;/*
-
-			if (vertices[side].size() == 0)
-				vertices[side].push_back(arc.start);
-			if (arc.IsPoint() && (vertices[side].size() > 0 || i + 1 < sides[side]->size()))
-				continue;
-			if (!arc.IsStraight() && !arc.IsPoint())
-			{
-				Vector2f v = arc.start;
-				int count = (int)((Math::Abs(arc.angle) / Math::TWO_PI) * 50) + 2;
-				//float angle = arc.angle / count;
-				//v.Rotate(arc.center, angle);
-				for (int j = 1; j < count; j++)
-				{
-					float t = j / (float)count;
-					float angle = -arc.angle * t;
-					v = arc.start;
-					v.Rotate(arc.center, angle);
-					//Vector2f vPrev = v;
-					//v.Rotate(arc.center, angle);
-					vertices[side].push_back(v);
-				}
-			}
-			vertices[side].push_back(arc.end);*/
-		}
-	}
-	FillShape2(g, vertices[0], vertices[1], color);
-}
-
-
 void MainApp::OnRender()
 {
 	Window* window = GetWindow();
@@ -1047,8 +775,10 @@ void MainApp::OnRender()
 	g.Clear(Color::BLACK);
 	g.SetTransformation(Matrix4f::IDENTITY);
 
+
 	//m_camera.m_aspectRatio = GetWindow()->GetAspectRatio();
 	//Matrix4f projection = Matrix4f::CreateOrthographic(0.0f, window->GetWidth(), window->GetHeight(), 0.0f, -1.0f, 1.0f);
+	Matrix4f modelMatrix;
 	Matrix4f projection = Matrix4f::IDENTITY;
 	Matrix4f view = m_camera.GetWorldToCameraMatrix();
 	//view = Matrix4f::IDENTITY;
@@ -1076,12 +806,16 @@ void MainApp::OnRender()
 	glEnable(GL_DEPTH_TEST);
 	glClear(GL_DEPTH_BUFFER_BIT);
 
-	Vector3f gridCenter;
-	gridCenter.z = 0.0f;
-	gridCenter.xy = m_cameraPosition.xy;
-	Meters gridRadius = m_camera.m_viewHeight;
-	gridRadius = m_cameraDistance * 2.0f;
-	DrawGridFloor(gridCenter, 1.0f, gridRadius);
+	Meters gridRadius = m_cameraDistance * 2.0f;
+	Color gridColor[3];
+	gridColor[0] = Color(10, 10, 10);
+	gridColor[1] = Color(50, 50, 50);
+	gridColor[2] = Color(120, 120, 120);
+	m_debugDraw->DrawGrid(
+		Matrix4f::CreateRotation(Vector3f::UNITX, Math::HALF_PI),
+		Vector3f(m_cameraPosition.x, 0.0f, -m_cameraPosition.y),
+		1.0f, 10, 1, 2, gridColor[0], gridColor[1], gridRadius);
+	m_debugDraw->BeginImmediate();
 
 	if (m_wireframeMode->enabled)
 		glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
@@ -1100,60 +834,25 @@ void MainApp::OnRender()
 		int index = 0;
 		for (NodeGroupConnection* connection : m_network->GetNodeGroupConnections())
 		{
-			m_debugDraw->DrawMesh(connection->GetMesh(), Matrix4f::IDENTITY,
-				colorRoadFill); 
-			m_debugDraw->DrawFilledSphere(
-				Matrix4f::CreateTranslation(connection->GetInput().group->GetCenterPosition()),
-				1.0f, Color::MAGENTA);
-			continue;
+			m_debugDraw->DrawMesh(connection->GetMesh(),
+				Matrix4f::IDENTITY, colorRoadFill);
+		}
 
-			NodeGroupConnection* twin = connection->GetTwin();
-			RoadCurveLine leftEdge;
-			RoadCurveLine rightEdge = connection->GetRightVisualShoulderLine();
-
-			if (twin != nullptr)
+		// Draw support columns
+		for (NodeGroup* group : m_network->GetNodeGroups())
+		{
+			Vector3f position = group->GetCenterPosition();
+			if (position.z > FLT_EPSILON)
 			{
-				if (connection->GetId() < twin->GetId())
-					leftEdge = twin->GetRightVisualShoulderLine().Reverse();
-				else
-					continue;
+				Meters height = position.z;
+				Meters supportRadius = 0.8f;
+				height -= group->GetSlope() * supportRadius;
+				height -= 0.4f;
+				m_debugDraw->DrawFilledCylinder(
+					Matrix4f::CreateTranslation(position.x, position.y, height * 0.5f) * 
+					Matrix4f::CreateRotation(Vector3f::UNITX, Math::HALF_PI),
+					0.8f, height * 0.5f, Color::GRAY);
 			}
-			else
-			{
-				leftEdge = connection->GetLeftVisualShoulderLine();
-			}
-
-			//FillZippedCurves(g, leftEdge, rightEdge, colorRoadFill);
-			
-			Color c(Vector3f(rng.NextFloat(0.5f, 1.0f),
-			rng.NextFloat(0.5f, 1.0f),
-			rng.NextFloat(0.5f, 1.0f)));
-
-			auto seamsIL = connection->GetSeams(IOType::INPUT, LaneSide::LEFT);
-			auto seamsIR = connection->GetSeams(IOType::INPUT, LaneSide::RIGHT);
-			auto seamsOL = connection->GetSeams(IOType::OUTPUT, LaneSide::LEFT);
-			auto seamsOR = connection->GetSeams(IOType::OUTPUT, LaneSide::RIGHT);
-
-			Array<RoadCurveLine> leftContour;
-			Array<RoadCurveLine> rightContour;
-
-			// Left
-			for (auto it = seamsIL.begin(); it != seamsIL.end(); it++)
-				leftContour.push_back(*it);
-			leftContour.push_back(leftEdge);
-			for (auto it = seamsOL.begin(); it != seamsOL.end(); it++)
-				leftContour.push_back(*it);
-
-			// Right
-			for (auto it = seamsIR.begin(); it != seamsIR.end(); it++)
-				rightContour.push_back(*it);
-			rightContour.push_back(rightEdge);
-			for (auto it = seamsOR.begin(); it != seamsOR.end(); it++)
-				rightContour.push_back(*it);
-
-			glBindTexture(GL_TEXTURE_2D, m_roadTexture->GetGLTextureID());
-			FillShape2(g, leftContour, rightContour, Color::WHITE);
-			glBindTexture(GL_TEXTURE_2D, 0);
 		}
 
 		// Draw intersection surfaces
@@ -1186,7 +885,7 @@ void MainApp::OnRender()
 	{
 		NodeGroupConnection* twin = connection->GetTwin();
 
-		// Draw shoudler edges
+		// Draw road surface edges
 		if (m_showEdgeLines->enabled)
 		{
 			if (twin == nullptr)
@@ -1219,43 +918,9 @@ void MainApp::OnRender()
 		// Draw lane divider lines
 		if (m_showRoadMarkings->enabled)
 		{
-			//DrawArc(g, connection->m_arc1, Color::CYAN);
-			//DrawArc(g, connection->m_arc2, Color::CYAN);
-			//curve = RoadCurveLine(connection->m_visualEdgeLines[0],
-			//	connection->GetInput().group->GetPosition().z,
-			//	connection->GetOutput().group->GetPosition().z);
-			//DrawCurveLine(g, curve, Color::YELLOW);
-			//for (unsigned int i = 1; i < connection->m_dividerLines.size() - 1; i++)
-			//{
-			//	curve.horizontalCurve = connection->m_dividerLines[i];
-			//	DrawCurveLine(g, curve, Color::YELLOW);
-			//}
-			//curve.horizontalCurve = connection->m_visualEdgeLines[1];
-			//DrawCurveLine(g, curve, Color::WHITE);
-
-			//DrawArcs(g, connection->m_visualEdgeLines[0],
-			//	connection->GetInput().group->GetPosition().z,
-			//	connection->GetOutput().group->GetPosition().z,
-			//	Color::YELLOW);
-			//for (unsigned int i = 1; i < connection->m_dividerLines.size() - 1; i++)
-			//{
-			//	DrawArcs(g, connection->m_dividerLines[i],
-			//		connection->GetInput().group->GetPosition().z,
-			//		connection->GetOutput().group->GetPosition().z,
-			//		Color::WHITE);
-			//}
-			//DrawArcs(g, connection->m_visualEdgeLines[1],
-			//	connection->GetInput().group->GetPosition().z,
-			//	connection->GetOutput().group->GetPosition().z,
-			//	Color::WHITE);
-
-			//if (twin != nullptr)
-			//DrawCurveLine(g, connection->m_visualEdgeLines[0], Color::GREEN);
-			//else
-			DrawCurveLine(g, connection->m_visualEdgeLines[0], Color::YELLOW);
-			for (unsigned int i = 1; i < connection->m_dividerLines.size() - 1; i++)
-				DrawArcs(g, connection->m_dividerLines[i], Color::WHITE);
-			DrawCurveLine(g, connection->m_visualEdgeLines[1], Color::WHITE);
+			DrawCurveLine(g, connection->GetLeftVisualEdgeLine(), Color::YELLOW);
+			for (int i = 1; i < connection->GetDividerLineCount(); i++)
+				DrawCurveLine(g, connection->GetVisualDividerLine(i), Color::WHITE);
 		}
 	}
 
@@ -1298,9 +963,13 @@ void MainApp::OnRender()
 		{
 			Node* node = group->GetNode(i);
 
+			modelMatrix = Matrix4f::IDENTITY;
+			//modelMatrix = Matrix4f::CreateTranslation(node->GetPosition());
+			modelMatrix = Matrix4f::CreateTranslation(0.0f, 0.0f, 0.1f);
+
 			// Draw stop line at end of lane
 			if (m_showRoadMarkings->enabled && group->GetOutputs().empty())
-				g.DrawLine(node->GetLeftEdge().xy, node->GetRightEdge().xy, Color::WHITE);
+				m_debugDraw->DrawLine(modelMatrix, node->GetLeftEdge(), node->GetRightEdge(), Color::WHITE);
 
 			if (m_showNodes->enabled)
 			{
@@ -1333,7 +1002,9 @@ void MainApp::OnRender()
 	{
 		if (m_showDebug->enabled)
 		{
-			g.FillCircle(tie->GetPosition().xy, r * 2.0f, Color::RED);
+			m_debugDraw->DrawFilledSphere(
+				Matrix4f::CreateTranslation(tie->GetPosition()),
+				r * 2.0f, Color::RED);
 		}
 	}
 
@@ -1407,16 +1078,18 @@ void MainApp::OnRender()
 				Vector3f(dir.x, dir.y, 0.0f),
 				Vector3f(dir.y, -dir.x, 0.0f),
 				Vector3f::UNITZ);
-			Matrix4f modelMatrix = Matrix4f::CreateTranslation(0.0f, 0.0f, 0.2f) *
+			dcm = driver->GetOrientation();
+			modelMatrix = Matrix4f::CreateTranslation(0.0f, 0.0f, 0.2f) *
 				Matrix4f::CreateTranslation(state.position[i]) * Matrix4f(dcm);
-			g.SetTransformation(modelMatrix);
 
 			m_debugDraw->DrawMesh(m_vehicleMesh, modelMatrix *
 				Matrix4f::CreateRotation(Vector3f::UNITZ, -Math::HALF_PI) *
+				Matrix4f::CreateRotation(Vector3f::UNITY, -Math::HALF_PI) *
 				Matrix4f::CreateTranslation(0.0f, 0.0f, 0.5f),
 				outlineColor); 
 			m_debugDraw->BeginImmediate(modelMatrix);
-			
+			/*
+			g.SetTransformation(modelMatrix);
 			g.FillRect(-size.x * 0.5f, -size.y * 0.5f, size.x, size.y, driverColor);
 			lightLength = size.y * 0.2f;
 			if (i == 0)
@@ -1426,21 +1099,13 @@ void MainApp::OnRender()
 			}
 			g.FillRect(-size.x * 0.5f, -size.y * 0.5f, lightLength, size.y * 0.25f, brakeColorLeft);
 			g.FillRect(-size.x * 0.5f, size.y * 0.25f, lightLength, size.y * 0.25f, brakeColorRight);
-			if (i < params.trailerCount - 1)
-			{
-				/*g.DrawLine(Vector2f(-size.x * 0.5f, 0.0f),
-					Vector2f(-size.x * 0.5f - params.pivotOffset[0], 0.0f),
-					outlineColor);*/
-			}
 			if (i > 0)
 			{
-				/*g.DrawLine(Vector2f(size.x * 0.5f, 0.0f),
-					Vector2f(size.x * 0.5f + params.pivotOffset[0], 0.0f),
-					outlineColor);*/
 				g.DrawCircle(Vector2f(size.x * 0.5f + params.pivotOffset[0], 0.0f),
 					size.y * 0.1f, outlineColor);
 			}
 			g.DrawRect(-size.x * 0.5f, -size.y * 0.5f, size.x, size.y, outlineColor);
+			*/
 		}
 
 		g.SetTransformation(
@@ -1455,6 +1120,8 @@ void MainApp::OnRender()
 	glDisable(GL_DEPTH_TEST);
 	glDepthMask(false);
 	g.SetTransformation(Matrix4f::IDENTITY);
+	glMatrixMode(GL_MODELVIEW);
+	glLoadIdentity();
 
 	// Draw driver paths
 	if (m_showDrivingLines->enabled)
@@ -1465,7 +1132,7 @@ void MainApp::OnRender()
 			if (path.size() > 0)
 			{
 				for (unsigned int i = 0; i < 1; i++)
-					DrawArcs(g, path[i].GetDrivingLine(), Color::MAGENTA);
+					DrawCurveLine(g, path[i].GetDrivingLine(), Color::MAGENTA);
 			}
 		}
 	}

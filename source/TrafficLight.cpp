@@ -1,11 +1,11 @@
 #include "TrafficLight.h"
 
-TrafficLightProgramState::TrafficLightProgramState()
+TrafficLightPhase::TrafficLightPhase()
 	: m_duration(6.0f)
 {
 }
 
-bool TrafficLightProgramState::IsTriggered() const
+bool TrafficLightPhase::IsTriggered() const
 {
 	if (m_triggers.empty())
 	{
@@ -21,35 +21,35 @@ bool TrafficLightProgramState::IsTriggered() const
 	}
 }
 
-TrafficLightSignal TrafficLightProgramState::GetNodeSignal(const Node* node) const
+TrafficLightSignal TrafficLightPhase::GetNodeSignal(const Node* node) const
 {
 	if (m_signals.find((Node*) node) != m_signals.end())
 		return m_signals.at((Node*) node);
 	return TrafficLightSignal::STOP;
 }
 
-Seconds TrafficLightProgramState::GetDuration() const
+Seconds TrafficLightPhase::GetDuration() const
 {
 	return m_duration;
 }
 
-void TrafficLightProgramState::Clear()
+void TrafficLightPhase::Clear()
 {
 	m_signals.clear();
 	m_triggers.clear();
 }
 
-void TrafficLightProgramState::SetSignal(Node* node, TrafficLightSignal signal)
+void TrafficLightPhase::SetSignal(Node* node, TrafficLightSignal signal)
 {
 	m_signals[node] = signal;
 }
 
-void TrafficLightProgramState::AddTrigger(Node * node)
+void TrafficLightPhase::AddTrigger(Node * node)
 {
 	m_triggers.insert(node);
 }
 
-void TrafficLightProgramState::SetDuration(Seconds duration)
+void TrafficLightPhase::SetDuration(Seconds duration)
 {
 	m_duration = duration;
 }
@@ -57,9 +57,9 @@ void TrafficLightProgramState::SetDuration(Seconds duration)
 
 
 TrafficLightProgram::TrafficLightProgram()
-	: m_currentState(nullptr)
-	, m_nextState(nullptr)
-	, m_stateTimer(0.0f)
+	: m_currentPhase(nullptr)
+	, m_nextPhase(nullptr)
+	, m_phaseTimer(0.0f)
 	, m_yellowDuration(2.0f)
 	, m_redDelay(1.0f)
 {
@@ -71,21 +71,21 @@ TrafficLightProgram::~TrafficLightProgram()
 
 TrafficLightSignal TrafficLightProgram::GetSignal(const Node* node) const
 {
-	if (m_currentState == nullptr)
+	if (m_currentPhase == nullptr)
 	{
 		return TrafficLightSignal::GO;
 	}
-	else if (m_nextState != nullptr)
+	else if (m_nextPhase != nullptr)
 	{
-		TrafficLightSignal prev = m_currentState->GetNodeSignal(node);
-		TrafficLightSignal next = m_nextState->GetNodeSignal(node);
+		TrafficLightSignal prev = m_currentPhase->GetNodeSignal(node);
+		TrafficLightSignal next = m_nextPhase->GetNodeSignal(node);
 		if (prev == next)
 		{
 			return prev;
 		}
 		else if (next == TrafficLightSignal::STOP)
 		{
-			if (m_stateTimer < m_yellowDuration)
+			if (m_phaseTimer < m_yellowDuration)
 				return TrafficLightSignal::YELLOW;
 			else
 				return TrafficLightSignal::STOP;
@@ -97,51 +97,51 @@ TrafficLightSignal TrafficLightProgram::GetSignal(const Node* node) const
 	}
 	else
 	{
-		return m_currentState->GetNodeSignal(node);
+		return m_currentPhase->GetNodeSignal(node);
 	}
 }
 
-void TrafficLightProgram::AddState(const TrafficLightProgramState& state)
+void TrafficLightProgram::AddPhase(const TrafficLightPhase& phase)
 {
-	m_states.push_back(state);
+	m_phases.push_back(phase);
 }
 
-void TrafficLightProgram::BeginState(int index)
+void TrafficLightProgram::BeginPhase(int index)
 {
-	m_currentStateIndex = index;
-	m_nextState = &m_states[index];
-	if (m_currentState == nullptr)
-		m_currentState = m_nextState;
-	m_stateTimer = 0.0f;
+	m_currentPhaseIndex = index;
+	m_nextPhase = &m_phases[index];
+	if (m_currentPhase == nullptr)
+		m_currentPhase = m_nextPhase;
+	m_phaseTimer = 0.0f;
 }
 
 void TrafficLightProgram::Udpate(Seconds dt)
 {
-	if (m_states.empty())
+	if (m_phases.empty())
 		return;
-	if (m_currentState == nullptr)
-		BeginState(0);
+	if (m_currentPhase == nullptr)
+		BeginPhase(0);
 
 
-	m_stateTimer += dt;
+	m_phaseTimer += dt;
 
-	if (m_nextState != nullptr)
+	if (m_nextPhase != nullptr)
 	{
-		if (m_stateTimer >= m_yellowDuration + m_redDelay)
+		if (m_phaseTimer >= m_yellowDuration + m_redDelay)
 		{
-			m_currentState = m_nextState;
-			m_nextState = nullptr;
+			m_currentPhase = m_nextPhase;
+			m_nextPhase = nullptr;
 		}
 	}
-	else if (m_stateTimer >= m_currentState->GetDuration())
+	else if (m_phaseTimer >= m_currentPhase->GetDuration())
 	{
-		// Change to the next state
-		for (int i = 1; i < (int) m_states.size(); i++)
+		// Change to the next phase
+		for (int i = 1; i < (int) m_phases.size(); i++)
 		{
-			int index = (m_currentStateIndex + i) % m_states.size();
-			if (m_states[index].IsTriggered())
+			int index = (m_currentPhaseIndex + i) % m_phases.size();
+			if (m_phases[index].IsTriggered())
 			{
-				BeginState(index);
+				BeginPhase(index);
 				break;
 			}
 		}

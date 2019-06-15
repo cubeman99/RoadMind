@@ -535,20 +535,20 @@ void NodeGroup::UpdateIntersectionGeometry()
 					NodeGroupConnection* b = connections[j];
 					if (reverse)
 					{
-						if (!IntersectArcPairs(a->m_visualEdgeLines[1],
-							b->m_visualEdgeLines[0], true, seam))
+						if (!IntersectArcPairs(*a->m_visualEdgeLines[1],
+							*b->m_visualEdgeLines[0], true, seam))
 						{
-							IntersectArcPairs(a->m_visualEdgeLines[0],
-								b->m_visualEdgeLines[1], true, seam);
+							IntersectArcPairs(*a->m_visualEdgeLines[0],
+								*b->m_visualEdgeLines[1], true, seam);
 						}
 					}
 					else
 					{
-						if (!IntersectArcPairs(a->m_visualEdgeLines[0],
-							b->m_visualEdgeLines[1], false, seam))
+						if (!IntersectArcPairs(*a->m_visualEdgeLines[0],
+							*b->m_visualEdgeLines[1], false, seam))
 						{
-							IntersectArcPairs(a->m_visualEdgeLines[1],
-								b->m_visualEdgeLines[0], false, seam);
+							IntersectArcPairs(*a->m_visualEdgeLines[1],
+								*b->m_visualEdgeLines[0], false, seam);
 						}
 					}
 				}

@@ -62,15 +62,15 @@ TrafficLightProgram* RoadIntersection::CreateTrafficLightProgram()
 	{
 		if (m_points[i]->GetIOType() == IOType::INPUT)
 		{
-			TrafficLightProgramState state;
+			TrafficLightPhase phase;
 			NodeGroup* group = m_points[i]->GetNodeGroup();
 			for (int j = 0; j < group->GetNumNodes(); j++)
 			{
 				Node* node = group->GetNode(j);
-				state.AddTrigger(node);
-				state.SetSignal(node, TrafficLightSignal::GO);
+				phase.AddTrigger(node);
+				phase.SetSignal(node, TrafficLightSignal::GO);
 			}
-			m_trafficLightProgram->AddState(state);
+			m_trafficLightProgram->AddPhase(phase);
 		}
 	}
 	return m_trafficLightProgram;
@@ -196,11 +196,10 @@ void RoadIntersection::UpdateGeometry()
 		for (int k = 0; k < 2; k++)
 		{
 			connections[k] = points[k]->GetConnection(sides[k]);
-			arcs[k] = connections[k]->m_edgeLines[(int) sides[k]];
+			arcs[k] = connections[k]->GetVisualEdgeLine(sides[k]).horizontalCurve;
 			reverse[k] = (points[k]->GetIOType() == IOType::OUTPUT);
 			if (reverse[k])
 				arcs[k] = arcs[k].Reverse();
-			//edgeLines[k] = &connections[k]->m_visualShoulderLines[(int) sides[k]];
 		}
 
 		BiarcPair shoulderEdge;

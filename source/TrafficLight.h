@@ -5,10 +5,10 @@
 class RoadIntersection;
 
 
-class TrafficLightProgramState
+class TrafficLightPhase
 {
 public:
-	TrafficLightProgramState();
+	TrafficLightPhase();
 
 	// Getters 
 	bool IsTriggered() const;
@@ -43,16 +43,16 @@ public:
 	TrafficLightSignal GetSignal(const Node* node) const;
 
 	// Setters
-	void AddState(const TrafficLightProgramState& state);
-	void BeginState(int index);
+	void AddPhase(const TrafficLightPhase& phase);
+	void BeginPhase(int index);
 	void Udpate(Seconds dt);
 
 private:
-	Array<TrafficLightProgramState> m_states; // Ordered by priority
-	TrafficLightProgramState* m_currentState;
-	TrafficLightProgramState* m_nextState;
-	int m_currentStateIndex;
-	Seconds m_stateTimer;
+	Array<TrafficLightPhase> m_phases; // Ordered by priority
+	TrafficLightPhase* m_currentPhase;
+	TrafficLightPhase* m_nextPhase;
+	int m_currentPhaseIndex;
+	Seconds m_phaseTimer;
 
 	Seconds m_yellowDuration;
 	Seconds m_redDelay;

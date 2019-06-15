@@ -33,6 +33,19 @@ VerticalCurve::VerticalCurve(float h1, float h2)
 {
 }
 
+VerticalCurve::VerticalCurve(float h1, float h2, float length, float slope1, float slope2)
+	: height1(h1)
+	, height2(h2)
+	, slope1(slope1)
+	, slope2(slope2)
+	, length(length)
+	, a(0.0f)
+	, b(0.0f)
+	, offset(0.0f)
+{
+	CubicInterpolatation(slope1, slope2, length);
+}
+
 float VerticalCurve::GetStartHeight() const
 {
 	return GetHeightFromDistance(0.0f);
@@ -162,6 +175,16 @@ Vector3f RoadCurveLine::GetPoint(float distance) const
 	point.xy = horizontalCurve.GetPoint(distance);
 	point.z = verticalCurve.GetHeightFromDistance(distance);
 	return point;
+}
+
+Vector3f RoadCurveLine::GetTangent(float distance) const
+{
+	Vector3f normal;
+	float slope = verticalCurve.GetSlope(distance);
+	normal.xy = horizontalCurve.GetTangent(distance);
+	normal.z = slope;
+	normal.Normalize();
+	return normal;
 }
 
 Vector3f RoadCurveLine::GetNormal(float distance) const
