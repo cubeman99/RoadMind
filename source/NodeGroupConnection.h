@@ -44,6 +44,8 @@ public:
 	NodeSubGroup& GetOutput();
 	const Array<RoadCurveLine>& GetSeams(IOType type, LaneSide side) const;
 	Array<RoadCurveLine>& GetSeams(IOType type, LaneSide side);
+	const Array<RoadCurveLine>& GetEdgeSeams(IOType type, LaneSide side) const;
+	Array<RoadCurveLine>& GetEdgeSeams(IOType type, LaneSide side);
 	RoadCurveLine GetDrivingLine(int fromLaneIndex, int toLaneIndex);
 	RoadCurveLine GetDrivingLine(int laneIndex);
 	void GetLaneOutputRange(int fromLaneIndex, int& outToLaneIndex, int& outToLaneCount);
@@ -70,6 +72,8 @@ public:
 private:
 	void SetSeam(IOType end, LaneSide side, const RoadCurveLine& seam);
 	void AddSeam(IOType end, LaneSide side, const RoadCurveLine& seam);
+	void SetEdgeSeam(IOType end, LaneSide side, const RoadCurveLine& seam);
+	void AddEdgeSeam(IOType end, LaneSide side, const RoadCurveLine& seam);
 	void ConstrainLaneSplit();
 
 
@@ -85,6 +89,7 @@ public:
 	Array<RoadCurveLine> m_visualDividerLines;
 	RoadCurveLine m_visualShoulderLines[2];
 	Array<RoadCurveLine> m_seams[2][2];
+	Array<RoadCurveLine> m_edgeSeams[2][2];
 
 	// Meshes
 	Mesh* m_mesh;

@@ -96,6 +96,7 @@ public:
 	// Geometry
 
 	bool IntersectConnections(NodeGroupConnection* a, NodeGroupConnection* b, IOType end);
+	bool IntersectEdgeLines(NodeGroupConnection* a, NodeGroupConnection* b, IOType end);
 	void UpdateGeometry();
 	void UpdateIntersectionGeometry();
 

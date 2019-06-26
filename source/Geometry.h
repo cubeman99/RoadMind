@@ -11,8 +11,14 @@ class Geometry
 public:
 
 
-	static void ZipArcs(Mesh* mesh, const Array<RoadCurveLine>& left,
+	static void ZipArcs(
+		Array<VertexPosNorm>& outVertices,
+		Array<unsigned int>& outIndices,
+		const Array<RoadCurveLine>& left,
 		const Array<RoadCurveLine>& right);
-	static void ZipArcs(Mesh* mesh, const Array<VertexPosNorm>& left,
+	static void ZipArcs(
+		Array<VertexPosNorm>& outVertices,
+		Array<unsigned int>& outIndices,
+		const Array<VertexPosNorm>& left,
 		const Array<VertexPosNorm>& right);
 };

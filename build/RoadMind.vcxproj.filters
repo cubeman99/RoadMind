@@ -1,186 +1,235 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
-    <Filter Include="Source Files">
-      <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
-      <Extensions>cpp;c;cc;cxx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
-    </Filter>
-    <Filter Include="Header Files">
-      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
-      <Extensions>h;hh;hpp;hxx;hm;inl;inc;xsd</Extensions>
-    </Filter>
-    <Filter Include="Resource Files">
+    <Filter Include="assets">
       <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
     </Filter>
-    <Filter Include="Source Files\Topology">
+    <Filter Include="assets\shaders">
+      <UniqueIdentifier>{c95cb3eb-73a8-4163-8b6e-1dcc8a62556a}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="source">
+      <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
+      <Extensions>cpp;c;cc;cxx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
+    </Filter>
+    <Filter Include="source\Topology">
       <UniqueIdentifier>{02838e82-a865-4f90-ac9b-120842d3ade7}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Source Files\Tools">
+    <Filter Include="source\Tools">
       <UniqueIdentifier>{830bbd2c-b280-49eb-ab1c-9f2717752882}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Source Files\Applications">
+    <Filter Include="source\Applications">
       <UniqueIdentifier>{8b5f3204-389e-4be8-be74-bb85320ae680}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Source Files\Core">
+    <Filter Include="source\Core">
       <UniqueIdentifier>{e645ec3a-0379-4fb0-b600-4d2d97b57220}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Source Files\Driving">
+    <Filter Include="source\Driving">
       <UniqueIdentifier>{980e4686-338c-4fc7-8aa7-680c0b61439e}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="source\ecs">
+      <UniqueIdentifier>{46885e75-a71d-46d3-b9ce-13c458ae751c}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\source\Node.h">
-      <Filter>Source Files\Topology</Filter>
+      <Filter>source\Topology</Filter>
     </ClInclude>
     <ClInclude Include="..\source\NodeGroup.h">
-      <Filter>Source Files\Topology</Filter>
+      <Filter>source\Topology</Filter>
     </ClInclude>
     <ClInclude Include="..\source\NodeGroupConnection.h">
-      <Filter>Source Files\Topology</Filter>
+      <Filter>source\Topology</Filter>
     </ClInclude>
     <ClInclude Include="..\source\NodeGroupTie.h">
-      <Filter>Source Files\Topology</Filter>
+      <Filter>source\Topology</Filter>
     </ClInclude>
     <ClInclude Include="..\source\RoadIntersection.h">
-      <Filter>Source Files\Topology</Filter>
+      <Filter>source\Topology</Filter>
     </ClInclude>
     <ClInclude Include="..\source\RoadNetwork.h">
-      <Filter>Source Files\Topology</Filter>
+      <Filter>source\Topology</Filter>
     </ClInclude>
     <ClInclude Include="..\source\Connection.h">
-      <Filter>Source Files\Topology</Filter>
+      <Filter>source\Topology</Filter>
     </ClInclude>
     <ClInclude Include="..\source\ToolDraw.h">
-      <Filter>Source Files\Tools</Filter>
+      <Filter>source\Tools</Filter>
     </ClInclude>
     <ClInclude Include="..\source\ToolSelection.h">
-      <Filter>Source Files\Tools</Filter>
+      <Filter>source\Tools</Filter>
     </ClInclude>
     <ClInclude Include="..\source\EditorTool.h">
-      <Filter>Source Files\Tools</Filter>
+      <Filter>source\Tools</Filter>
     </ClInclude>
     <ClInclude Include="..\source\Vehicle.h">
-      <Filter>Source Files</Filter>
+      <Filter>source</Filter>
     </ClInclude>
     <ClInclude Include="..\source\DrivingApp.h">
-      <Filter>Source Files\Applications</Filter>
+      <Filter>source\Applications</Filter>
     </ClInclude>
     <ClInclude Include="..\source\GeometryApp.h">
-      <Filter>Source Files\Applications</Filter>
+      <Filter>source\Applications</Filter>
     </ClInclude>
     <ClInclude Include="..\source\MainApp.h">
-      <Filter>Source Files\Applications</Filter>
+      <Filter>source\Applications</Filter>
     </ClInclude>
     <ClInclude Include="..\source\Biarc.h">
-      <Filter>Source Files\Core</Filter>
+      <Filter>source\Core</Filter>
     </ClInclude>
     <ClInclude Include="..\source\Biarc3.h">
-      <Filter>Source Files\Core</Filter>
+      <Filter>source\Core</Filter>
     </ClInclude>
     <ClInclude Include="..\source\Camera.h">
-      <Filter>Source Files\Core</Filter>
+      <Filter>source\Core</Filter>
     </ClInclude>
     <ClInclude Include="..\source\VehicleParams.h">
-      <Filter>Source Files</Filter>
+      <Filter>source</Filter>
     </ClInclude>
     <ClInclude Include="..\source\RoadSurface.h">
-      <Filter>Source Files\Topology</Filter>
+      <Filter>source\Topology</Filter>
     </ClInclude>
     <ClInclude Include="..\source\Driver.h">
-      <Filter>Source Files\Driving</Filter>
+      <Filter>source\Driving</Filter>
     </ClInclude>
     <ClInclude Include="..\source\DriverPath.h">
-      <Filter>Source Files\Driving</Filter>
+      <Filter>source\Driving</Filter>
     </ClInclude>
     <ClInclude Include="..\source\DrivingSystem.h">
-      <Filter>Source Files\Driving</Filter>
+      <Filter>source\Driving</Filter>
     </ClInclude>
     <ClInclude Include="..\source\TrafficLight.h">
-      <Filter>Source Files\Topology</Filter>
+      <Filter>source\Topology</Filter>
     </ClInclude>
     <ClInclude Include="..\source\CommonTypes.h">
-      <Filter>Source Files\Core</Filter>
+      <Filter>source\Core</Filter>
     </ClInclude>
     <ClInclude Include="..\source\Geometry.h">
-      <Filter>Source Files\Core</Filter>
+      <Filter>source\Core</Filter>
     </ClInclude>
     <ClInclude Include="..\source\RoadCurves.h">
-      <Filter>Source Files\Core</Filter>
+      <Filter>source\Core</Filter>
+    </ClInclude>
+    <ClInclude Include="..\source\ECSApp.h">
+      <Filter>source\Applications</Filter>
+    </ClInclude>
+    <ClInclude Include="..\source\ecs\MaterialComponent.h">
+      <Filter>source\ecs</Filter>
+    </ClInclude>
+    <ClInclude Include="..\source\ecs\MeshComponent.h">
+      <Filter>source\ecs</Filter>
+    </ClInclude>
+    <ClInclude Include="..\source\ecs\MeshRenderSystem.h">
+      <Filter>source\ecs</Filter>
+    </ClInclude>
+    <ClInclude Include="..\source\MarchingCubes.h">
+      <Filter>source\Core</Filter>
+    </ClInclude>
+    <ClInclude Include="..\source\PerlinNoise.h">
+      <Filter>source\Core</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\source\main.cpp">
-      <Filter>Source Files</Filter>
+      <Filter>source</Filter>
     </ClCompile>
     <ClCompile Include="..\source\Node.cpp">
-      <Filter>Source Files\Topology</Filter>
+      <Filter>source\Topology</Filter>
     </ClCompile>
     <ClCompile Include="..\source\NodeGroup.cpp">
-      <Filter>Source Files\Topology</Filter>
+      <Filter>source\Topology</Filter>
     </ClCompile>
     <ClCompile Include="..\source\NodeGroupConnection.cpp">
-      <Filter>Source Files\Topology</Filter>
+      <Filter>source\Topology</Filter>
     </ClCompile>
     <ClCompile Include="..\source\NodeGroupTie.cpp">
-      <Filter>Source Files\Topology</Filter>
+      <Filter>source\Topology</Filter>
     </ClCompile>
     <ClCompile Include="..\source\RoadIntersection.cpp">
-      <Filter>Source Files\Topology</Filter>
+      <Filter>source\Topology</Filter>
     </ClCompile>
     <ClCompile Include="..\source\RoadNetwork.cpp">
-      <Filter>Source Files\Topology</Filter>
+      <Filter>source\Topology</Filter>
     </ClCompile>
     <ClCompile Include="..\source\Connection.cpp">
-      <Filter>Source Files\Topology</Filter>
+      <Filter>source\Topology</Filter>
     </ClCompile>
     <ClCompile Include="..\source\ToolDraw.cpp">
-      <Filter>Source Files\Tools</Filter>
+      <Filter>source\Tools</Filter>
     </ClCompile>
     <ClCompile Include="..\source\ToolSelection.cpp">
-      <Filter>Source Files\Tools</Filter>
+      <Filter>source\Tools</Filter>
     </ClCompile>
     <ClCompile Include="..\source\EditorTool.cpp">
-      <Filter>Source Files\Tools</Filter>
+      <Filter>source\Tools</Filter>
     </ClCompile>
     <ClCompile Include="..\source\Vehicle.cpp">
-      <Filter>Source Files</Filter>
+      <Filter>source</Filter>
     </ClCompile>
     <ClCompile Include="..\source\DrivingApp.cpp">
-      <Filter>Source Files\Applications</Filter>
+      <Filter>source\Applications</Filter>
     </ClCompile>
     <ClCompile Include="..\source\GeometryApp.cpp">
-      <Filter>Source Files\Applications</Filter>
+      <Filter>source\Applications</Filter>
     </ClCompile>
     <ClCompile Include="..\source\MainApp.cpp">
-      <Filter>Source Files\Applications</Filter>
+      <Filter>source\Applications</Filter>
     </ClCompile>
     <ClCompile Include="..\source\Biarc.cpp">
-      <Filter>Source Files\Core</Filter>
+      <Filter>source\Core</Filter>
     </ClCompile>
     <ClCompile Include="..\source\Biarc3.cpp">
-      <Filter>Source Files\Core</Filter>
+      <Filter>source\Core</Filter>
     </ClCompile>
     <ClCompile Include="..\source\Camera.cpp">
-      <Filter>Source Files\Core</Filter>
+      <Filter>source\Core</Filter>
     </ClCompile>
     <ClCompile Include="..\source\RoadSurface.cpp">
-      <Filter>Source Files\Topology</Filter>
+      <Filter>source\Topology</Filter>
     </ClCompile>
     <ClCompile Include="..\source\Driver.cpp">
-      <Filter>Source Files\Driving</Filter>
+      <Filter>source\Driving</Filter>
     </ClCompile>
     <ClCompile Include="..\source\DrivingSystem.cpp">
-      <Filter>Source Files\Driving</Filter>
+      <Filter>source\Driving</Filter>
     </ClCompile>
     <ClCompile Include="..\source\TrafficLight.cpp">
-      <Filter>Source Files\Topology</Filter>
+      <Filter>source\Topology</Filter>
     </ClCompile>
     <ClCompile Include="..\source\Geometry.cpp">
-      <Filter>Source Files\Core</Filter>
+      <Filter>source\Core</Filter>
     </ClCompile>
     <ClCompile Include="..\source\RoadCurves.cpp">
-      <Filter>Source Files\Core</Filter>
+      <Filter>source\Core</Filter>
     </ClCompile>
+    <ClCompile Include="..\source\ECSApp.cpp">
+      <Filter>source\Applications</Filter>
+    </ClCompile>
+    <ClCompile Include="..\source\ecs\MeshRenderSystem.cpp">
+      <Filter>source\ecs</Filter>
+    </ClCompile>
+    <ClCompile Include="..\source\MarchingCubes.cpp">
+      <Filter>source\Core</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\assets\shaders\shader_vs.glsl">
+      <Filter>assets\shaders</Filter>
+    </None>
+    <None Include="..\assets\shaders\shader_fs.glsl">
+      <Filter>assets\shaders</Filter>
+    </None>
+    <None Include="..\assets\shaders\marching_cubes_cs.glsl">
+      <Filter>assets\shaders</Filter>
+    </None>
+    <None Include="..\assets\shaders\terrain_cs.glsl">
+      <Filter>assets\shaders</Filter>
+    </None>
+    <None Include="..\assets\shaders\render_terrain_vs.glsl">
+      <Filter>assets\shaders</Filter>
+    </None>
+    <None Include="..\assets\shaders\render_terrain_fs.glsl">
+      <Filter>assets\shaders</Filter>
+    </None>
   </ItemGroup>
 </Project>

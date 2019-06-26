@@ -112,7 +112,6 @@ NodeSubGroup& NodeGroupConnection::GetOutput()
 	return m_groups[(int) InputOutput::OUTPUT];
 }
 
-
 const Array<RoadCurveLine>& NodeGroupConnection::GetSeams(IOType type, LaneSide side) const
 {
 	return m_seams[(int) type][(int) side];
@@ -121,6 +120,16 @@ const Array<RoadCurveLine>& NodeGroupConnection::GetSeams(IOType type, LaneSide 
 Array<RoadCurveLine>& NodeGroupConnection::GetSeams(IOType type, LaneSide side)
 {
 	return m_seams[(int) type][(int) side];
+}
+
+const Array<RoadCurveLine>& NodeGroupConnection::GetEdgeSeams(IOType type, LaneSide side) const
+{
+	return m_edgeSeams[(int) type][(int) side];
+}
+
+Array<RoadCurveLine>& NodeGroupConnection::GetEdgeSeams(IOType type, LaneSide side)
+{
+	return m_edgeSeams[(int) type][(int) side];
 }
 
 RoadCurveLine NodeGroupConnection::GetDrivingLine(int fromLaneIndex, int toLaneIndex)
@@ -286,13 +295,30 @@ void NodeGroupConnection::AddSeam(IOType end, LaneSide side, const RoadCurveLine
 	seams.push_back(seam);
 }
 
+void NodeGroupConnection::SetEdgeSeam(IOType end, LaneSide side, const RoadCurveLine& seam)
+{
+	Array<RoadCurveLine>& seams = GetEdgeSeams(end, side);
+	seams.resize(1);
+	seams[0] = seam;
+}
+
+void NodeGroupConnection::AddEdgeSeam(IOType end, LaneSide side, const RoadCurveLine& seam)
+{
+	Array<RoadCurveLine>& seams = GetEdgeSeams(end, side);
+	seams.push_back(seam);
+}
+
 void NodeGroupConnection::UpdateGeometry()
 {
 	m_visualDividerLines.clear();
-	m_seams[0][0].clear();
-	m_seams[0][1].clear();
-	m_seams[1][0].clear();
-	m_seams[1][1].clear();
+	for (unsigned int i = 0; i < 2; i++)
+	{
+		for (unsigned int j = 0; j < 2; j++)
+		{
+			m_seams[i][j].clear();
+			m_edgeSeams[i][j].clear();
+		}
+	}
 
 	// Create the left edge
 	Node* nodes[2];
@@ -375,46 +401,55 @@ void NodeGroupConnection::UpdateGeometry()
 
 void NodeGroupConnection::CreateMesh()
 {
+
 	NodeGroupConnection* twin = GetTwin();
 	RoadCurveLine leftEdge;
 	RoadCurveLine rightEdge = GetRightVisualShoulderLine();
+	bool dominantTwin = true;
+	if (twin != nullptr && GetId() > twin->GetId())
+		dominantTwin = false;
 
-	if (twin != nullptr)
-	{
-		if (GetId() < twin->GetId())
-			leftEdge = twin->GetRightVisualShoulderLine().Reverse();
-		else
-			return;
-	}
-	else
-	{
-		leftEdge = GetLeftVisualShoulderLine();
-	}
-
-	//FillZippedCurves(g, leftEdge, rightEdge, colorRoadFill);
-
-
-	auto seamsIL = GetSeams(IOType::INPUT, LaneSide::LEFT);
-	auto seamsIR = GetSeams(IOType::INPUT, LaneSide::RIGHT);
-	auto seamsOL = GetSeams(IOType::OUTPUT, LaneSide::LEFT);
-	auto seamsOR = GetSeams(IOType::OUTPUT, LaneSide::RIGHT);
-
+	auto seamsIL = GetEdgeSeams(IOType::INPUT, LaneSide::LEFT);
+	auto seamsIR = GetEdgeSeams(IOType::INPUT, LaneSide::RIGHT);
+	auto seamsOL = GetEdgeSeams(IOType::OUTPUT, LaneSide::LEFT);
+	auto seamsOR = GetEdgeSeams(IOType::OUTPUT, LaneSide::RIGHT);
 	Array<RoadCurveLine> leftContour;
 	Array<RoadCurveLine> rightContour;
+	leftContour.resize(1);
+	rightContour.resize(1);
+	Array<VertexPosNorm> vertices;
+	Array<unsigned int> indices;
 
-	// Left
+	// Right shoulder
+	leftContour[0] = m_visualDividerLines.back();
+	rightContour[0] = m_visualShoulderLines[1];
+	Geometry::ZipArcs(vertices, indices, leftContour, rightContour);
+
+	// Left shoulder
+	if (twin == nullptr)
+	{
+		leftContour[0] = m_visualShoulderLines[0];
+		rightContour[0] = m_visualDividerLines[0];
+		Geometry::ZipArcs(vertices, indices, leftContour, rightContour);
+	}
+
+	// Lane surface
+	leftContour.clear();
 	for (auto it = seamsIL.begin(); it != seamsIL.end(); it++)
 		leftContour.push_back(*it);
-	leftContour.push_back(leftEdge);
+	leftContour.push_back(GetLeftVisualEdgeLine());
 	for (auto it = seamsOL.begin(); it != seamsOL.end(); it++)
 		leftContour.push_back(*it);
-
-	// Right
+	rightContour.clear();
 	for (auto it = seamsIR.begin(); it != seamsIR.end(); it++)
 		rightContour.push_back(*it);
-	rightContour.push_back(rightEdge);
+	rightContour.push_back(GetRightVisualEdgeLine());
 	for (auto it = seamsOR.begin(); it != seamsOR.end(); it++)
 		rightContour.push_back(*it);
+	Geometry::ZipArcs(vertices, indices, leftContour, rightContour);
 
-	Geometry::ZipArcs(m_mesh, leftContour, rightContour);
+	m_mesh->GetVertexData()->BufferVertices(vertices);
+	m_mesh->GetIndexData()->BufferIndices(indices);
+	m_mesh->SetIndices(0, indices.size());
+	return;
 }

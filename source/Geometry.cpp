@@ -1,11 +1,10 @@
 #include "Geometry.h"
 
-void Geometry::ZipArcs(Mesh* mesh, const Array<VertexPosNorm>& left,
+void Geometry::ZipArcs(Array<VertexPosNorm>& outVertices,
+	Array<unsigned int>& outIndices, const Array<VertexPosNorm>& left,
 	const Array<VertexPosNorm>& right)
 {
 	const Array<VertexPosNorm>* sides[2] = { &left, &right };
-	Array<VertexPosNorm> vertices;
-	Array<unsigned int> indices;
 	unsigned int head[2] = { 1, 0 };
 	VertexPosNorm a, b, c;
 	int side = 0;
@@ -65,12 +64,12 @@ void Geometry::ZipArcs(Mesh* mesh, const Array<VertexPosNorm>& left,
 		}
 		prevConvex = true;
 
-		indices.push_back(vertices.size());
-		vertices.push_back(a);
-		indices.push_back(vertices.size());
-		vertices.push_back(b);
-		indices.push_back(vertices.size());
-		vertices.push_back(c);
+		outIndices.push_back(outVertices.size());
+		outVertices.push_back(a);
+		outIndices.push_back(outVertices.size());
+		outVertices.push_back(b);
+		outIndices.push_back(outVertices.size());
+		outVertices.push_back(c);
 
 		// Switch to the other side
 		if (head[other] < sides[other]->size() - 1)
@@ -79,9 +78,6 @@ void Geometry::ZipArcs(Mesh* mesh, const Array<VertexPosNorm>& left,
 	}
 
 	// Draw the shape
-	mesh->GetVertexData()->BufferVertices(vertices);
-	mesh->GetIndexData()->BufferIndices(indices);
-	mesh->SetIndices(0, indices.size());
 	/*glBegin(GL_TRIANGLES);
 	glColor4ubv(color.data());
 	Vector2f texOffset = Vector2f::ZERO;
@@ -99,10 +95,11 @@ void Geometry::ZipArcs(Mesh* mesh, const Array<VertexPosNorm>& left,
 	glEnd();*/
 }
 
-void Geometry::ZipArcs(Mesh* mesh, const Array<RoadCurveLine>& left,
+void Geometry::ZipArcs(Array<VertexPosNorm>& outVertices,
+	Array<unsigned int>& outIndices, const Array<RoadCurveLine>& left,
 	const Array<RoadCurveLine>& right)
 {
-	Array<VertexPosNorm> vertices[2];
+	Array<VertexPosNorm> sideVertices[2];
 	const Array<RoadCurveLine>* sides[2] = { &left, &right };
 
 	for (int side = 0; side < 2; side++)
@@ -111,7 +108,7 @@ void Geometry::ZipArcs(Mesh* mesh, const Array<RoadCurveLine>& left,
 		{
 			const RoadCurveLine& curve = sides[side]->at(i);
 			float dist = 0.0f;
-			vertices[side].push_back(VertexPosNorm(
+			sideVertices[side].push_back(VertexPosNorm(
 				curve.Start(),
 				curve.GetNormal(0.0f)));
 			for (unsigned int half = 0; half < 2; half++)
@@ -131,24 +128,24 @@ void Geometry::ZipArcs(Mesh* mesh, const Array<RoadCurveLine>& left,
 						v.Rotate(arc.center, angle);
 						float distAlongCurve = dist + (arc.length * t);
 						float z = curve.verticalCurve.GetHeightFromDistance(distAlongCurve);
-						vertices[side].push_back(VertexPosNorm(
+						sideVertices[side].push_back(VertexPosNorm(
 							Vector3f(v, z),
 							curve.GetNormal(distAlongCurve)));
 					}
 				}
 				if (half == 0)
 				{
-					vertices[side].push_back(VertexPosNorm(
+					sideVertices[side].push_back(VertexPosNorm(
 						curve.Middle(),
 						curve.GetNormal(curve.horizontalCurve.first.length)));
 				}
 				dist += arc.length;
 			}
-			vertices[side].push_back(VertexPosNorm(
+			sideVertices[side].push_back(VertexPosNorm(
 				curve.End(),
 				curve.GetNormal(curve.Length())));
 		}
 	}
-	ZipArcs(mesh, vertices[0], vertices[1]);
+	ZipArcs(outVertices, outIndices, sideVertices[0], sideVertices[1]);
 }
 

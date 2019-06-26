@@ -10,12 +10,14 @@
 #include "MainApp.h"
 #include "GeometryApp.h"
 #include "DrivingApp.h"
+#include "ECSApp.h"
 
 int main(int argc, char* argv[])
 {
 	srand((unsigned int) time(nullptr));
 
-	MainApp app;
+	//MainApp app;
+	ECSApp app;
 	//GeometryApp app;
 	//DrivingApp app;
 	app.Initialize("Road Mind", 800, 600);

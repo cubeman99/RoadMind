@@ -34,6 +34,9 @@ typedef Real NewtonMeters;
 #define horsepowerToWatts(x)	(x * 0.00134102f)
 
 
+#define BOOL2ASCII(x) (x ? "TRUE" : "FALSE")
+
+
 struct RoadMetrics
 {
 public:

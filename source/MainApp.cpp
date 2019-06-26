@@ -5,11 +5,10 @@
 #include <sstream>
 #include <iomanip>
 
-#define BOOL2ASCII(x) (x ? "TRUE" : "FALSE")
-
 static const char* SAVE_FILE_PATH = "road_network.rdmd";
 
 #define ASSETS_PATH "C:/workspace/c++/cmg/RoadMind/assets/"
+
 
 MainApp::MainApp()
 	: m_profiling("root")
@@ -29,7 +28,7 @@ MainApp::MainApp()
 	m_showDebug->enabled = true;
 	m_showNodes->enabled = true;
 
-	m_showRoadMarkings->enabled = false;
+	m_showRoadMarkings->enabled = true;
 	m_showEdgeLines->enabled = true;
 	m_showNodes->enabled = false;
 	m_showSeams->enabled = true;
@@ -905,13 +904,21 @@ void MainApp::OnRender()
 		// Draw seams
 		if (m_showSeams->enabled)
 		{
-			for (RoadCurveLine seam : connection->GetSeams(IOType::INPUT, LaneSide::LEFT))
+			/*for (RoadCurveLine seam : connection->GetSeams(IOType::INPUT, LaneSide::LEFT))
 				DrawCurveLine(g, seam, Color::MAGENTA);
 			for (RoadCurveLine seam : connection->GetSeams(IOType::INPUT, LaneSide::RIGHT))
 				DrawCurveLine(g, seam, Color::MAGENTA);
 			for (RoadCurveLine seam : connection->GetSeams(IOType::OUTPUT, LaneSide::LEFT))
 				DrawCurveLine(g, seam, Color::MAGENTA);
 			for (RoadCurveLine seam : connection->GetSeams(IOType::OUTPUT, LaneSide::RIGHT))
+				DrawCurveLine(g, seam, Color::MAGENTA);*/
+			for (RoadCurveLine seam : connection->GetEdgeSeams(IOType::INPUT, LaneSide::LEFT))
+				DrawCurveLine(g, seam, Color::MAGENTA);
+			for (RoadCurveLine seam : connection->GetEdgeSeams(IOType::INPUT, LaneSide::RIGHT))
+				DrawCurveLine(g, seam, Color::MAGENTA);
+			for (RoadCurveLine seam : connection->GetEdgeSeams(IOType::OUTPUT, LaneSide::LEFT))
+				DrawCurveLine(g, seam, Color::MAGENTA);
+			for (RoadCurveLine seam : connection->GetEdgeSeams(IOType::OUTPUT, LaneSide::RIGHT))
 				DrawCurveLine(g, seam, Color::MAGENTA);
 		}
 
@@ -1007,6 +1014,7 @@ void MainApp::OnRender()
 				r * 2.0f, Color::RED);
 		}
 	}
+	m_debugDraw->BeginImmediate();
 
 	// Draw drivers
 	for (Driver* driver : m_drivingSystem->GetDrivers())

@@ -5,7 +5,6 @@
 #include <sstream>
 #include <fstream>
 
-#define BOOL2ASCII(x) (x ? "TRUE" : "FALSE")
 #define ASSETS_PATH "C:/workspace/c++/cmg/RoadMind/assets/"
 
 

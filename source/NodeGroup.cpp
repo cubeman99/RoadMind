@@ -428,6 +428,35 @@ bool NodeGroup::IntersectConnections(
 	return false;
 }
 
+bool NodeGroup::IntersectEdgeLines(
+	NodeGroupConnection* a, NodeGroupConnection* b, IOType end)
+{
+	RoadCurveLine seam;
+	bool reverse = (end == IOType::INPUT);
+	IOType otherEnd = (end == IOType::INPUT ? IOType::OUTPUT : IOType::INPUT);
+
+	if (IntersectArcPairs(
+		a->m_visualDividerLines.front(),
+		b->m_visualDividerLines.back(),
+		reverse, seam))
+	{
+		a->AddEdgeSeam(otherEnd, LaneSide::LEFT, seam);
+		b->SetEdgeSeam(otherEnd, LaneSide::RIGHT, seam);
+		return true;
+	}
+	else if (IntersectArcPairs(
+		a->m_visualDividerLines.back(),
+		b->m_visualDividerLines.front(),
+		reverse, seam))
+	{
+		a->AddEdgeSeam(otherEnd, LaneSide::RIGHT, seam);
+		b->SetEdgeSeam(otherEnd, LaneSide::LEFT, seam);
+		return true;
+	}
+
+	return false;
+}
+
 void NodeGroup::UpdateGeometry()
 {
 	// Adjust the node positions relative to the node group's center
@@ -476,7 +505,7 @@ void NodeGroup::UpdateIntersectionGeometry()
 	RoadCurveLine seam;
 
 	// Intersect shoulder edges between tied connections
-	/*if (m_twin != nullptr)
+	if (m_twin != nullptr)
 	{
 		auto outputs = GetOutputs();
 		for (unsigned int i = 0; i < outputs.size() &&
@@ -501,7 +530,7 @@ void NodeGroup::UpdateIntersectionGeometry()
 				break;
 			}
 		}
-	}*/
+	}
 
 	// Check for overlap between neighboring connections
 	for (int inOut = 0; inOut < 2; inOut++)
@@ -533,24 +562,11 @@ void NodeGroup::UpdateIntersectionGeometry()
 				for (j = i + 1; j < last; j++)
 				{
 					NodeGroupConnection* b = connections[j];
+					// TODO: reverse
 					if (reverse)
-					{
-						if (!IntersectArcPairs(*a->m_visualEdgeLines[1],
-							*b->m_visualEdgeLines[0], true, seam))
-						{
-							IntersectArcPairs(*a->m_visualEdgeLines[0],
-								*b->m_visualEdgeLines[1], true, seam);
-						}
-					}
+						IntersectEdgeLines(a, b, (InputOutput) inOut);
 					else
-					{
-						if (!IntersectArcPairs(*a->m_visualEdgeLines[0],
-							*b->m_visualEdgeLines[1], false, seam))
-						{
-							IntersectArcPairs(*a->m_visualEdgeLines[1],
-								*b->m_visualEdgeLines[0], false, seam);
-						}
-					}
+						IntersectEdgeLines(a, b, (InputOutput) inOut);
 				}
 			}
 		}
