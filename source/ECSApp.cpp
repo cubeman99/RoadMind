@@ -32,6 +32,18 @@ void ECSApp::OnInitialize()
 	m_terrainMesh = new Mesh();
 
 	LoadResources();
+
+	MaterialComponent material;
+	material.SetShader(m_shaderRenderTerrain);
+	material.SetUniform("s_textureGrass", m_textureGrass);
+	material.SetUniform("s_textureRock", m_textureRock);
+	material.SetUniform("s_textureGrassColormap", m_textureGrassColormap);
+	material.SetUniform("u_color", Color::WHITE);
+
+	m_world = new MarchingCubes(m_renderDevice,
+		m_shaderMarchingCubes, m_shaderGenerateTerrain,
+		material, m_scene);
+
 	GenerateTerrain();
 
 	// Create systems
@@ -40,19 +52,15 @@ void ECSApp::OnInitialize()
 	m_arcBallControlSystem.SetUpAxis(Vector3f::UNITZ);
 	m_systems.AddSystem(m_arcBallControlSystem);
 	m_renderSystems.AddSystem(*m_meshRenderSystem);
+	m_renderSystems.AddSystem(*m_world);
 	
-	MeshComponent meshComponent;
-	TransformComponent transform;
-	MaterialComponent material;
 
 	// Box 1
+	/*MeshComponent meshComponent;
+	TransformComponent transform;
 	meshComponent.mesh = m_terrainMesh;
 	transform.position = Vector3f::ZERO;
-	material.SetShader(m_shaderRenderTerrain);
-	material.SetUniform("s_textureGrass", m_textureGrass);
-	material.SetUniform("s_textureRock", m_textureRock);
-	material.SetUniform("u_color", Color::WHITE);
-	m_scene.CreateEntity(transform, meshComponent, material);
+	m_scene.CreateEntity(transform, meshComponent, material);*/
 	
 	/*
 	// Box 2
@@ -77,18 +85,31 @@ void ECSApp::OnInitialize()
 	ArcBall arcBall;
 	arcBall.SetSensitivity(0.005f);
 	arcBall.SetFocus(Vector3f::ZERO);
-	arcBall.SetDistance(8.0f);
+	arcBall.SetDistance(50.0f);
+	TransformComponent transform;
 	transform.transform.rotation = Quaternion::LookAtRotation(
 		Vector3f::UNITY, Vector3f::UNITZ);
 	transform.transform.rotation.Rotate(Vector3f::UNITX, -0.7f);
 	m_cameraEntity = m_scene.CreateEntity(transform, arcBall);
-		
+
+	MeshComponent mesh;
+	mesh.mesh = m_vehicleMesh;
+	transform = TransformComponent();
+	transform.position = Vector3f(0.0f, 0.0f, 5.0f);
+	material.SetShader(m_shader);
+	material.SetUniform("u_color", Color::WHITE);
+	material.SetUniform("s_diffuse", m_textureTest2);
+	material.SetUniform("u_textureScaleInv", 1.0f / 1.0f);
+	m_entityPlayer = m_scene.CreateEntity(transform, mesh, material);
+
 	Reset();
 }
 
 
 void ECSApp::OnQuit()
 {
+	delete m_world;
+	m_world = nullptr;
 	delete m_renderDevice;
 	m_renderDevice = nullptr;
 	UnloadResources();
@@ -147,6 +168,27 @@ void ECSApp::OnUpdate(float dt)
 	if (keyboard->IsKeyPressed(Keys::g))
 		GenerateTerrain();
 
+	TransformComponent* transform = m_scene.GetComponent<TransformComponent>(m_entityPlayer);
+	float speed = 50.0f * dt;
+	Vector3f forward = m_scene.GetComponent<TransformComponent>(m_cameraEntity)->rotation.GetForward();
+	Vector3f up = Vector3f::UNITZ;
+	Vector3f right = Vector3f::Normalize(Vector3f::Cross(forward, up));
+	forward = Vector3f::Normalize(Vector3f::Cross(up, right));
+	if (keyboard->IsKeyDown(Keys::w))
+		transform->position += forward * speed;
+	if (keyboard->IsKeyDown(Keys::s))
+		transform->position -= forward * speed;
+	if (keyboard->IsKeyDown(Keys::a))
+		transform->position -= right * speed;
+	if (keyboard->IsKeyDown(Keys::d))
+		transform->position += right * speed;
+	if (keyboard->IsKeyDown(Keys::e))
+		transform->position += up * speed;
+	if (keyboard->IsKeyDown(Keys::q))
+		transform->position -= up * speed;
+	m_scene.GetComponent<ArcBall>(m_cameraEntity)->SetFocus(m_scene.GetComponent<TransformComponent>(m_entityPlayer)->position);
+	m_world->SetFocus(transform->position);
+
 	// Update ECS
 	m_scene.UpdateSystems(m_systems, dt);
 }
@@ -196,7 +238,7 @@ void ECSApp::OnRender()
 	m_debugDraw->SetShaded(true);
 	m_meshRenderSystem->SetCamera(&m_camera);
 
-	Meters gridRadius = arcBall->distance * 2.0f;
+	/*Meters gridRadius = arcBall->distance * 2.0f;
 	Color gridColor[3];
 	gridColor[0] = Color(10, 10, 10);
 	gridColor[1] = Color(50, 50, 50);
@@ -204,7 +246,7 @@ void ECSApp::OnRender()
 	m_debugDraw->DrawGrid(
 		Matrix4f::CreateRotation(Vector3f::UNITX, Math::HALF_PI),
 		Vector3f(arcBall->GetFocus().x, 0.0f, -arcBall->GetFocus().y),
-		1.0f, 10, 1, 2, gridColor[0], gridColor[1], gridRadius);
+		1.0f, 10, 1, 2, gridColor[0], gridColor[1], gridRadius);*/
 	m_debugDraw->BeginImmediate();
 
 	m_scene.UpdateSystems(m_renderSystems, 0.0f);
@@ -225,6 +267,8 @@ void ECSApp::LoadResources()
 	Texture::LoadTexture(m_textureTerrain, ASSETS_PATH "textures/white.png", texParams);
 	Texture::LoadTexture(m_textureRock, ASSETS_PATH "textures/rock.png", texParams);
 	Texture::LoadTexture(m_textureGrass, ASSETS_PATH "textures/grass.png", texParams);
+	texParams.SetWrap(TextureWrap::CLAMP_TO_EDGE);
+	Texture::LoadTexture(m_textureGrassColormap, ASSETS_PATH "textures/grass_colormap.png", texParams);
 	//Mesh::Load(ASSETS_PATH "toyota_ae86.obj", m_vehicleMesh);
 	//Mesh::Load(ASSETS_PATH "wheel.obj", m_meshWheel);
 	m_vehicleMesh = Primitives::CreateCube();
@@ -263,23 +307,34 @@ void ECSApp::Reset()
 
 void ECSApp::GenerateTerrain()
 {
-	Error error;
-	error = Shader::LoadComputeShader(m_shaderMarchingCubes,
-		Path(ASSETS_PATH "shaders/marching_cubes_cs.glsl"));
-	if (error.Failed())
-	{
+	//for (int x = -1; x <= 1; x++)
+	//	for (int y = -1; y <= 1; y++)
+	//		m_world->CreateChunk(Vector3i(x, y, 0));
+	Shader::LoadComputeShader(m_shaderMarchingCubes,
+		ASSETS_PATH "shaders/marching_cubes_cs.glsl");
+	Shader::LoadComputeShader(m_shaderGenerateTerrain,
+		ASSETS_PATH "shaders/terrain_cs.glsl");
+	Shader* shader = nullptr;
+
+	Error error = Shader::LoadComputeShader(shader,
+		ASSETS_PATH "shaders/generate_heightmap_vertices_cs.glsl");
+	if (error.Passed())
+		m_shaderHeightmapVertices = shader;
+	else
 		std::cerr << error.GetText() << std::endl;
-		return;
-	}
-	error = Shader::LoadComputeShader(m_shaderGenerateTerrain,
-		Path(ASSETS_PATH "shaders/terrain_cs.glsl"));
-	if (error.Failed())
-	{
+
+	error = Shader::LoadComputeShader(shader,
+		ASSETS_PATH "shaders/generate_heightmap_normals_cs.glsl");
+	if (error.Passed())
+		m_shaderHeightmapNormals = shader;
+	else
 		std::cerr << error.GetText() << std::endl;
-		return;
-	}
-	uint32 size = 4 * 8;
-	MarchingCubes::CreateMesh(m_renderDevice,
-		m_shaderMarchingCubes, m_shaderGenerateTerrain, m_terrainMesh,
-		16 * 8, 16 * 8, 8 * 8);
+
+	m_world->SetMarchingCubesShader(m_shaderMarchingCubes);
+	m_world->SetDensityShader(m_shaderGenerateTerrain);
+	m_world->m_shaderGenerateVertices = m_shaderHeightmapVertices;
+	m_world->m_shaderGenerateNormals = m_shaderHeightmapNormals;
+	m_world->RecreateChunks();
+
+
 }

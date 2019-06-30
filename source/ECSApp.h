@@ -7,6 +7,7 @@
 #include "Camera.h"
 #include "CommonTypes.h"
 #include "ecs/MeshRenderSystem.h"
+#include "MarchingCubes.h"
 
 
 class ECSApp : public Application
@@ -33,6 +34,8 @@ private:
 	Renderer m_renderer;
 	RenderParams m_renderParams;
 
+	MarchingCubes* m_world;
+
 	bool m_wireFrame;
 
 	// ECS
@@ -44,6 +47,7 @@ private:
 
 	// Entities
 	EntityHandle m_cameraEntity;
+	EntityHandle m_entityPlayer;
 	Camera m_camera;
 
 	// Resources
@@ -55,11 +59,14 @@ private:
 	Texture* m_textureTerrain;
 	Texture* m_textureRock;
 	Texture* m_textureGrass;
+	Texture* m_textureGrassColormap;
 	Mesh* m_vehicleMesh;
 	Mesh* m_meshWheel;
 	Mesh* m_terrainMesh;
 	Shader* m_shaderMarchingCubes;
 	Shader* m_shaderGenerateTerrain;
+	Shader* m_shaderHeightmapVertices;
+	Shader* m_shaderHeightmapNormals;
 	Shader* m_shaderRenderTerrain;
 };
 

@@ -20,6 +20,10 @@ struct UniformValue
 	UniformValue(const Vector3f& vec3) { this->value.vec3 = vec3; type = UniformType::k_vec3; }
 	UniformValue(const Vector4f& vec4) { this->value.vec4 = vec4; type = UniformType::k_vec4; }
 	UniformValue(const Color& color) { this->value.vec4 = color.ToVector4f(); type = UniformType::k_vec4; }
+	UniformValue(const Vector2ui& uvec2) { this->value.uvec2 = uvec2; type = UniformType::k_uvec2; }
+	UniformValue(const Vector3ui& uvec3) { this->value.uvec3 = uvec3; type = UniformType::k_uvec3; }
+	UniformValue(const Vector2i& ivec2) { this->value.ivec2 = ivec2; type = UniformType::k_ivec2; }
+	UniformValue(const Vector3i& ivec3) { this->value.ivec3 = ivec3; type = UniformType::k_ivec3; }
 
 	union Value
 	{
@@ -43,6 +47,10 @@ struct UniformValue
 		Vector2f vec2;
 		Vector3f vec3;
 		Vector4f vec4;
+		Vector2i ivec2;
+		Vector3i ivec3;
+		Vector2ui uvec2;
+		Vector3ui uvec3;
 		Matrix3f mat3;
 		Matrix4f mat4;
 	};

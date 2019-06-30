@@ -30,6 +30,9 @@
     <Filter Include="source\ecs">
       <UniqueIdentifier>{46885e75-a71d-46d3-b9ce-13c458ae751c}</UniqueIdentifier>
     </Filter>
+    <Filter Include="source\MarchingCubes">
+      <UniqueIdentifier>{b7870c94-0246-438a-b495-9a89d9250a7d}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\source\Node.h">
@@ -123,10 +126,10 @@
       <Filter>source\ecs</Filter>
     </ClInclude>
     <ClInclude Include="..\source\MarchingCubes.h">
-      <Filter>source\Core</Filter>
+      <Filter>source\MarchingCubes</Filter>
     </ClInclude>
-    <ClInclude Include="..\source\PerlinNoise.h">
-      <Filter>source\Core</Filter>
+    <ClInclude Include="..\source\Chunk.h">
+      <Filter>source\MarchingCubes</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -209,7 +212,10 @@
       <Filter>source\ecs</Filter>
     </ClCompile>
     <ClCompile Include="..\source\MarchingCubes.cpp">
-      <Filter>source\Core</Filter>
+      <Filter>source\MarchingCubes</Filter>
+    </ClCompile>
+    <ClCompile Include="..\source\Chunk.cpp">
+      <Filter>source\MarchingCubes</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -229,6 +235,18 @@
       <Filter>assets\shaders</Filter>
     </None>
     <None Include="..\assets\shaders\render_terrain_fs.glsl">
+      <Filter>assets\shaders</Filter>
+    </None>
+    <None Include="..\assets\shaders\noise.glsl">
+      <Filter>assets\shaders</Filter>
+    </None>
+    <None Include="..\assets\shaders\marching_cubes_tables.glsl">
+      <Filter>assets\shaders</Filter>
+    </None>
+    <None Include="..\assets\shaders\generate_heightmap_vertices_cs.glsl">
+      <Filter>assets\shaders</Filter>
+    </None>
+    <None Include="..\assets\shaders\generate_heightmap_normals_cs.glsl">
       <Filter>assets\shaders</Filter>
     </None>
   </ItemGroup>

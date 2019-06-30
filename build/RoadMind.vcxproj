@@ -75,6 +75,7 @@
     <ClInclude Include="..\source\Biarc.h" />
     <ClInclude Include="..\source\Biarc3.h" />
     <ClInclude Include="..\source\Camera.h" />
+    <ClInclude Include="..\source\Chunk.h" />
     <ClInclude Include="..\source\CommonTypes.h" />
     <ClInclude Include="..\source\Connection.h" />
     <ClInclude Include="..\source\DriverPath.h" />
@@ -86,7 +87,6 @@
     <ClInclude Include="..\source\ecs\MeshRenderSystem.h" />
     <ClInclude Include="..\source\Geometry.h" />
     <ClInclude Include="..\source\MarchingCubes.h" />
-    <ClInclude Include="..\source\PerlinNoise.h" />
     <ClInclude Include="..\source\RoadCurves.h" />
     <ClInclude Include="..\source\Driver.h" />
     <ClInclude Include="..\source\GeometryApp.h" />
@@ -109,6 +109,7 @@
     <ClCompile Include="..\source\Biarc.cpp" />
     <ClCompile Include="..\source\Biarc3.cpp" />
     <ClCompile Include="..\source\Camera.cpp" />
+    <ClCompile Include="..\source\Chunk.cpp" />
     <ClCompile Include="..\source\Connection.cpp" />
     <ClCompile Include="..\source\DrivingApp.cpp" />
     <ClCompile Include="..\source\DrivingSystem.cpp" />
@@ -135,7 +136,11 @@
     <ClCompile Include="..\source\Vehicle.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <None Include="..\assets\shaders\generate_heightmap_normals_cs.glsl" />
+    <None Include="..\assets\shaders\generate_heightmap_vertices_cs.glsl" />
     <None Include="..\assets\shaders\marching_cubes_cs.glsl" />
+    <None Include="..\assets\shaders\marching_cubes_tables.glsl" />
+    <None Include="..\assets\shaders\noise.glsl" />
     <None Include="..\assets\shaders\shader_fs.glsl" />
     <None Include="..\assets\shaders\shader_vs.glsl" />
     <None Include="..\assets\shaders\terrain_cs.glsl" />

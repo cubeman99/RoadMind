@@ -39,21 +39,34 @@ void MeshRenderSystem::UpdateComponents(float delta, BaseECSComponent** componen
 		{
 			String name = it->first;
 			const UniformValue::Value& value = it->second.value;
-			if (it->second.type == UniformType::k_texture)
+			if (material->shader->GetUniform(name) != nullptr)
 			{
-				m_renderDevice.SetTextureSampler(material->shader, name, value.texture, samplerSlot);
-				samplerSlot++;
+				if (it->second.type == UniformType::k_texture)
+				{
+					m_renderDevice.SetTextureSampler(material->shader, name, value.texture, samplerSlot);
+					samplerSlot++;
+				}
+				else if (it->second.type == UniformType::k_vec4)
+					m_renderDevice.SetShaderUniform(material->shader, name, value.vec4);
+				else if (it->second.type == UniformType::k_vec3)
+					m_renderDevice.SetShaderUniform(material->shader, name, value.vec3);
+				else if (it->second.type == UniformType::k_vec2)
+					m_renderDevice.SetShaderUniform(material->shader, name, value.vec2);
+				else if (it->second.type == UniformType::k_float)
+					m_renderDevice.SetShaderUniform(material->shader, name, value.float32_value);
+				else if (it->second.type == UniformType::k_unsigned_int)
+					m_renderDevice.SetShaderUniform(material->shader, name, value.float32_value);
+				else if (it->second.type == UniformType::k_uvec3)
+					m_renderDevice.SetShaderUniform(material->shader, name, value.uvec3);
+				else if (it->second.type == UniformType::k_uvec2)
+					m_renderDevice.SetShaderUniform(material->shader, name, value.uvec2);
+				else if (it->second.type == UniformType::k_ivec3)
+					m_renderDevice.SetShaderUniform(material->shader, name, value.ivec3);
+				else if (it->second.type == UniformType::k_ivec2)
+					m_renderDevice.SetShaderUniform(material->shader, name, value.ivec2);
+				else
+					CMG_ASSERT(false);
 			}
-			else if (it->second.type == UniformType::k_vec4)
-				m_renderDevice.SetShaderUniform(material->shader, name, value.vec4);
-			else if (it->second.type == UniformType::k_vec3)
-				m_renderDevice.SetShaderUniform(material->shader, name, value.vec3);
-			else if (it->second.type == UniformType::k_vec2)
-				m_renderDevice.SetShaderUniform(material->shader, name, value.vec2);
-			else if (it->second.type == UniformType::k_float)
-				m_renderDevice.SetShaderUniform(material->shader, name, value.float32_value);
-			else
-				CMG_ASSERT(false);
 		}
 		m_renderDevice.Draw(nullptr, material->shader, meshComponent->mesh);
 	}
