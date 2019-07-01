@@ -78,6 +78,7 @@
     <ClInclude Include="..\source\Chunk.h" />
     <ClInclude Include="..\source\CommonTypes.h" />
     <ClInclude Include="..\source\Connection.h" />
+    <ClInclude Include="..\source\DensityTerrainManager.h" />
     <ClInclude Include="..\source\DriverPath.h" />
     <ClInclude Include="..\source\DrivingApp.h" />
     <ClInclude Include="..\source\DrivingSystem.h" />
@@ -86,7 +87,7 @@
     <ClInclude Include="..\source\ecs\MeshComponent.h" />
     <ClInclude Include="..\source\ecs\MeshRenderSystem.h" />
     <ClInclude Include="..\source\Geometry.h" />
-    <ClInclude Include="..\source\MarchingCubes.h" />
+    <ClInclude Include="..\source\HeightmapTerrainManager.h" />
     <ClInclude Include="..\source\RoadCurves.h" />
     <ClInclude Include="..\source\Driver.h" />
     <ClInclude Include="..\source\GeometryApp.h" />
@@ -99,6 +100,7 @@
     <ClInclude Include="..\source\RoadNetwork.h" />
     <ClInclude Include="..\source\EditorTool.h" />
     <ClInclude Include="..\source\RoadSurface.h" />
+    <ClInclude Include="..\source\TerrainManager.h" />
     <ClInclude Include="..\source\ToolDraw.h" />
     <ClInclude Include="..\source\ToolSelection.h" />
     <ClInclude Include="..\source\TrafficLight.h" />
@@ -111,12 +113,13 @@
     <ClCompile Include="..\source\Camera.cpp" />
     <ClCompile Include="..\source\Chunk.cpp" />
     <ClCompile Include="..\source\Connection.cpp" />
+    <ClCompile Include="..\source\DensityTerrainManager.cpp" />
     <ClCompile Include="..\source\DrivingApp.cpp" />
     <ClCompile Include="..\source\DrivingSystem.cpp" />
     <ClCompile Include="..\source\ECSApp.cpp" />
     <ClCompile Include="..\source\ecs\MeshRenderSystem.cpp" />
     <ClCompile Include="..\source\Geometry.cpp" />
-    <ClCompile Include="..\source\MarchingCubes.cpp" />
+    <ClCompile Include="..\source\HeightmapTerrainManager.cpp" />
     <ClCompile Include="..\source\RoadCurves.cpp" />
     <ClCompile Include="..\source\Driver.cpp" />
     <ClCompile Include="..\source\GeometryApp.cpp" />
@@ -130,12 +133,17 @@
     <ClCompile Include="..\source\RoadNetwork.cpp" />
     <ClCompile Include="..\source\EditorTool.cpp" />
     <ClCompile Include="..\source\RoadSurface.cpp" />
+    <ClCompile Include="..\source\TerrainManager.cpp" />
     <ClCompile Include="..\source\ToolDraw.cpp" />
     <ClCompile Include="..\source\ToolSelection.cpp" />
     <ClCompile Include="..\source\TrafficLight.cpp" />
     <ClCompile Include="..\source\Vehicle.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <None Include="..\assets\shaders\1_build_densities.glsl" />
+    <None Include="..\assets\shaders\2_list_nonempty_cells.glsl" />
+    <None Include="..\assets\shaders\3_list_verts_to_generate.glsl" />
+    <None Include="..\assets\shaders\4_gen_vertices.glsl" />
     <None Include="..\assets\shaders\generate_heightmap_normals_cs.glsl" />
     <None Include="..\assets\shaders\generate_heightmap_vertices_cs.glsl" />
     <None Include="..\assets\shaders\marching_cubes_cs.glsl" />
@@ -143,7 +151,6 @@
     <None Include="..\assets\shaders\noise.glsl" />
     <None Include="..\assets\shaders\shader_fs.glsl" />
     <None Include="..\assets\shaders\shader_vs.glsl" />
-    <None Include="..\assets\shaders\terrain_cs.glsl" />
     <None Include="..\assets\shaders\render_terrain_fs.glsl" />
     <None Include="..\assets\shaders\render_terrain_vs.glsl" />
   </ItemGroup>

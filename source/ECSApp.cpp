@@ -4,7 +4,6 @@
 #include <process.h>
 #include <sstream>
 #include <fstream>
-#include "MarchingCubes.h"
 
 #define ASSETS_PATH "C:/workspace/c++/cmg/RoadMind/assets/"
 
@@ -38,11 +37,12 @@ void ECSApp::OnInitialize()
 	material.SetUniform("s_textureGrass", m_textureGrass);
 	material.SetUniform("s_textureRock", m_textureRock);
 	material.SetUniform("s_textureGrassColormap", m_textureGrassColormap);
+	material.SetUniform("u_textureScaleInv", 1.0f / 20.0f);
 	material.SetUniform("u_color", Color::WHITE);
 
-	m_world = new MarchingCubes(m_renderDevice,
-		m_shaderMarchingCubes, m_shaderGenerateTerrain,
-		material, m_scene);
+	m_worldHeightmap = new HeightmapTerrainManager(m_renderDevice, material, m_scene);
+	m_worldDensity = new DensityTerrainManager(m_renderDevice, material, m_scene);
+	m_world = m_worldDensity;
 
 	GenerateTerrain();
 
@@ -52,7 +52,8 @@ void ECSApp::OnInitialize()
 	m_arcBallControlSystem.SetUpAxis(Vector3f::UNITZ);
 	m_systems.AddSystem(m_arcBallControlSystem);
 	m_renderSystems.AddSystem(*m_meshRenderSystem);
-	m_renderSystems.AddSystem(*m_world);
+	m_renderSystems.AddSystem(*m_worldDensity);
+	m_renderSystems.AddSystem(*m_worldHeightmap);
 	
 
 	// Box 1
@@ -95,11 +96,10 @@ void ECSApp::OnInitialize()
 	MeshComponent mesh;
 	mesh.mesh = m_vehicleMesh;
 	transform = TransformComponent();
-	transform.position = Vector3f(0.0f, 0.0f, 5.0f);
+	transform.position = Vector3f(0.0f, 0.0f, 0.0f);
 	material.SetShader(m_shader);
 	material.SetUniform("u_color", Color::WHITE);
 	material.SetUniform("s_diffuse", m_textureTest2);
-	material.SetUniform("u_textureScaleInv", 1.0f / 1.0f);
 	m_entityPlayer = m_scene.CreateEntity(transform, mesh, material);
 
 	Reset();
@@ -167,6 +167,14 @@ void ECSApp::OnUpdate(float dt)
 		m_wireFrame = !m_wireFrame;
 	if (keyboard->IsKeyPressed(Keys::g))
 		GenerateTerrain();
+	if (ctrl && keyboard->IsKeyPressed(Keys::g))
+	{
+		m_world->Clear();
+		if (m_world == m_worldDensity)
+			m_world = m_worldHeightmap;
+		else
+			m_world = m_worldDensity;
+	}
 
 	TransformComponent* transform = m_scene.GetComponent<TransformComponent>(m_entityPlayer);
 	float speed = 50.0f * dt;
@@ -187,9 +195,10 @@ void ECSApp::OnUpdate(float dt)
 	if (keyboard->IsKeyDown(Keys::q))
 		transform->position -= up * speed;
 	m_scene.GetComponent<ArcBall>(m_cameraEntity)->SetFocus(m_scene.GetComponent<TransformComponent>(m_entityPlayer)->position);
-	m_world->SetFocus(transform->position);
 
 	// Update ECS
+	m_world->SetFocus(transform->position);
+	m_world->UpdateChunks(dt);
 	m_scene.UpdateSystems(m_systems, dt);
 }
 
@@ -213,7 +222,7 @@ void ECSApp::OnRender()
 	m_renderParams.SetPolygonMode(m_wireFrame ? PolygonMode::k_line : PolygonMode::k_fill);
 	m_renderParams.EnableDepthTest(true);
 	m_renderParams.EnableDepthBufferWrite(true);
-	m_renderParams.EnableCullFace(false);
+	m_renderParams.EnableCullFace(true);
 	m_renderParams.SetCullFace(CullFace::k_back);
 	m_renderer.SetRenderParams(m_renderParams);
 	m_renderer.ApplyRenderSettings(true);
@@ -307,34 +316,32 @@ void ECSApp::Reset()
 
 void ECSApp::GenerateTerrain()
 {
-	//for (int x = -1; x <= 1; x++)
-	//	for (int y = -1; y <= 1; y++)
-	//		m_world->CreateChunk(Vector3i(x, y, 0));
-	Shader::LoadComputeShader(m_shaderMarchingCubes,
-		ASSETS_PATH "shaders/marching_cubes_cs.glsl");
-	Shader::LoadComputeShader(m_shaderGenerateTerrain,
-		ASSETS_PATH "shaders/terrain_cs.glsl");
-	Shader* shader = nullptr;
-
-	Error error = Shader::LoadComputeShader(shader,
+	LoadComputeShader(m_worldHeightmap->m_shaderGenerateVertices,
 		ASSETS_PATH "shaders/generate_heightmap_vertices_cs.glsl");
-	if (error.Passed())
-		m_shaderHeightmapVertices = shader;
-	else
-		std::cerr << error.GetText() << std::endl;
-
-	error = Shader::LoadComputeShader(shader,
+	LoadComputeShader(m_worldHeightmap->m_shaderGenerateNormals,
 		ASSETS_PATH "shaders/generate_heightmap_normals_cs.glsl");
+
+	LoadComputeShader(m_worldDensity->m_shaderGenerateDensity,
+		ASSETS_PATH "shaders/1_build_densities.glsl");
+	LoadComputeShader(m_worldDensity->m_shaderListNonEmptyCells,
+		ASSETS_PATH "shaders/2_list_nonempty_cells.glsl");
+	LoadComputeShader(m_worldDensity->m_shaderListVertices,
+		ASSETS_PATH "shaders/3_list_verts_to_generate.glsl");
+
+	m_world->Clear();
+}
+
+void ECSApp::LoadComputeShader(Shader*& outShader, const Path & path)
+{
+	std::cout << "Loading shader: " << path.GetPath() << std::endl;
+	Shader* shader;
+	Error error = Shader::LoadComputeShader(shader, path);
 	if (error.Passed())
-		m_shaderHeightmapNormals = shader;
+	{
+		if (outShader != nullptr)
+			delete outShader;
+		outShader = shader;
+	}
 	else
 		std::cerr << error.GetText() << std::endl;
-
-	m_world->SetMarchingCubesShader(m_shaderMarchingCubes);
-	m_world->SetDensityShader(m_shaderGenerateTerrain);
-	m_world->m_shaderGenerateVertices = m_shaderHeightmapVertices;
-	m_world->m_shaderGenerateNormals = m_shaderHeightmapNormals;
-	m_world->RecreateChunks();
-
-
 }

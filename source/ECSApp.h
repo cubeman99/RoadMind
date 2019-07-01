@@ -7,7 +7,8 @@
 #include "Camera.h"
 #include "CommonTypes.h"
 #include "ecs/MeshRenderSystem.h"
-#include "MarchingCubes.h"
+#include "HeightmapTerrainManager.h"
+#include "DensityTerrainManager.h"
 
 
 class ECSApp : public Application
@@ -20,6 +21,7 @@ public:
 	void UnloadResources();
 	void Reset();
 	void GenerateTerrain();
+	void LoadComputeShader(Shader*& outShader, const Path& path);
 
 	void OnInitialize() override;
 	void OnQuit() override;
@@ -34,7 +36,9 @@ private:
 	Renderer m_renderer;
 	RenderParams m_renderParams;
 
-	MarchingCubes* m_world;
+	TerrainManager* m_world;
+	DensityTerrainManager* m_worldDensity;
+	HeightmapTerrainManager* m_worldHeightmap;
 
 	bool m_wireFrame;
 
@@ -63,10 +67,6 @@ private:
 	Mesh* m_vehicleMesh;
 	Mesh* m_meshWheel;
 	Mesh* m_terrainMesh;
-	Shader* m_shaderMarchingCubes;
-	Shader* m_shaderGenerateTerrain;
-	Shader* m_shaderHeightmapVertices;
-	Shader* m_shaderHeightmapNormals;
 	Shader* m_shaderRenderTerrain;
 };
 

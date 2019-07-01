@@ -125,10 +125,16 @@
     <ClInclude Include="..\source\ecs\MeshRenderSystem.h">
       <Filter>source\ecs</Filter>
     </ClInclude>
-    <ClInclude Include="..\source\MarchingCubes.h">
+    <ClInclude Include="..\source\Chunk.h">
       <Filter>source\MarchingCubes</Filter>
     </ClInclude>
-    <ClInclude Include="..\source\Chunk.h">
+    <ClInclude Include="..\source\TerrainManager.h">
+      <Filter>source\MarchingCubes</Filter>
+    </ClInclude>
+    <ClInclude Include="..\source\HeightmapTerrainManager.h">
+      <Filter>source\MarchingCubes</Filter>
+    </ClInclude>
+    <ClInclude Include="..\source\DensityTerrainManager.h">
       <Filter>source\MarchingCubes</Filter>
     </ClInclude>
   </ItemGroup>
@@ -211,10 +217,16 @@
     <ClCompile Include="..\source\ecs\MeshRenderSystem.cpp">
       <Filter>source\ecs</Filter>
     </ClCompile>
-    <ClCompile Include="..\source\MarchingCubes.cpp">
+    <ClCompile Include="..\source\Chunk.cpp">
       <Filter>source\MarchingCubes</Filter>
     </ClCompile>
-    <ClCompile Include="..\source\Chunk.cpp">
+    <ClCompile Include="..\source\TerrainManager.cpp">
+      <Filter>source\MarchingCubes</Filter>
+    </ClCompile>
+    <ClCompile Include="..\source\HeightmapTerrainManager.cpp">
+      <Filter>source\MarchingCubes</Filter>
+    </ClCompile>
+    <ClCompile Include="..\source\DensityTerrainManager.cpp">
       <Filter>source\MarchingCubes</Filter>
     </ClCompile>
   </ItemGroup>
@@ -226,9 +238,6 @@
       <Filter>assets\shaders</Filter>
     </None>
     <None Include="..\assets\shaders\marching_cubes_cs.glsl">
-      <Filter>assets\shaders</Filter>
-    </None>
-    <None Include="..\assets\shaders\terrain_cs.glsl">
       <Filter>assets\shaders</Filter>
     </None>
     <None Include="..\assets\shaders\render_terrain_vs.glsl">
@@ -247,6 +256,18 @@
       <Filter>assets\shaders</Filter>
     </None>
     <None Include="..\assets\shaders\generate_heightmap_normals_cs.glsl">
+      <Filter>assets\shaders</Filter>
+    </None>
+    <None Include="..\assets\shaders\1_build_densities.glsl">
+      <Filter>assets\shaders</Filter>
+    </None>
+    <None Include="..\assets\shaders\2_list_nonempty_cells.glsl">
+      <Filter>assets\shaders</Filter>
+    </None>
+    <None Include="..\assets\shaders\3_list_verts_to_generate.glsl">
+      <Filter>assets\shaders</Filter>
+    </None>
+    <None Include="..\assets\shaders\4_gen_vertices.glsl">
       <Filter>assets\shaders</Filter>
     </None>
   </ItemGroup>

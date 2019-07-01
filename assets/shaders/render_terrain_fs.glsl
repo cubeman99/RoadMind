@@ -15,10 +15,9 @@ void main()
 {
 	// Determine the blend weights for the 3 planar projections.
 	// N_orig is the vertex-interpolated normal vector.
-	vec3 blend_weights = v_vertNormal;   // Tighten up the blending zone:
-	blend_weights.x *= blend_weights.x;
-	blend_weights.y *= blend_weights.y;
-	blend_weights = abs(normalize(blend_weights));
+	vec3 blend_weights = abs(v_vertNormal);   // Tighten up the blending zone:
+	blend_weights = blend_weights * blend_weights * blend_weights; // makes transitions more sudden
+	blend_weights = normalize(blend_weights);
 	blend_weights = (blend_weights - 0.2) * 7;
 	blend_weights = max(blend_weights, 0);      // Force weights to sum to 1.0 (very important!)
 	blend_weights /= (blend_weights.x + blend_weights.y + blend_weights.z); 
@@ -38,6 +37,8 @@ void main()
 	vec4 col1 = texture2D(s_textureRock, coord1);
 	vec4 col2 = texture2D(s_textureRock, coord2);
 	vec4 col3 = texture2D(s_textureGrass, coord3) * vec4(v_vertColor, 1.0);
+	if (v_vertNormal.z < 0)
+		col3 = col1;
 
 	// Finally, blend the results of the 3 planar projections.
 	vec4 diffuse =

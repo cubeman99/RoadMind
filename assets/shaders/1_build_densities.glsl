@@ -2,6 +2,8 @@
 #extension GL_ARB_compute_shader : enable
 #extension GL_ARB_shader_storage_buffer_object : enable
 
+layout (local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
+
 #include "noise.glsl"
 
 struct DensityPoint
@@ -15,7 +17,6 @@ layout (packed, binding = 0) buffer PointBuffer
 	DensityPoint points[];
 };
 
-layout (local_size_x = 8, local_size_y = 8, local_size_z = 8) in;
 
 uniform uvec3 u_resolution;
 uniform vec3 u_size;
@@ -31,25 +32,12 @@ uint indexFromCoord(uint x, uint y, uint z)
 void main()
 {
 	uvec3 id = gl_GlobalInvocationID;
-	if (id.x > u_resolution.x || id.y > u_resolution.y || id.z > u_resolution.z)
-		return;
+	//if (id.x > u_resolution.x || id.y > u_resolution.y || id.z > u_resolution.z)
+	//	return;
 
-	/*
-	vec4 point;
-	point.x = id.x;
-	point.y = id.y;
-	point.z = id.z;
-	point.w = id.z - (float(u_resolution.z) * 0.5);
-	vec3 n = vec3(float(id.x), float(id.y), float(id.z)) / 16.0;
-	float feature = float(u_resolution.z) * 0.2;
-	//point.w += cnoise(n) * feature;
-	points[indexFromCoord(id.x, id.y, id.z)] = point;
-	*/
-
-	
 	float hardFloor = 0.0;
 	float hardFloorWeight = 10.0;
-	float noiseScale = 1.0 / 50.0;
+	float noiseScale = 1.0 / 200.0;
 	int octaves = 3;
 	vec3 offset = vec3(0.0);
 	vec3 offsets[4];
@@ -70,7 +58,7 @@ void main()
     float noise = 0;
 
     float frequency = noiseScale;
-    float amplitude = 70.0;
+    float amplitude = 200.0;
     float weight = 1;
 
 	float temperature = (snoise(pos * vec3(1,1,0) * frequency) + 1) * 0.5;
@@ -100,41 +88,46 @@ void main()
 	if (temperature < 0.2)
 		biome = TUNDRA;
 
+	float density = u_floorPosition - pos.z;
 
-    for (int j = 0; j < octaves; j++) {
+	vec3 samplePos = pos * frequency;
+	density += snoise(samplePos * 7.97) * 0.125 * amplitude;
+	density += snoise(samplePos * 4.03) * 0.25 * amplitude;
+	density += snoise(samplePos * 1.96) * 0.50 * amplitude;
+	density += snoise(samplePos * 1.01) * 1.00 * amplitude;
+	density += snoise(samplePos * 0.49) * 2.00 * amplitude;
+    /*for (int j = 0; j < octaves; j++) {
 		vec3 samplePos = pos;
 		samplePos.x += snoise(pos * frequency) * 2;
 		samplePos.y += snoise(pos * frequency + frequency) * 2;
         float n = snoise((samplePos + offsetNoise) * frequency + offsets[j] + offset);
         float v = abs(n);
-        v = v * v;
-        //v *= weight;
+        v = v * v * v;
         //weight = max(min(v * weightMultiplier, 1), 0);
         noise += v * amplitude;
         amplitude *= persistence;
         frequency *= lacunarity;
-    }
+    }*/
 	
     
-	vec2 params = vec2(6.0, 0.7);
-	params = vec2(0);
+	//vec2 params = vec2(6.0, 0.7);
+	//params = vec2(0);
 
-    float finalVal = (u_floorPosition - pos.z);
-	finalVal = pow(abs(finalVal), 1.4) * sign(finalVal);
+    //float finalVal = (u_floorPosition - pos.z);
+	//finalVal = pow(abs(finalVal), 1.4) * sign(finalVal);
 	//float centerFlatten = min(1, length(pos) / 30);
-	finalVal += noise * noiseWeight;// * centerFlatten;
-	finalVal += mod(pos.z, params.x) * params.y;
+	//finalVal += noise * noiseWeight;// * centerFlatten;
+	//finalVal += mod(pos.z, params.x) * params.y;
 
-    if (pos.z < hardFloor) {
+    //if (pos.z < hardFloor) {
         //finalVal += hardFloorWeight;
-    }
+    //}
 	
-	//pos = vec3(float(id.x), float(id.y), float(id.z));
-	//finalVal *= 0.00001;
-	//finalVal = 8 - pos.z;
-	//finalVal += snoise(pos);
+	//density = (u_floorPosition - pos.z);
+	//density *= 0.0000001;
+	//density += pos.z + 100;
 	uint index = indexFromCoord(id.x, id.y, id.z);
-	points[index].point = vec4(pos, finalVal);
-	points[index].biome = vec4(biome, 1, 2, 3);
+	points[index].point = vec4(pos, density);
+	points[index].biome = vec4(27, 27, 27, 27);
 }
 

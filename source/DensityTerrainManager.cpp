@@ -1,4 +1,4 @@
-#include "MarchingCubes.h"
+#include "DensityTerrainManager.h"
 
 #define MARCHING_CUBES_LOOKUP_TABLE_SIZE 4096
 
@@ -306,23 +306,15 @@ struct DensityPoint
 	Vector3f unused;
 };
 
-MarchingCubes::MarchingCubes(RenderDevice* renderDevice,
-	Shader* shaderMarchingCubes, Shader* shaderNoise,
-	const MaterialComponent& material,
-	ECS& ecs) :
+DensityTerrainManager::DensityTerrainManager(RenderDevice* renderDevice,
+		const MaterialComponent& material,
+		ECS& ecs):
 	m_renderDevice(renderDevice),
-	m_shaderMarchingCubes(shaderMarchingCubes),
 	m_terrainMaterial(material),
-	m_shaderNoise(shaderNoise),
-	m_ecs(ecs),
-	m_chunkResolution(32),
-	m_chunkSize(120.0f),
-	m_focus(Vector3f::ZERO)
+	m_ecs(ecs)
 {
-	m_maxLODCount = 5;
-
-	m_radius = m_chunkSize.x * 4;
-	m_lodRadius = m_chunkSize.x * 1.0f;
+	m_chunkBoundsMin.z = -5000;
+	m_chunkBoundsMax.z = 5000;
 	AddComponentType<TransformComponent>();
 	AddComponentType<MeshComponent>();
 	AddComponentType<MaterialComponent>();
@@ -330,142 +322,35 @@ MarchingCubes::MarchingCubes(RenderDevice* renderDevice,
 
 	// Create buffers
 	uint32 zero = 0;
-	uint32 MAX_VERTICES = (m_chunkResolution.x + 3) * (m_chunkResolution.y + 3);
-	uint32 pointCount = (1 + m_chunkResolution.x) * (1 + m_chunkResolution.y) * (1 + m_chunkResolution.z);
+	uint32 MAX_VERTICES = 500000;
+	uint32 pointCount = (1 + m_chunkResolution.x) *
+		(1 + m_chunkResolution.y) * (1 + m_chunkResolution.z);
 	m_bufferAtomicCounter.BufferData(1, &zero); // GL_DYNAMIC_DRAW
 	m_bufferLookup.BufferData<int32>(
 		MARCHING_CUBES_LOOKUP_TABLE_SIZE,
 		MARCHING_CUBES_LOOKUP_TABLE); // GL_STATIC_DRAW
 	m_bufferPoints.BufferData<DensityPoint>(pointCount, nullptr);  // GL_DYNAMIC_DRAW
 	m_bufferVertices.BufferData<VertexPosTexNorm>(MAX_VERTICES, nullptr);
-
-	// Create index buffers for different LOD resolutions
-	Vector2ui resolution = m_chunkResolution.xy;
-	for (uint32 lod = 0; lod < m_maxLODCount; lod++)
-	{
-		m_bufferIndices[lod].BufferData<uint32>(resolution.x * resolution.y * 6, nullptr);
-		uint32* indices = m_bufferIndices[lod].MapBufferDataWrite<uint32>();
-		uint32 indexIndex = 0;
-
-		for (uint32 y = 0; y < resolution.y; y++)
-		{
-			for (uint32 x = 0; x < resolution.x; x++)
-			{
-				uint32 i0 = ((y + 1) * (resolution.x + 3)) + (x + 1);
-				uint32 i1 = i0 + 1;
-				uint32 i2 = i0 + (resolution.x + 3);
-				uint32 i3 = i2 + 1;
-				indices[indexIndex++] = i0;
-				indices[indexIndex++] = i1;
-				indices[indexIndex++] = i3;
-				indices[indexIndex++] = i0;
-				indices[indexIndex++] = i3;
-				indices[indexIndex++] = i2;
-			}
-		}
-		m_bufferIndices[lod].UnmapBufferData();
-		resolution /= 2;
-	}
+	m_bufferIndices.BufferData<uint32>(MAX_VERTICES, nullptr);
+	//m_bufferNonEmptyCells.BufferData(pointCount * sizeof(uint32) * 4, nullptr);
+	m_bufferNonEmptyCells.BufferData<Vector4f>(pointCount, nullptr);
 }
 
-MarchingCubes::~MarchingCubes()
+DensityTerrainManager::~DensityTerrainManager()
 {
 }
 
-void MarchingCubes::SetFocus(const Vector3f& focus)
-{
-	m_focus = focus;
-}
-
-void MarchingCubes::SetMarchingCubesShader(Shader * shader)
+void DensityTerrainManager::SetMarchingCubesShader(Shader * shader)
 {
 	m_shaderMarchingCubes = shader;
 }
 
-void MarchingCubes::SetDensityShader(Shader * shader)
+void DensityTerrainManager::SetDensityShader(Shader * shader)
 {
-	m_shaderNoise = shader;
+	m_shaderGenerateDensity = shader;
 }
 
-void MarchingCubes::SetHeightmapShader(Shader * shader)
-{
-	m_shaderHeightmap = shader;
-}
-
-void MarchingCubes::PreUpdate(float timeDelta)
-{
-	Vector3i center;
-	Vector3i mins;
-	Vector3i maxs;
-	Vector3i coord;
-	for (uint32 i = 0; i < 3; i++)
-	{
-		mins[i] = (int) Math::Floor((m_focus[i] - m_radius) / m_chunkSize[i]);
-		maxs[i] = (int) Math::Ceil((m_focus[i] + m_radius) / m_chunkSize[i]);
-	}
-	mins.z = 0;
-	maxs.z = 1;
-
-	// Remove far chunks
-	Array<Vector3i> updatedCoords;
-	Array<Vector3i> coords;
-	for (auto it = m_chunkMap.begin(); it != m_chunkMap.end(); it++)
-		coords.push_back(it->first);
-	for (uint32 i = 0; i < coords.size(); i++)
-	{
-		coord = coords[i];
-		float dist = CalcDistToChunk(coord);
-		uint32 lodIndex = CalcLODIndex(coord);
-		Chunk* chunk = m_ecs.GetComponent<Chunk>(m_chunkMap[coord]);
-		if (dist >= m_radius)
-		{
-			RemoveChunk(coord);
-			updatedCoords.push_back(coord);
-		}
-		else if (chunk->GetLODIndex() != lodIndex)
-		{
-			CreateChunk(coord);
-			updatedCoords.push_back(coord);
-		}
-	}
-	
-	// Create near chunks
-	coord = Vector3i::ZERO;
-	for (coord.z = mins.z; coord.z < maxs.z; coord.z++)
-	{
-		for (coord.y = mins.y; coord.y < maxs.y; coord.y++)
-		{
-			for (coord.x = mins.x; coord.x < maxs.x; coord.x++)
-			{
-				float dist = CalcDistToChunk(coord);
-				if (m_chunkMap.find(coord) == m_chunkMap.end() && dist < m_radius)
-				{
-					CreateChunk(coord);
-					updatedCoords.push_back(coord);
-				}
-			}
-		}
-	}
-
-	// Sew seams
-	for (auto it = m_chunkMap.begin(); it != m_chunkMap.end(); it++)
-	{
-		coord = it->first;
-		/*if (updatedCoords.find(coord) != updatedCoords.end() ||
-			updatedCoords.find(coord + Vector3i(1, 0, 0)) != updatedCoords.end() ||
-			updatedCoords.find(coord + Vector3i(-1, 0, 0)) != updatedCoords.end() ||
-			updatedCoords.find(coord + Vector3i(0, 1, 0)) != updatedCoords.end() ||
-			updatedCoords.find(coord + Vector3i(0, -1, 0)) != updatedCoords.end())*/
-		{
-			SewSeam(coord, coord + Vector3i(1, 0, 0));
-			SewSeam(coord, coord + Vector3i(-1, 0, 0));
-			SewSeam(coord, coord + Vector3i(0, 1, 0));
-			SewSeam(coord, coord + Vector3i(0, -1, 0));
-		}
-	}
-}
-
-void MarchingCubes::UpdateComponents(float delta, BaseECSComponent** components)
+void DensityTerrainManager::UpdateComponents(float delta, BaseECSComponent** components)
 {
 	TransformComponent* transform = (TransformComponent*) components[0];
 	MeshComponent* meshComponent = (MeshComponent*) components[1];
@@ -475,226 +360,139 @@ void MarchingCubes::UpdateComponents(float delta, BaseECSComponent** components)
 
 }
 
-void MarchingCubes::RecreateChunks()
+EntityHandle DensityTerrainManager::CreateChunk(const Vector3f & position,
+	const Vector3f & size, const Vector3ui & resolution, uint32 lodIndex)
 {
-	Array<Vector3i> coords;
-	for (auto it = m_chunkMap.begin(); it != m_chunkMap.end(); it++)
-		coords.push_back(it->first);
-	for (uint32 i = 0; i < coords.size(); i++)
-		CreateChunk(coords[i]);
-}
-
-uint32 MarchingCubes::CalcLODIndex(const Vector3i & coord)
-{
-	float dist = CalcDistToChunk(coord);
-	uint32 lodIndex = (uint32) (dist / m_lodRadius);
-	while (m_chunkResolution.x / (1 << lodIndex) < 2)
-		lodIndex--;
-	return lodIndex;
-}
-
-float MarchingCubes::CalcDistToChunk(const Vector3i & coord)
-{
-	Bounds bounds;
-	bounds.mins.xy = Vector2f(coord.xy) * m_chunkSize.xy;
-	bounds.mins.z = m_focus.z;
-	bounds.maxs = bounds.mins;
-	bounds.maxs.xy += m_chunkSize.xy;
-	return bounds.DistToPoint(m_focus);
-}
-
-void MarchingCubes::RemoveChunk(const Vector3i& coord)
-{
-	m_ecs.RemoveEntity(m_chunkMap[coord]);
-	m_chunkMap.erase(coord);
-}
-
-Chunk* MarchingCubes::GetChunk(const Vector3i& coord)
-{
-	if (m_chunkMap.find(coord) != m_chunkMap.end())
-		return m_ecs.GetComponent<Chunk>(m_chunkMap[coord]);
-	return nullptr;
-}
-
-void MarchingCubes::SewSeam(const Vector3i& coord, const Vector3i& neighborCoord)
-{
-	Chunk* chunk = GetChunk(coord);
-	Chunk* neighbor = GetChunk(neighborCoord);
-	if (chunk == nullptr || neighbor == nullptr)
-		return;
-	MeshComponent* chunkMesh = m_ecs.GetComponent<MeshComponent>(m_chunkMap[coord]);
-	MeshComponent* neighborMesh = m_ecs.GetComponent<MeshComponent>(m_chunkMap[neighborCoord]);
-
-	uint32 lodIndex = chunk->GetLODIndex();
-	int32 lodDiff = (int) neighbor->GetLODIndex() - (int) chunk->GetLODIndex();
-	if (lodDiff <= 0)
-		return;
-
-	uint32 step = 1u << (uint32) lodDiff;
-	Vector3ui resolution = m_chunkResolution / (1u << chunk->GetLODIndex());
-	VertexPosTexNorm* vertices = chunkMesh->mesh->GetVertexData()->GetVertexBuffer()->MapBufferDataWrite<VertexPosTexNorm>();
-	neighborMesh->mesh->GetVertexData()->GetVertexBuffer()->MapBufferDataWrite<VertexPosTexNorm>();
-	Vector2i start = Vector2i(0);
-	Vector2i dir = Vector2i(1, 0);
-	if (neighborCoord.x > coord.x)
-	{
-		start = Vector2i(resolution.x, 0);
-		dir = Vector2i(0, 1);
-	}
-	else if (neighborCoord.x < coord.x)
-	{
-		start = Vector2i(0, 0);
-		dir = Vector2i(0, 1);
-	}
-	else if (neighborCoord.y > coord.y)
-	{
-		start = Vector2i(0, resolution.y);
-		dir = Vector2i(1, 0);
-	}
-	else
-	{
-		start = Vector2i(0, 0);
-		dir = Vector2i(1, 0);
-	}
-	for (uint32 i = 0; i < resolution.x; i += step)
-	{
-		Vector3f first = vertices[GetVertexIndex(start + (dir * i), lodIndex)].position;
-		Vector3f last = vertices[GetVertexIndex(start + (dir * (i + step)), lodIndex)].position;
-		for (uint32 j = 1; j < step; j++)
-		{
-			float t = (float) j / (float) step;
-			Vector2i point = start + (dir * (i + j));
-			vertices[GetVertexIndex(point, lodIndex)].position.z = Math::Lerp(first.z, last.z, t);
-		}
-	}
-	chunkMesh->mesh->GetVertexData()->GetVertexBuffer()->UnmapBufferData();
-	neighborMesh->mesh->GetVertexData()->GetVertexBuffer()->UnmapBufferData();
-}
-
-uint32 MarchingCubes::GetVertexIndex(Vector2i point, uint32 lodIndex) const
-{
-	Vector3ui resolution = m_chunkResolution / (1 << lodIndex);
-	return (uint32) (((point.y + 1) * (resolution.x + 3)) + (point.x + 1));
-}
-
-EntityHandle MarchingCubes::CreateChunk(const Vector3i& coord)
-{
-	if (m_chunkMap.find(coord) != m_chunkMap.end())
-	{
-		RemoveChunk(coord);
-	}
-
-	uint32 lodIndex = CalcLODIndex(coord);
-
-	//printf("Creating chunk for coord %d, %d, %d,  lod=%u\n", coord.x, coord.y, coord.z, lodIndex);
-	Vector3f offset = Vector3f(m_chunkSize) * Vector3f(coord);
-	Mesh* mesh = nullptr;
-	if (coord.z == 0)
-		mesh = CreateMesh(offset, lodIndex);
-	TransformComponent transform;
-	Chunk chunk(coord, lodIndex);
-	EntityHandle entity;
-
-	if (mesh != nullptr)
-	{
-		MeshComponent meshComponent;
-		meshComponent.mesh = mesh;
-		entity = m_ecs.CreateEntity(
-			transform, meshComponent, m_terrainMaterial, chunk);
-	}
-	else
-	{
-		entity = m_ecs.CreateEntity(transform, chunk);
-	}
-
-	m_chunkMap[coord] = entity;
-	return entity;
-}
-
-Mesh* MarchingCubes::CreateMesh(const Vector3f& offset, uint32 lodIndex)
-{
-	uint32 WORK_GROUP_SIZE = 8;
-	uint32 TERRAIN_WORK_GROUP_SIZE = 8;
-	Vector3ui resolution = m_chunkResolution / (1 << lodIndex);
-	uint32 vertexCount = (resolution.x + 3) * (resolution.y + 3);
-
-	// Reset atomic counter to 0
+	uint32 MARCHING_CUBES_WORK_GROUP_SIZE = 8;
+	uint32 DENSITY_WORK_GROUP_SIZE = 1;
 	uint32 zero = 0;
-	m_bufferAtomicCounter.BufferSubData(0, 1, &zero);
+	const uint32* counter;
 
-	// Generate heightmap vertices
-	WORK_GROUP_SIZE = 4;
-	m_renderDevice->SetShaderUniform(m_shaderGenerateVertices, "u_size", m_chunkSize).Ignore();
-	m_renderDevice->SetShaderUniform(m_shaderGenerateVertices, "u_resolution", resolution).Ignore();
-	m_renderDevice->SetShaderUniform(m_shaderGenerateVertices, "u_offset", offset).Ignore();
-	m_renderDevice->SetShaderUniform(m_shaderGenerateVertices, "u_floorPosition", m_chunkSize.z * 0.3f).Ignore();
-	m_renderDevice->BindBuffer(m_bufferVertices, 0);
-	m_renderDevice->DispatchCompute(m_shaderGenerateVertices,
-		Math::Max(1u, ((resolution.x + 3) / WORK_GROUP_SIZE) + 1),
-		Math::Max(1u, ((resolution.y + 3) / WORK_GROUP_SIZE) + 1),
-		1);
+	//printf("\n");
+	//std::cout << position / Vector3f(m_chunkSize) << std::endl;
+	//printf("resolution = %u\n", resolution.x);
 
-	// Calculate normals
-	WORK_GROUP_SIZE = 4;
-	m_renderDevice->SetShaderUniform(m_shaderGenerateNormals, "u_resolution", resolution).Ignore();
-	m_renderDevice->BindBuffer(m_bufferVertices, 0);
-	m_renderDevice->DispatchCompute(m_shaderGenerateNormals,
-		Math::Max(1u, ((resolution.x + 1) / WORK_GROUP_SIZE) + 1),
-		Math::Max(1u, ((resolution.y + 1) / WORK_GROUP_SIZE) + 1),
-		1);
-
-	/*
-	// Reset atomic counter to 0
-	uint32 zero = 0;
-	m_bufferAtomicCounter.BufferSubData(0, 1, &zero);
+	if (m_shaderGenerateDensity == nullptr ||
+		m_shaderListNonEmptyCells == nullptr ||
+		m_shaderListVertices == nullptr)
+		return nullptr;
 
 	// Run the terrain generation shader
-	//printf("Generating noise\n");
-	m_renderDevice->SetShaderUniform(m_shaderNoise, "u_size", m_chunkSize);
-	m_renderDevice->SetShaderUniform(m_shaderNoise, "u_resolution", resolution);
-	m_renderDevice->SetShaderUniform(m_shaderNoise, "u_offset", offset);
-	m_renderDevice->SetShaderUniform(m_shaderNoise, "u_floorPosition", m_chunkSize.z * 0.3f);
+	m_renderDevice->SetShaderUniform(m_shaderGenerateDensity, "u_size", size);
+	m_renderDevice->SetShaderUniform(m_shaderGenerateDensity, "u_resolution", resolution);
+	m_renderDevice->SetShaderUniform(m_shaderGenerateDensity, "u_offset", position);
+	m_renderDevice->SetShaderUniform(m_shaderGenerateDensity, "u_floorPosition", 1.0f);
 	m_renderDevice->BindBuffer(m_bufferPoints, 0);
-	m_renderDevice->DispatchCompute(m_shaderNoise,
-		(resolution.x / TERRAIN_WORK_GROUP_SIZE) + 1,
-		(resolution.y / TERRAIN_WORK_GROUP_SIZE) + 1,
-		(resolution.z / TERRAIN_WORK_GROUP_SIZE) + 1);
+	m_renderDevice->DispatchCompute(m_shaderGenerateDensity,
+		(resolution / DENSITY_WORK_GROUP_SIZE) + Vector3ui(1));
+
+	// Reset atomic counter to 0
+	m_bufferAtomicCounter.BufferSubData(0, 1, &zero);
 
 	// Run the compute shader
-	//printf("Running Marching Cubes\n");
-	m_renderDevice->SetShaderUniform(m_shaderMarchingCubes, "u_resolution", resolution);
-	m_renderDevice->BindBuffer(m_bufferVertices, 0);
+	m_renderDevice->SetShaderUniform(m_shaderListNonEmptyCells, "u_resolution", resolution);
+	m_renderDevice->BindBuffer(m_bufferNonEmptyCells, 0);
 	m_renderDevice->BindBuffer(m_bufferPoints, 1);
 	m_renderDevice->BindBuffer(m_bufferLookup, 2);
 	m_renderDevice->BindBuffer(m_bufferAtomicCounter, 3);
-	m_renderDevice->BindBuffer(m_bufferIndices, 4);
-	m_renderDevice->DispatchCompute(m_shaderMarchingCubes, resolution / WORK_GROUP_SIZE);
-	*/
+	m_renderDevice->DispatchCompute(m_shaderListNonEmptyCells, resolution);
+
 	// Read the atomic counter (the number of triangles)
-	/*
-	const uint32* counter = m_bufferAtomicCounter.MapBufferDataRead<uint32>();
+	counter = m_bufferAtomicCounter.MapBufferDataRead<uint32>();
+	uint32 nonEmptyCellCount = *counter;
+	m_bufferAtomicCounter.UnmapBufferData();
+	//printf("nonEmptyCellCount = %u\n", nonEmptyCellCount);
+	if (nonEmptyCellCount == 0)
+		return nullptr;
+
+	// Reset atomic counter to 0
+	m_bufferAtomicCounter.BufferSubData(0, 1, &zero);
+
+	
+	// Run the compute shader
+	m_renderDevice->SetShaderUniform(m_shaderListVertices, "u_resolution", resolution);
+	m_renderDevice->BindBuffer(m_bufferNonEmptyCells, 0);
+	m_renderDevice->BindBuffer(m_bufferPoints, 1);
+	m_renderDevice->BindBuffer(m_bufferAtomicCounter, 2);
+	m_renderDevice->BindBuffer(m_bufferVertices, 3);
+	m_renderDevice->BindBuffer(m_bufferIndices, 4);
+	m_renderDevice->BindBuffer(m_bufferLookup, 5);
+	m_renderDevice->DispatchCompute(m_shaderListVertices, nonEmptyCellCount);
+	
+	// Read the atomic counter (the number of triangles)
+	counter = m_bufferAtomicCounter.MapBufferDataRead<uint32>();
 	uint32 vertexCount = *counter * 3;
 	m_bufferAtomicCounter.UnmapBufferData();
+	//printf("vertexCount = %u\n", vertexCount);
+
+
+	/*const Vector4f* nonempty = m_bufferNonEmptyCells.MapBufferDataRead<Vector4f>();
+	printf("m_bufferNonEmptyCells\n");
+	if (nonempty != nullptr)
+	{
+		for (uint32 i = 0; i < nonEmptyCellCount; i++)
+		{
+			std::cout << i << "  " << nonempty[i] << std::endl;
+		}
+	}*/
+	m_bufferNonEmptyCells.UnmapBufferData();
+
+	/*const DensityPoint* points = m_bufferPoints.MapBufferDataRead<DensityPoint>();
+	printf("m_bufferPoints\n");
+	if (points != nullptr)
+	{
+		for (uint32 i = 0; i < (resolution.z + 1) * (resolution.x + 1) * (resolution.y + 1); i++)
+		{
+			std::cout << i << "  " << points[i].point << " = " << points[i].density << std::endl;
+		}
+	}
+	m_bufferPoints.UnmapBufferData();*/
 	
+	/*const VertexPosTexNorm* vertices = m_bufferVertices.MapBufferDataRead<VertexPosTexNorm>();
+	const uint32* indices = m_bufferIndices.MapBufferDataRead<uint32>();
+	printf("m_bufferVertices\n");
+	if (vertices != nullptr)
+	{
+		for (uint32 i = 0; i < Math::Min(12u, vertexCount); i++)
+		{
+			std::cout << i << "  " << indices[i]
+				<< "  " << vertices[i].position
+				<< "  " << vertices[i].texCoord
+				<< "  " << vertices[i].normal
+				<< std::endl;
+		}
+	}
+	m_bufferIndices.UnmapBufferData();
+	m_bufferVertices.UnmapBufferData();*/
+
+
+
 	// Copy vertices and indices into the mesh buffers
 	//printf("vertexCount = %u\n", vertexCount);
 	if (vertexCount == 0)
 		return nullptr;
-	CMG_ASSERT(vertexCount <= m_bufferVertices.GetSize());
-	*/
-
-
+	CMG_ASSERT(vertexCount <= (m_bufferVertices.GetSize() / sizeof(VertexPosTexNorm)));
+	   
 	Mesh* mesh = new Mesh();
 	mesh->GetVertexData()->BufferVertices(vertexCount, (const VertexPosTexNorm*) nullptr);
 	mesh->GetVertexData()->GetVertexBuffer()->BufferData(
 		0, vertexCount * sizeof(VertexPosTexNorm), m_bufferVertices);
-	/*mesh->GetIndexData()->GetIndexBuffer()->BufferData(
-		0, vertexCount * sizeof(uint32), m_bufferIndices);*/
-	mesh->GetIndexData()->GetIndexBuffer()->BufferData(m_bufferIndices[lodIndex]);
-	mesh->GetIndexData()->SetIndexRange(0,
-		m_bufferIndices[lodIndex].GetSize() / sizeof(uint32));
+	mesh->GetIndexData()->GetIndexBuffer()->BufferData(
+		0, vertexCount * sizeof(uint32), m_bufferIndices);
+	mesh->GetIndexData()->SetIndexRange(0, vertexCount);
 
-	//printf("Done!\n");
-	return mesh;
+	TransformComponent transform;
+	MeshComponent meshComponent;
+	meshComponent.mesh = mesh;
+	EntityHandle entity = m_ecs.CreateEntity(
+		transform, meshComponent, m_terrainMaterial);
+
+	return entity;
+	
 }
 
+void DensityTerrainManager::DeleteChunk(EntityHandle chunk)
+{
+	if (chunk != NULL_ENTITY_HANDLE)
+		m_ecs.RemoveEntity(chunk);
+}
