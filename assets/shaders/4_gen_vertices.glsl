@@ -1,10 +1,19 @@
-#version 430 compatibility
+// https://developer.nvidia.com/gpugems/GPUGems3/gpugems3_ch01.html
 
+#version 430 compatibility
 #extension GL_ARB_compute_shader : enable
 #extension GL_ARB_shader_storage_buffer_object : enable
 
-#include "marching_cubes_tables.glsl"
+layout (local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
 
+#include "marching_cubes_tables.glsl"
+#include "noise.glsl"
+#include "density_function.glsl"
+
+
+//-----------------------------------------------------------------------------
+// Structs
+//-----------------------------------------------------------------------------
 
 struct Vertex {
 	vec4 first; // xyz = position.xyz, w = texCoord.x
@@ -17,108 +26,170 @@ struct DensityPoint
 	vec4 biome;
 };
 
-layout (packed, binding = 0) buffer VertexBuffer
+//-----------------------------------------------------------------------------
+// Buffers
+//-----------------------------------------------------------------------------
+
+layout (packed, binding = 0) buffer PointBuffer
 {
-	Vertex vertices[];
-};
-layout (packed, binding = 1) buffer PointBuffer
-{
-	DensityPoint points[];
-};
-layout (packed, binding = 2) buffer LookupBuffer
-{
-	int triangulation[];
-};
-layout(binding = 3, offset = 0) uniform atomic_uint ac;
-layout (packed, binding = 4) buffer IndexBuffer
-{
-	uint indices[];
+	DensityPoint b_points[];
 };
 
-layout (local_size_x = 8, local_size_y = 8, local_size_z = 8) in;
+layout (packed, binding = 1) buffer edges_0_3_8_cells
+{
+	uvec4 b_z8_y8_x8_null4_edge4[];
+};
 
-float isoLevel = 0.0;
+layout (packed, binding = 2) buffer VertexBuffer
+{
+	Vertex b_vertices[];
+};
+
+layout (packed, binding = 3) buffer bb_vertex_indices
+{
+	uint b_vertex_indices[];
+};
+
+//-----------------------------------------------------------------------------
+// Uniforms
+//-----------------------------------------------------------------------------
+
 uniform uvec3 u_resolution;
+uniform float u_surfaceDensity = 0.0;
 
-vec3 interpolateVerts(vec4 v1, vec4 v2) {
-    float t = (isoLevel - v1.w) / (v2.w - v1.w);
+//-----------------------------------------------------------------------------
+// Functions
+//-----------------------------------------------------------------------------
+
+vec3 interpolateVerts(vec4 v1, vec4 v2)
+{
+    float t = (u_surfaceDensity - v1.w) / (v2.w - v1.w);
     return v1.xyz + t * (v2.xyz - v1.xyz);
 }
 
-uint indexFromCoord(uint x, uint y, uint z) {
-    return z * (u_resolution.x + 1) * (u_resolution.y + 1) + y * (u_resolution.z + 1) + x;
+uint indexFromCoordDensity(uvec3 loc)
+{
+    return (((loc.z * (u_resolution.y + 2)) + loc.y) * (u_resolution.x + 2)) + loc.x;
+}
+
+uint indexFromCoord(uint x, uint y, uint z)
+{
+    return (((z * (u_resolution.y + 1)) + y) * (u_resolution.x + 1)) + x;
+}
+
+vec3 getVertexNormal(vec3 position)
+{
+	vec3 d = 1.0 / vec3(u_resolution);
+	vec3 grad;
+	grad.x = densityFunction(position + vec3( d.x,  0,  0)) -
+			 densityFunction(position + vec3(-d.x,  0,  0));
+	grad.y = densityFunction(position + vec3( 0,  d.y,  0)) -
+			 densityFunction(position + vec3( 0, -d.y,  0));
+	grad.z = densityFunction(position + vec3( 0,  0,  d.z)) -
+			 densityFunction(position + vec3( 0,  0, -d.z));
+	return -normalize(grad);
+}
+
+vec3 ray_dir[32] = {
+    // 32 rays with a nice poisson distribution on a sphere:
+    vec3( 0.286582 , 	 0.257763 ,	 -0.922729    ),
+    vec3( -0.171812, 	 -0.888079, 	 0.426375   ),
+    vec3( 0.440764 , 	 -0.502089, 	 -0.744066    ),
+    vec3( -0.841007, 	 -0.428818, 	 -0.329882  ),
+    vec3( -0.380213, 	 -0.588038, 	 -0.713898  ),
+    vec3( -0.055393, 	 -0.207160, 	 -0.976738  ),
+    vec3( -0.901510, 	 -0.077811, 	 0.425706   ),
+    vec3( -0.974593, 	 0.123830 ,	 -0.186643  ),
+    vec3( 0.208042 ,	 -0.524280, 	 0.825741     ),
+    vec3( 0.258429 ,	 -0.898570, 	 -0.354663    ),
+    vec3( -0.262118, 	 0.574475 ,	 -0.775418  ),
+    vec3( 0.735212 ,	 0.551820 ,	 0.393646     ),
+    vec3( 0.828700 ,	 -0.523923, 	 -0.196877    ),
+    vec3( 0.788742 ,	 0.005727 ,	 -0.614698    ),
+    vec3( -0.696885, 	 0.649338 ,	 -0.304486  ),
+    vec3( -0.625313, 	 0.082413 ,	 -0.776010  ),
+    vec3( 0.358696 ,	 0.928723 ,	 0.093864     ),
+    vec3( 0.188264 ,	 0.628978 ,	 0.754283     ),
+    vec3( -0.495193, 	 0.294596 ,	 0.817311   ),
+    vec3( 0.818889 ,	 0.508670 ,	 -0.265851    ),
+    vec3( 0.027189 ,	 0.057757 ,	 0.997960     ),
+    vec3( -0.188421, 	 0.961802 ,	 -0.198582  ),
+    vec3( 0.995439 ,	 0.019982 ,	 0.093282     ),
+    vec3( -0.315254, 	 -0.925345, 	 -0.210596  ),
+    vec3( 0.411992 ,	 -0.877706, 	 0.244733     ),
+    vec3( 0.625857 ,	 0.080059 ,	 0.775818     ),
+    vec3( -0.243839, 	 0.866185 ,	 0.436194   ),
+    vec3( -0.725464, 	 -0.643645, 	 0.243768   ),
+    vec3( 0.766785 ,	 -0.430702, 	 0.475959     ),
+    vec3( -0.446376, 	 -0.391664, 	 0.804580   ),
+    vec3( -0.761557, 	 0.562508 ,	 0.321895   ),
+    vec3( 0.344460 ,	 0.753223 ,	 -0.560359    ),
+};
+
+uint rayCount = 32;
+uint stepCount = 4;
+float stepSize = 1.0;
+uint stepLargeCount = 0;
+float bigStepSize = 10.0f;
+
+float calcAmbientOcclusion(vec3 position)
+{
+	float visibility = 0;
+	for (uint ray = 0; ray < rayCount; ray++)
+	{
+	  vec3 dir = ray_dir[ray];   // From constant buffer
+	  float this_ray_visibility = 1;
+	  // Short-range samples from density volume:
+	  for (uint step = 1; step <= stepCount; step++)   // Don't start at zero
+	  {
+		float d = densityFunction(position + dir * step * stepSize);
+		this_ray_visibility *= clamp(d * 0.03, 0, 1);
+	  }
+	  // Long-range samples from density function:
+	  for (uint step = 1; step <= stepLargeCount; step++)   // Don't start at zero
+	  {
+		float d = densityFunction(position + dir * step * bigStepSize);
+		this_ray_visibility *= clamp(d * 0.03, 0, 1);
+	  }
+	  visibility += this_ray_visibility;
+	}
+	return ((visibility / float(rayCount))); // Returns occlusion
 }
 
 void main()
 {
-	uvec3 id = gl_GlobalInvocationID;
-	float biome = points[indexFromCoord(id.x, id.y, id.z)].biome.x;
+	uint x = b_z8_y8_x8_null4_edge4[gl_GlobalInvocationID.x].x;
+	uint y = b_z8_y8_x8_null4_edge4[gl_GlobalInvocationID.x].y;
+	uint z = b_z8_y8_x8_null4_edge4[gl_GlobalInvocationID.x].z;
+	uint edgeIndex = b_z8_y8_x8_null4_edge4[gl_GlobalInvocationID.x].w;
+	
+	uint part = 0;
+	if (edgeIndex == 8)
+		part = 1;
+	if (edgeIndex == 3)
+		part = 2;
+	b_vertex_indices[indexFromCoord(x, y, z) * 3 + part] = gl_GlobalInvocationID.x;
 
     // 8 corners of the current cube
     vec4 cubeCorners[8] = {
-        points[indexFromCoord(id.x, id.y, id.z)].point,
-        points[indexFromCoord(id.x + 1, id.y, id.z)].point,
-        points[indexFromCoord(id.x + 1, id.y, id.z + 1)].point,
-        points[indexFromCoord(id.x, id.y, id.z + 1)].point,
-        points[indexFromCoord(id.x, id.y + 1, id.z)].point,
-        points[indexFromCoord(id.x + 1, id.y + 1, id.z)].point,
-        points[indexFromCoord(id.x + 1, id.y + 1, id.z + 1)].point,
-        points[indexFromCoord(id.x, id.y + 1, id.z + 1)].point
+        b_points[indexFromCoordDensity(uvec3(x, y, z))].point,
+        b_points[indexFromCoordDensity(uvec3(x + 1, y, z))].point,
+        b_points[indexFromCoordDensity(uvec3(x + 1, y, z + 1))].point,
+        b_points[indexFromCoordDensity(uvec3(x, y, z + 1))].point,
+        b_points[indexFromCoordDensity(uvec3(x, y + 1, z))].point,
+        b_points[indexFromCoordDensity(uvec3(x + 1, y + 1, z))].point,
+        b_points[indexFromCoordDensity(uvec3(x + 1, y + 1, z + 1))].point,
+        b_points[indexFromCoordDensity(uvec3(x, y + 1, z + 1))].point
     };
 
-    // Calculate unique index for each cube configuration.
-    // There are 256 possible values
-    // A value of 0 means cube is entirely inside surface; 255 entirely outside.
-    // The value is used to look up the edge table, which indicates which edges of the cube are cut by the isosurface.
-    int cubeIndex = 0;
-    if (cubeCorners[0].w < isoLevel) cubeIndex |= 1;
-    if (cubeCorners[1].w < isoLevel) cubeIndex |= 2;
-    if (cubeCorners[2].w < isoLevel) cubeIndex |= 4;
-    if (cubeCorners[3].w < isoLevel) cubeIndex |= 8;
-    if (cubeCorners[4].w < isoLevel) cubeIndex |= 16;
-    if (cubeCorners[5].w < isoLevel) cubeIndex |= 32;
-    if (cubeCorners[6].w < isoLevel) cubeIndex |= 64;
-    if (cubeCorners[7].w < isoLevel) cubeIndex |= 128;
-	
-    // Create triangles for current cube configuration
-	cubeIndex *= 16;
-    for (int i = 0; triangulation[cubeIndex + i] != -1; i +=3) {
-    
-		// Get indices of corner points A and B for each of the three edges
-        // of the cube that need to be joined to form the triangle.
-        int a0 = cornerIndexAFromEdge[triangulation[cubeIndex + i]];
-        int b0 = cornerIndexBFromEdge[triangulation[cubeIndex + i]];
+	// Get indices of corner points A and B for each of the three edges
+    // of the cube that need to be joined to form the triangle.
+    int end0 = cornerIndexAFromEdge[edgeIndex];
+    int end1 = cornerIndexBFromEdge[edgeIndex];
 
-        int a1 = cornerIndexAFromEdge[triangulation[cubeIndex + i + 1]];
-        int b1 = cornerIndexBFromEdge[triangulation[cubeIndex + i + 1]];
-
-        int a2 = cornerIndexAFromEdge[triangulation[cubeIndex + i + 2]];
-        int b2 = cornerIndexBFromEdge[triangulation[cubeIndex + i + 2]];
-
-		uint triIndex = atomicCounterIncrement(ac);
-		vertices[triIndex * 3].first.xyz = interpolateVerts(cubeCorners[a0], cubeCorners[b0]);
-		vertices[triIndex * 3 + 1].first.xyz = interpolateVerts(cubeCorners[a1], cubeCorners[b1]);
-		vertices[triIndex * 3 + 2].first.xyz = interpolateVerts(cubeCorners[a2], cubeCorners[b2]);
-
-		vec3 a = vertices[triIndex * 3].first.xyz;
-		vec3 b = vertices[triIndex * 3 + 1].first.xyz;
-		vec3 c = vertices[triIndex * 3 + 2].first.xyz;
-		vec3 normal = -normalize(cross(a - b, b - c));
-		vertices[triIndex * 3].second.yzw = normal;
-		vertices[triIndex * 3 + 1].second.yzw = normal;
-		vertices[triIndex * 3 + 2].second.yzw = normal;
-		vertices[triIndex * 3].first.w = biome;
-		vertices[triIndex * 3 + 1].first.w = biome;
-		vertices[triIndex * 3 + 2].first.w = biome;
-		vertices[triIndex * 3].second.x = biome;
-		vertices[triIndex * 3 + 1].second.x = biome;
-		vertices[triIndex * 3 + 2].second.x = biome;
-		vertices[triIndex * 3].second.x = biome;
-		vertices[triIndex * 3 + 1].second.x = biome;
-		vertices[triIndex * 3 + 2].second.x = biome;
-		indices[triIndex * 3 + 0] = triIndex * 3 + 0;
-		indices[triIndex * 3 + 1] = triIndex * 3 + 1;
-		indices[triIndex * 3 + 2] = triIndex * 3 + 2;
-    }
+	b_vertices[gl_GlobalInvocationID.x].first.xyz = interpolateVerts(cubeCorners[end0], cubeCorners[end1]);
+	b_vertices[gl_GlobalInvocationID.x].first.w = b_points[indexFromCoordDensity(uvec3(x, y, z))].biome.x;
+	b_vertices[gl_GlobalInvocationID.x].second.x = calcAmbientOcclusion(b_vertices[gl_GlobalInvocationID.x].first.xyz);
+	b_vertices[gl_GlobalInvocationID.x].second.yzw = getVertexNormal(b_vertices[gl_GlobalInvocationID.x].first.xyz);
 }
 

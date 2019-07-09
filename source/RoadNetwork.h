@@ -12,7 +12,7 @@ class RoadNetwork
 {
 public:
 	// Constructors
-	RoadNetwork();
+	RoadNetwork(ECS& ecs);
 	~RoadNetwork();
 
 	// Getters
@@ -90,6 +90,7 @@ private:
 		}
 	}
 
+	ECS& m_ecs;
 	RoadMetrics m_metrics;
 	Set<NodeGroupTie*> m_nodeGroupTies;
 	Set<NodeGroup*> m_nodeGroups;

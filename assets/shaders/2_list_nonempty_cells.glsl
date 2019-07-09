@@ -57,7 +57,7 @@ uniform uvec3 u_resolution;
 
 uint indexFromCoord(uint x, uint y, uint z)
 {
-    return (((z * (u_resolution.y + 1)) + y) * (u_resolution.x + 1)) + x;
+    return (((z * (u_resolution.y + 2)) + y) * (u_resolution.x + 2)) + x;
 }
 
 void main()

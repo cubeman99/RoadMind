@@ -230,28 +230,3 @@ void Node::SetEndNormal(const Vector2f& normal)
 {
 	m_direction = normal;
 }
-
-
-//-----------------------------------------------------------------------------
-// Internal Methods
-//-----------------------------------------------------------------------------
-
-void Node::UpdateGeometry()
-{
-	//if (m_leftNode != nullptr)
-	//{
-	//	if (m_leftNode->m_leftNode == this)
-	//	{
-	//		if (m_nodeId > m_leftNode->m_nodeId)
-	//		{
-	//			m_position = m_leftNode->m_position;
-	//			m_direction = -m_leftNode->m_direction;
-	//		}
-	//	}
-	//	else
-	//	{
-	//		m_position = m_leftNode->GetRightEdge();
-	//		m_direction = m_leftNode->m_direction;
-	//	}
-	//}
-}

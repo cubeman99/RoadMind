@@ -91,3 +91,20 @@ void NodeGroupTie::UpdateGeometry()
 	twin->m_direction = -m_direction;
 }
 
+
+
+
+NodeGroupSystem::NodeGroupSystem(RoadNetwork& network):
+	BaseECSSystem(),
+	m_network(network)
+{
+	AddComponentType<TransformComponent>();
+	AddComponentType<NodeGroupTie>();
+}
+
+void NodeGroupSystem::UpdateComponents(float delta, BaseECSComponent** components)
+{
+	TransformComponent* transform = (TransformComponent*) components[0];
+	NodeGroupTie* tie = (NodeGroupTie*) components[1];
+
+}

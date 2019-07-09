@@ -11,7 +11,11 @@ using namespace std;
 
 ECSApp::ECSApp()
 {
-	m_wireFrame = false;
+	m_renderParams.SetPolygonMode(PolygonMode::k_fill);
+	m_renderParams.EnableDepthTest(true);
+	m_renderParams.EnableDepthBufferWrite(true);
+	m_renderParams.EnableCullFace(true);
+	m_renderParams.SetCullFace(CullFace::k_back);
 }
 
 ECSApp::~ECSApp()
@@ -164,7 +168,16 @@ void ECSApp::OnUpdate(float dt)
 	}
 
 	if (keyboard->IsKeyPressed(Keys::i))
-		m_wireFrame = !m_wireFrame;
+	{
+		PolygonMode::value_type mode = m_renderParams.GetPolygonMode();
+		if (mode == PolygonMode::k_fill)
+			mode = PolygonMode::k_line;
+		else if (mode == PolygonMode::k_line)
+			mode = PolygonMode::k_point;
+		else if (mode == PolygonMode::k_point)
+			mode = PolygonMode::k_fill;
+		m_renderParams.SetPolygonMode(mode);
+	}
 	if (keyboard->IsKeyPressed(Keys::g))
 		GenerateTerrain();
 	if (ctrl && keyboard->IsKeyPressed(Keys::g))
@@ -219,14 +232,9 @@ void ECSApp::OnRender()
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 	glViewport(0, 0, window->GetWidth(), window->GetHeight());
 
-	m_renderParams.SetPolygonMode(m_wireFrame ? PolygonMode::k_line : PolygonMode::k_fill);
-	m_renderParams.EnableDepthTest(true);
-	m_renderParams.EnableDepthBufferWrite(true);
-	m_renderParams.EnableCullFace(true);
-	m_renderParams.SetCullFace(CullFace::k_back);
 	m_renderer.SetRenderParams(m_renderParams);
 	m_renderer.ApplyRenderSettings(true);
-
+	glPointSize(8);
 	glEnable(GL_TEXTURE_2D);
 	glBindTexture(GL_TEXTURE_2D, 0);
 	glEnable(GL_BLEND);
@@ -327,6 +335,10 @@ void ECSApp::GenerateTerrain()
 		ASSETS_PATH "shaders/2_list_nonempty_cells.glsl");
 	LoadComputeShader(m_worldDensity->m_shaderListVertices,
 		ASSETS_PATH "shaders/3_list_verts_to_generate.glsl");
+	LoadComputeShader(m_worldDensity->m_shaderGenerateVertices,
+		ASSETS_PATH "shaders/4_gen_vertices.glsl");
+	LoadComputeShader(m_worldDensity->m_shaderGenerateIndices,
+		ASSETS_PATH "shaders/5_gen_indices.glsl");
 
 	m_world->Clear();
 }

@@ -14,7 +14,7 @@
 #include "ToolSelection.h"
 #include "ToolDraw.h"
 #include "DrivingSystem.h"
-
+#include "ecs/MeshRenderSystem.h"
 
 enum class EditMode
 {
@@ -55,11 +55,25 @@ private:
 	void DrawCurveLine(Graphics2D& g, const Biarc& horizontalArc, const VerticalCurve& verticalCurve, float offset, const Color& color);
 	void DrawCurveLine(Graphics2D& g, const RoadCurveLine& arcs, const Color& color);
 
+	Renderer m_renderer;
+	RenderParams m_renderParams;
 	Joystick* m_joystick;
 	Joystick* m_wheel;
 	SpriteFont* m_font;
 	RoadNetwork* m_network;
 	DrivingSystem* m_drivingSystem;
+
+	// ECS
+	ECS m_ecs;
+	ECSSystemList m_systems;
+	ECSSystemList m_renderSystems;
+	MeshRenderSystem* m_meshRenderSystem;
+	ArcBallControlSystem m_arcBallControlSystem;
+
+	// Entities
+	EntityHandle m_cameraEntity;
+	EntityHandle m_entityPlayer;
+	Camera m_camera;
 
 	Vector2f m_mousePosition;
 
@@ -99,17 +113,19 @@ private:
 	ToolDraw* m_toolDraw;
 	Array<EditorTool*> m_tools;
 
+	/*
 	CameraState m_camera;
 	CameraState m_defaultCameraState;
 	Camera m_newCamera;
 	Vector3f m_cameraPosition;
 	Meters m_cameraDistance;
 	Radians m_cameraPitch;
-	Radians m_cameraYaw;
+	Radians m_cameraYaw;*/
 
 	Vector3f m_cursorGroundPosition;
 	Vector3f m_cursorGroundPositionPrev;
 
+	Shader* m_shader;
 	Texture* m_backgroundTexture;
 	Texture* m_roadTexture;
 	Vector2f m_backgroundPosition;

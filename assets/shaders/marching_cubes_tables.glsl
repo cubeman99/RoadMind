@@ -1,7 +1,7 @@
 
 // Values from http://paulbourke.net/geometry/polygonise/
 
-int edges[256] = int[](
+int MARCHING_CUBES_EDGE_TABLE[256] = int[](
     0x0,
     0x109,
     0x203,

@@ -31,13 +31,19 @@ public:
 	Shader* m_shaderListNonEmptyCells;
 	Shader* m_shaderListVertices;
 	Shader* m_shaderMarchingCubes;
+	Shader* m_shaderGenerateVertices;
+	Shader* m_shaderGenerateIndices;
 	MaterialComponent m_terrainMaterial;
 
+	Texture* m_vertexIdTexture;
+
 	ShaderStorageBuffer m_bufferNonEmptyCells;
+	ShaderStorageBuffer m_bufferVertexEdges;
 	ShaderStorageBuffer m_bufferVertices;
 	ShaderStorageBuffer m_bufferIndices;
 	ShaderStorageBuffer m_bufferPoints;
 	ShaderStorageBuffer m_bufferLookup;
 	AtomicCounterBuffer m_bufferAtomicCounter;
+	ShaderStorageBuffer m_bufferVertexIdLookup;
 };
 

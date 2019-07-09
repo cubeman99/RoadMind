@@ -33,7 +33,10 @@ void MeshRenderSystem::UpdateComponents(float delta, BaseECSComponent** componen
 
 		Matrix4f mvp = m_camera->GetViewProjectionMatrix() *
 			transform->transform.GetMatrix();
-		m_renderDevice.SetShaderUniform(material->shader, "u_mvp", mvp);
+		if (material->shader->HasUniform("u_mvp"))
+			m_renderDevice.SetShaderUniform(material->shader, "u_mvp", mvp);
+		if (material->shader->HasUniform("u_eyePos"))
+			m_renderDevice.SetShaderUniform(material->shader, "u_eyePos", m_camera->GetPosition());
 		uint32 samplerSlot = 0;
 		for (auto it = material->uniforms.begin(); it != material->uniforms.end(); it++)
 		{

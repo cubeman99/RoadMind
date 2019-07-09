@@ -7,11 +7,7 @@
 #include <map>
 #include <vector>
 #include "Biarc.h"
-#include "RoadNetwork.h"
 #include "Camera.h"
-#include "Driver.h"
-#include "ToolSelection.h"
-#include "ToolDraw.h"
 #include "MainApp.h"
 
 struct Point;

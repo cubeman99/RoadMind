@@ -339,11 +339,11 @@ HeightmapTerrainManager::HeightmapTerrainManager(RenderDevice* renderDevice,
 				uint32 i2 = i0 + (resolution.x + 3);
 				uint32 i3 = i2 + 1;
 				indices[indexIndex++] = i0;
+				indices[indexIndex++] = i3;
 				indices[indexIndex++] = i1;
-				indices[indexIndex++] = i3;
 				indices[indexIndex++] = i0;
-				indices[indexIndex++] = i3;
 				indices[indexIndex++] = i2;
+				indices[indexIndex++] = i3;
 			}
 		}
 		m_bufferIndices[lod].UnmapBufferData();

@@ -23,7 +23,7 @@ MainApp::MainApp()
 	m_debugOptions.push_back(m_showCollisions = new DebugOption("Collisions", false));
 	m_debugOptions.push_back(m_showDrivingLines = new DebugOption("Paths", false));
 
-	m_showRoadSurface->enabled = false;
+	/*
 	m_showCollisions->enabled = false;
 	m_showDebug->enabled = true;
 	m_showNodes->enabled = true;
@@ -34,11 +34,20 @@ MainApp::MainApp()
 	m_showSeams->enabled = true;
 	m_wireframeMode->enabled = true;
 	m_showRoadSurface->enabled = true;
-
+	*/
+	
 	m_profileGeometry = m_profiling.GetSubSection("Geometry");
 	m_profileNetworkSimulation = m_profiling.GetSubSection("Simulation");
 	m_profileDrivers = m_profiling.GetSubSection("Drivers");
 	m_profileDraw = m_profiling.GetSubSection("Drawing");
+
+	m_renderParams.SetPolygonMode(
+		m_wireframeMode->enabled ? PolygonMode::k_line : PolygonMode::k_fill);
+	m_renderParams.EnableDepthTest(true);
+	m_renderParams.EnableDepthBufferWrite(true);
+	m_renderParams.EnableCullFace(true);
+	m_renderParams.SetFrontFace(FrontFace::k_clockwise);
+	m_renderParams.SetCullFace(CullFace::k_back);
 }
 
 MainApp::~MainApp()
@@ -52,7 +61,7 @@ void MainApp::OnInitialize()
 
 	m_paused = false;
 	m_debugDraw = new DebugDraw();
-	m_network = new RoadNetwork();
+	m_network = new RoadNetwork(m_ecs);
 	m_drivingSystem = new DrivingSystem(m_network);
 	m_backgroundTexture = nullptr;
 
@@ -60,16 +69,47 @@ void MainApp::OnInitialize()
 	TextureParams params;
 	params.SetWrap(TextureWrap::REPEAT);
 	m_roadTexture = Texture::LoadTexture(ASSETS_PATH "textures/asphalt.png", params);
-	Mesh::Load(ASSETS_PATH "toyota_ae86.obj", m_vehicleMesh);
+	Mesh::Load(ASSETS_PATH "toyota_ae86.obj", m_vehicleMesh, MeshLoadOptions::k_flip_triangles);
 	m_font = SpriteFont::LoadBuiltInFont(BuiltInFonts::FONT_CONSOLE);
 
-	m_defaultCameraState.m_viewHeight = 50.0f;
-	m_defaultCameraState.m_position = Vector2f::ZERO;
-	m_defaultCameraState.m_rotation = 0.0f;
-	m_defaultCameraState.m_aspectRatio = GetWindow()->GetAspectRatio();
-	m_camera = m_defaultCameraState;
-	m_camera.m_aspectRatio = GetWindow()->GetAspectRatio();
-	m_newCamera.SetPerspective(GetWindow()->GetAspectRatio(), 1.0f, 1.0f, 1000.0f);
+	// Create systems
+	m_meshRenderSystem = new MeshRenderSystem(*m_debugDraw, *GetRenderDevice());
+	m_arcBallControlSystem.SetMouse(GetMouse());
+	m_arcBallControlSystem.SetUpAxis(Vector3f::UNITZ);
+	m_systems.AddSystem(m_arcBallControlSystem);
+	m_renderSystems.AddSystem(*m_meshRenderSystem);
+
+	// Create the camera entity
+	ArcBall arcBall;
+	arcBall.SetSensitivity(0.005f);
+	arcBall.SetFocus(Vector3f::ZERO);
+	arcBall.SetDistance(50.0f);
+	TransformComponent transform;
+	transform.transform.rotation = Quaternion::LookAtRotation(
+		Vector3f::UNITY, Vector3f::UNITZ);
+	transform.transform.rotation.Rotate(Vector3f::UNITX, -0.7f);
+	m_cameraEntity = m_ecs.CreateEntity(transform, arcBall);
+
+	transform = TransformComponent();
+	transform.position = Vector3f::ZERO;
+
+	MeshComponent mesh;
+	MaterialComponent material;
+	mesh.mesh = m_vehicleMesh;
+	material.SetShader(m_shader);
+	material.SetUniform("u_color", Color::WHITE);
+	material.SetUniform("s_diffuse", m_roadTexture);
+	m_entityPlayer = m_ecs.CreateEntity(transform, mesh, material);
+
+	Mesh* sphere = Primitives::CreateIcoSphere(1.0f, 2);
+	mesh.mesh = sphere;
+	transform.scale = Vector3f(0.5f);
+	material.SetShader(m_shader);
+	material.SetUniform("u_color", Color::RED);
+	material.SetUniform("s_diffuse", m_roadTexture);
+	m_ecs.CreateEntity(transform, mesh, material);
+
+	m_camera.SetPerspective(GetWindow()->GetAspectRatio(), 1.0f, 1.0f, 1000.0f);
 
 	m_wheel = nullptr;
 	m_joystick = nullptr;
@@ -95,14 +135,6 @@ void MainApp::OnInitialize()
 
 void MainApp::Reset()
 {
-	m_camera.m_position = m_defaultCameraState.m_position;
-	m_camera.m_rotation = m_defaultCameraState.m_rotation;
-
-	// Setup the initial camera.
-	m_cameraPosition = Vector3f(0.0f, 0.0f, 0.5f);
-	m_cameraPitch = Math::HALF_PI;
-	m_cameraYaw = 0.0f;
-	m_cameraDistance = 60.0f;
 }
 
 void MainApp::CreateTestNetwork()
@@ -136,8 +168,9 @@ void MainApp::UpdateCameraControls(float dt)
 	bool ctrl = keyboard->IsKeyDown(Keys::left_control) ||
 		keyboard->IsKeyDown(Keys::right_control);
 
-	Vector3f right = m_newCamera.GetOrientation().GetRight();
-	Vector3f forward = Vector3f::Cross(Vector3f::UNITZ, right);
+	TransformComponent* cameraTansform = m_ecs.GetComponent<TransformComponent>(m_cameraEntity);
+	TransformComponent* playerTransform = m_ecs.GetComponent<TransformComponent>(m_entityPlayer);
+	Vector3f cameraRight = cameraTansform->rotation.GetRight();
 
 	// Calculate cursor ground position
 	m_cursorGroundPositionPrev = m_cursorGroundPosition;
@@ -145,57 +178,33 @@ void MainApp::UpdateCameraControls(float dt)
 	Vector2f mouseScreenCoords(
 		((mousePos.x / windowSize.x) - 0.5f) * 2.0f,
 		((mousePos.y / windowSize.y) - 0.5f) * -2.0f);
-	Ray mouseRay = m_newCamera.GetRay(mouseScreenCoords);
+	Ray mouseRay = m_camera.GetRay(mouseScreenCoords);
 	bool cursorValid = ground.CastRay(mouseRay, m_cursorGroundPosition);
 
-	// Scoll Wheel: Zoom in/out
-	if (scroll != 0)
-	{
-		m_camera.m_viewHeight *= Math::Pow(0.9f, (float)scroll);
-		m_cameraDistance *= Math::Pow(0.9f, (float)scroll);
-	}
-
+	float speed = 50.0f * dt;
+	Vector3f forward = m_ecs.GetComponent<TransformComponent>(m_cameraEntity)->rotation.GetForward();
+	Vector3f up = Vector3f::UNITZ;
+	Vector3f right = Vector3f::Normalize(Vector3f::Cross(forward, up));
+	forward = Vector3f::Normalize(Vector3f::Cross(up, cameraRight));
 	// WASD: Move camera
 	if (!ctrl)
 	{
-		Vector3f move = Vector3f::ZERO;
-		if (keyboard->IsKeyDown(Keys::a))
-			move.x -= 1.0f;
-		if (keyboard->IsKeyDown(Keys::d))
-			move.x += 1.0f;
-		if (keyboard->IsKeyDown(Keys::s))
-			move.y -= 1.0f;
 		if (keyboard->IsKeyDown(Keys::w))
-			move.y += 1.0f;
+			playerTransform->position += forward * speed;
+		if (keyboard->IsKeyDown(Keys::s))
+			playerTransform->position -= forward * speed;
+		if (keyboard->IsKeyDown(Keys::a))
+			playerTransform->position -= right * speed;
+		if (keyboard->IsKeyDown(Keys::d))
+			playerTransform->position += right * speed;
 		if (keyboard->IsKeyDown(Keys::e))
-			move.z += 1.0f;
+			playerTransform->position += up * speed;
 		if (keyboard->IsKeyDown(Keys::q))
-			move.z -= 1.0f;
-		if (move.LengthSquared() > 0.0f)
-		{
-			move.xy.Normalize();
-			m_cameraPosition += right * move.x;
-			m_cameraPosition += forward * move.y;
-			m_cameraPosition.z += move.z;
-			m_cameraPosition.z = Math::Max(m_cameraPosition.z, 0.0f);
-		}
+			playerTransform->position -= up * speed;
 	}
+	m_ecs.GetComponent<ArcBall>(m_cameraEntity)->SetFocus(playerTransform->position);
 
-	// Ctrl+RMB: Rotate camera
-	if (ctrl && mouse->IsButtonDown(MouseButtons::right))
-	{
-		Vector2f windowCenter = windowSize * 0.5f;
-		Vector2f angle = (mousePos - mousePosPrev) * 0.003f;
-		m_cameraPitch += angle.y;
-		m_cameraPitch = Math::Clamp(m_cameraPitch, 0.0f, Math::HALF_PI);
-		m_cameraYaw -= angle.x;
-		if (m_cameraYaw > Math::TWO_PI)
-			m_cameraYaw -= Math::TWO_PI;
-		if (m_cameraYaw < 0.0f)
-			m_cameraYaw += Math::TWO_PI;
-	}
-
-	if (m_joystick != nullptr)
+	/*if (m_joystick != nullptr)
 	{
 		auto xbox = m_joystick->GetState();
 		float speed = 2.0f;
@@ -203,13 +212,7 @@ void MainApp::UpdateCameraControls(float dt)
 			xbox.rightStick = Vector2f::ZERO;
 		m_cameraPitch -= xbox.rightStick.y * speed * dt;
 		m_cameraYaw -= xbox.rightStick.x * speed * dt;
-	}
-
-	m_newCamera.SetOrientation(
-		Quaternion(Vector3f::UNITZ, m_cameraYaw) *
-		Quaternion(Vector3f::UNITX, Math::HALF_PI - m_cameraPitch));
-	m_newCamera.SetPosition(m_cameraPosition +
-		m_newCamera.GetOrientation().GetBack() * m_cameraDistance);
+	}*/
 }
 
 //-----------------------------------------------------------------------------
@@ -411,10 +414,15 @@ void MainApp::DrawCurveLine(Graphics2D& g,
 
 void MainApp::LoadShaders()
 {
+	Shader::LoadShader(m_shader,
+		ASSETS_PATH "shaders/shader_vs.glsl",
+		ASSETS_PATH "shaders/shader_fs.glsl");
 }
 
 void MainApp::UnloadShaders()
 {
+	delete m_shader;
+	m_shader = nullptr;
 }
 
 void MainApp::OnQuit()
@@ -446,8 +454,7 @@ void MainApp::OnQuit()
 
 void MainApp::OnResizeWindow(int width, int height)
 {
-	m_camera.m_aspectRatio = GetWindow()->GetAspectRatio();
-	m_newCamera.SetAspectRatio(GetWindow()->GetAspectRatio());
+	m_camera.SetAspectRatio(GetWindow()->GetAspectRatio());
 }
 
 void MainApp::OnDropFile(const String& fileName)
@@ -464,9 +471,8 @@ void MainApp::OnDropFile(const String& fileName)
 	{
 		m_backgroundTexture = texture;
 
-		Rect2f viewRect = m_camera.GetRect();
-		m_backgroundSize = viewRect.size;
-		m_backgroundPosition = viewRect.GetCenter();
+		m_backgroundSize = Vector2f(10.0f, 10.0f);
+		m_backgroundPosition = Vector2f::ZERO;
 		printf("Loaded background image: %s\n", fileName.c_str());
 	}
 	else
@@ -484,9 +490,9 @@ void MainApp::OnUpdate(float dt)
 	Window* window = GetWindow();
 	MouseState mouseState = mouse->GetMouseState();
 	Vector2f windowSize((float)window->GetWidth(), (float)window->GetHeight());
-	m_mousePosition.x = (float)mouseState.x;
+	/*m_mousePosition.x = (float)mouseState.x;
 	m_mousePosition.y = (float)mouseState.y;
-	m_mousePosition = m_camera.ToWorldSpace(m_mousePosition, windowSize);
+	m_mousePosition = m_camera.ToWorldSpace(m_mousePosition, windowSize);*/
 
 	bool ctrl = (keyboard->IsKeyDown(Keys::left_control) ||
 		keyboard->IsKeyDown(Keys::right_control));
@@ -517,13 +523,6 @@ void MainApp::OnUpdate(float dt)
 	{
 		m_network->Load(SAVE_FILE_PATH);
 		std::cout << "Loaded " << SAVE_FILE_PATH << std::endl;
-	}
-
-	// Home: reset camera
-	if (keyboard->IsKeyPressed(Keys::home))
-	{
-		m_camera.m_position = m_defaultCameraState.m_position;
-		m_camera.m_rotation = m_defaultCameraState.m_rotation;
 	}
 
 	// Number keys: debug options
@@ -594,7 +593,7 @@ void MainApp::OnUpdate(float dt)
 		m_currentTool->m_mousePosition = m_cursorGroundPosition.xy;
 		m_currentTool->m_mousePositionInWindow = Vector2f(
 			(float)mouseState.x, (float)mouseState.y);
-		m_currentTool->m_camera = &m_newCamera;
+		m_currentTool->m_camera = &m_camera;
 		m_currentTool->m_window = GetWindow();
 
 		if (mouse->IsButtonPressed(MouseButtons::left))
@@ -608,9 +607,11 @@ void MainApp::OnUpdate(float dt)
 
 		m_currentTool->Update(dt);
 	}
-	
 
+	// Update ECS
 	UpdateCameraControls(dt);
+	m_ecs.UpdateSystems(m_systems, dt);
+
 
 	m_profileGeometry->StartInvocation();
 	m_network->UpdateNodeGeometry();
@@ -756,38 +757,47 @@ void MainApp::OnRender()
 	MouseState mouseState = GetMouse()->GetMouseState();
 	Vector2f windowSize((float)window->GetWidth(),
 		(float)window->GetHeight());
+	Graphics2D g(window);
+	g.SetTransformation(Matrix4f::IDENTITY);
 
 	m_profileDraw->StartInvocation();
 
-	glDisable(GL_DEPTH_TEST);
-	glEnable(GL_TEXTURE_2D);
-	glBindTexture(GL_TEXTURE_2D, 0);
-	glDepthMask(false);
-	glDisable(GL_CULL_FACE);
-	glDisable(GL_DEPTH_TEST);
-	//glDisable(GL_DEPTH_CLAMP);
-	glEnable(GL_BLEND);
-	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-	glViewport(0, 0, window->GetWidth(), window->GetHeight());
+	// Set up render params
+	m_renderParams.SetPolygonMode(
+		m_wireframeMode->enabled ? PolygonMode::k_line : PolygonMode::k_fill);
+	m_renderer.SetRenderParams(m_renderParams);
+	m_renderer.ApplyRenderSettings(true);
 
-	Graphics2D g(window);
-	g.Clear(Color::BLACK);
-	g.SetTransformation(Matrix4f::IDENTITY);
-
-
-	//m_camera.m_aspectRatio = GetWindow()->GetAspectRatio();
-	//Matrix4f projection = Matrix4f::CreateOrthographic(0.0f, window->GetWidth(), window->GetHeight(), 0.0f, -1.0f, 1.0f);
-	Matrix4f modelMatrix;
-	Matrix4f projection = Matrix4f::IDENTITY;
-	Matrix4f view = m_camera.GetWorldToCameraMatrix();
-	//view = Matrix4f::IDENTITY;
-	glMatrixMode(GL_PROJECTION);
-	//glLoadMatrixf((projection * view).m);
-	glLoadMatrixf(m_newCamera.GetViewProjectionMatrix().m);
-
-	Matrix4f viewProjection = m_newCamera.GetViewProjectionMatrix();
+	// Get camera transform
+	auto transform = m_ecs.GetComponent<TransformComponent>(m_cameraEntity);
+	auto arcBall = m_ecs.GetComponent<ArcBall>(m_cameraEntity);
+	float m_cameraDistance = arcBall->distance;
+	Vector3f m_cameraPosition = arcBall->center;
+	m_camera.SetOrientation(transform->transform.rotation);
+	m_camera.SetPosition(transform->transform.position);
+	Matrix4f viewProjection = m_camera.GetViewProjectionMatrix();
 	m_debugDraw->SetViewProjection(viewProjection);
 	m_debugDraw->SetShaded(true);
+	m_meshRenderSystem->SetCamera(&m_camera);
+
+	// Draw grid
+	Meters gridRadius = arcBall->distance * 2.0f;
+	Color gridColor[3];
+	gridColor[0] = Color(10, 10, 10);
+	gridColor[1] = Color(50, 50, 50);
+	gridColor[2] = Color(120, 120, 120);
+	m_debugDraw->DrawGrid(
+	Matrix4f::CreateRotation(Vector3f::UNITX, Math::HALF_PI),
+	Vector3f(arcBall->GetFocus().x, 0.0f, -arcBall->GetFocus().y),
+	1.0f, 10, 1, 2, gridColor[0], gridColor[1], gridRadius);
+	m_debugDraw->BeginImmediate();
+
+	// Mesh render system
+	m_ecs.UpdateSystems(m_renderSystems, 0.0f);
+
+	Matrix4f modelMatrix;
+	Matrix4f projection = Matrix4f::IDENTITY;
+	glMatrixMode(GL_PROJECTION);
 
 	if (m_backgroundTexture != nullptr)
 	{
@@ -804,17 +814,6 @@ void MainApp::OnRender()
 	glDepthMask(true);
 	glEnable(GL_DEPTH_TEST);
 	glClear(GL_DEPTH_BUFFER_BIT);
-
-	Meters gridRadius = m_cameraDistance * 2.0f;
-	Color gridColor[3];
-	gridColor[0] = Color(10, 10, 10);
-	gridColor[1] = Color(50, 50, 50);
-	gridColor[2] = Color(120, 120, 120);
-	m_debugDraw->DrawGrid(
-		Matrix4f::CreateRotation(Vector3f::UNITX, Math::HALF_PI),
-		Vector3f(m_cameraPosition.x, 0.0f, -m_cameraPosition.y),
-		1.0f, 10, 1, 2, gridColor[0], gridColor[1], gridRadius);
-	m_debugDraw->BeginImmediate();
 
 	if (m_wireframeMode->enabled)
 		glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);

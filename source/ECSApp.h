@@ -40,8 +40,6 @@ private:
 	DensityTerrainManager* m_worldDensity;
 	HeightmapTerrainManager* m_worldHeightmap;
 
-	bool m_wireFrame;
-
 	// ECS
 	ECS m_scene;
 	ECSSystemList m_systems;

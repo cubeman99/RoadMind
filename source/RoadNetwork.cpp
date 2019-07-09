@@ -7,7 +7,8 @@
 // Constructors
 //-----------------------------------------------------------------------------
 
-RoadNetwork::RoadNetwork()
+RoadNetwork::RoadNetwork(ECS& ecs):
+	m_ecs(ecs)
 {
 	m_nodeGroupConnectionIdCounter = 1;
 	m_intersectionIdCounter = 1;

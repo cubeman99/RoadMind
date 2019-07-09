@@ -52,10 +52,6 @@ public:
 	void SetCenterPosition(const Vector3f& center);
 	void SetEndNormal(const Vector2f& normal);
 	
-	// Geometry
-
-	void UpdateGeometry();
-
 private:
 	int GetNumInputs() const;
 	int GetNumOutputs() const;

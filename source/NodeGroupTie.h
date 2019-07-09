@@ -11,7 +11,7 @@
 // Class:   NodeGroupTie
 // Purpose: Ties together two node groups of opposite directions.
 //-----------------------------------------------------------------------------
-class NodeGroupTie : public IPosition
+class NodeGroupTie : public IPosition, public ECSComponent<NodeGroupTie>
 {
 	friend class RoadNetwork;
 
@@ -42,6 +42,18 @@ private:
 	Vector2f m_direction;
 	NodeGroup* m_nodeGroup;
 	Meters m_centerDividerWidth;
+};
+
+
+class NodeGroupSystem : public BaseECSSystem
+{
+public:
+	NodeGroupSystem(RoadNetwork& network);
+
+	virtual void UpdateComponents(float delta, BaseECSComponent** components);
+
+private:
+	RoadNetwork& m_network;
 };
 
 

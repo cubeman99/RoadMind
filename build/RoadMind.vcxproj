@@ -144,6 +144,9 @@
     <None Include="..\assets\shaders\2_list_nonempty_cells.glsl" />
     <None Include="..\assets\shaders\3_list_verts_to_generate.glsl" />
     <None Include="..\assets\shaders\4_gen_vertices.glsl" />
+    <None Include="..\assets\shaders\5_gen_indices.glsl" />
+    <None Include="..\assets\shaders\backup_marching_cubes.glsl" />
+    <None Include="..\assets\shaders\density_function.glsl" />
     <None Include="..\assets\shaders\generate_heightmap_normals_cs.glsl" />
     <None Include="..\assets\shaders\generate_heightmap_vertices_cs.glsl" />
     <None Include="..\assets\shaders\marching_cubes_cs.glsl" />

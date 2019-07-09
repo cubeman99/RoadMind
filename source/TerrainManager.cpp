@@ -7,7 +7,7 @@ TerrainManager::TerrainManager():
 	m_focus(Vector3f::ZERO),
 	//m_maxLODCount(5),
 	m_maxLODCount(5),
-	m_maxCreatesPerUpdate(8)
+	m_maxCreatesPerUpdate(16)
 {
 	m_radius = m_chunkSize.x * 4;
 	m_lodRadius = m_chunkSize.x * 1.0f;

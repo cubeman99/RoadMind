@@ -315,6 +315,7 @@ DensityTerrainManager::DensityTerrainManager(RenderDevice* renderDevice,
 {
 	m_chunkBoundsMin.z = -5000;
 	m_chunkBoundsMax.z = 5000;
+	m_radius = m_chunkSize.x * 3;
 	AddComponentType<TransformComponent>();
 	AddComponentType<MeshComponent>();
 	AddComponentType<MaterialComponent>();
@@ -323,8 +324,8 @@ DensityTerrainManager::DensityTerrainManager(RenderDevice* renderDevice,
 	// Create buffers
 	uint32 zero = 0;
 	uint32 MAX_VERTICES = 500000;
-	uint32 pointCount = (1 + m_chunkResolution.x) *
-		(1 + m_chunkResolution.y) * (1 + m_chunkResolution.z);
+	uint32 pointCount = (2 + m_chunkResolution.x) *
+		(2 + m_chunkResolution.y) * (2 + m_chunkResolution.z);
 	m_bufferAtomicCounter.BufferData(1, &zero); // GL_DYNAMIC_DRAW
 	m_bufferLookup.BufferData<int32>(
 		MARCHING_CUBES_LOOKUP_TABLE_SIZE,
@@ -334,6 +335,16 @@ DensityTerrainManager::DensityTerrainManager(RenderDevice* renderDevice,
 	m_bufferIndices.BufferData<uint32>(MAX_VERTICES, nullptr);
 	//m_bufferNonEmptyCells.BufferData(pointCount * sizeof(uint32) * 4, nullptr);
 	m_bufferNonEmptyCells.BufferData<Vector4f>(pointCount, nullptr);
+	m_bufferVertexEdges.BufferData<Vector4f>(pointCount, nullptr);
+	m_bufferVertexIdLookup.BufferData<uint32>(pointCount * 3, nullptr);
+
+	// Create a 3D texture for splatting vertex IDs
+	TextureParams params;
+	m_vertexIdTexture = new Texture();
+	m_vertexIdTexture->SetParams(params);
+	m_vertexIdTexture->WritePixels3D(
+		m_chunkResolution.x, m_chunkResolution.y, m_chunkResolution.z,
+		PixelTransferFormat::RED, PixelType::TYPE_UNSIGNED_INT, nullptr);
 }
 
 DensityTerrainManager::~DensityTerrainManager()
@@ -374,103 +385,88 @@ EntityHandle DensityTerrainManager::CreateChunk(const Vector3f & position,
 
 	if (m_shaderGenerateDensity == nullptr ||
 		m_shaderListNonEmptyCells == nullptr ||
-		m_shaderListVertices == nullptr)
+		m_shaderListVertices == nullptr ||
+		m_shaderGenerateVertices == nullptr ||
+		m_shaderGenerateIndices == nullptr)
 		return nullptr;
 
-	// Run the terrain generation shader
+	// 1. Fill density volume with density values.
 	m_renderDevice->SetShaderUniform(m_shaderGenerateDensity, "u_size", size);
 	m_renderDevice->SetShaderUniform(m_shaderGenerateDensity, "u_resolution", resolution);
 	m_renderDevice->SetShaderUniform(m_shaderGenerateDensity, "u_offset", position);
 	m_renderDevice->SetShaderUniform(m_shaderGenerateDensity, "u_floorPosition", 1.0f);
 	m_renderDevice->BindBuffer(m_bufferPoints, 0);
 	m_renderDevice->DispatchCompute(m_shaderGenerateDensity,
-		(resolution / DENSITY_WORK_GROUP_SIZE) + Vector3ui(1));
+		(resolution / DENSITY_WORK_GROUP_SIZE) + Vector3ui(2));
 
 	// Reset atomic counter to 0
 	m_bufferAtomicCounter.BufferSubData(0, 1, &zero);
 
-	// Run the compute shader
+	// 2. Visit each voxel in the density volume; stream out a lightweight
+	// marker point for each voxel that needs triangles in it.
 	m_renderDevice->SetShaderUniform(m_shaderListNonEmptyCells, "u_resolution", resolution);
 	m_renderDevice->BindBuffer(m_bufferNonEmptyCells, 0);
 	m_renderDevice->BindBuffer(m_bufferPoints, 1);
 	m_renderDevice->BindBuffer(m_bufferLookup, 2);
 	m_renderDevice->BindBuffer(m_bufferAtomicCounter, 3);
-	m_renderDevice->DispatchCompute(m_shaderListNonEmptyCells, resolution);
+	m_renderDevice->DispatchCompute(m_shaderListNonEmptyCells, resolution + Vector3ui(1));
 
 	// Read the atomic counter (the number of triangles)
 	counter = m_bufferAtomicCounter.MapBufferDataRead<uint32>();
 	uint32 nonEmptyCellCount = *counter;
 	m_bufferAtomicCounter.UnmapBufferData();
-	//printf("nonEmptyCellCount = %u\n", nonEmptyCellCount);
 	if (nonEmptyCellCount == 0)
 		return nullptr;
-
+	//printf("nonEmptyCellCount = %u\n", nonEmptyCellCount);
+	// Reset atomic counter to 0
+	m_bufferAtomicCounter.BufferSubData(0, 1, &zero);
+	
+	// 3. Marches nonempty_cell_list and looks only at edges 3, 0, and 8
+	// Streams out a marker point for each one that needs a vertex on it.
+	//m_renderDevice->SetShaderUniform(m_shaderListVertices, "u_resolution", resolution);
+	m_renderDevice->BindBuffer(m_bufferNonEmptyCells, 0);
+	m_renderDevice->BindBuffer(m_bufferAtomicCounter, 1);
+	m_renderDevice->BindBuffer(m_bufferVertexEdges, 2);
+	m_renderDevice->DispatchCompute(m_shaderListVertices, nonEmptyCellCount);
+	
+	// Read the atomic counter (the number of vertices)
+	counter = m_bufferAtomicCounter.MapBufferDataRead<uint32>();
+	uint32 vertexCount = *counter;
+	m_bufferAtomicCounter.UnmapBufferData();
+	if (vertexCount == 0)
+		return nullptr;
+	//printf("vertexCount = %u\n", vertexCount);
 	// Reset atomic counter to 0
 	m_bufferAtomicCounter.BufferSubData(0, 1, &zero);
 
-	
-	// Run the compute shader
-	m_renderDevice->SetShaderUniform(m_shaderListVertices, "u_resolution", resolution);
+	// 4. Marches vert_list and generates the final (real) vertices.
+	m_renderDevice->SetShaderUniform(m_shaderGenerateVertices, "u_resolution", resolution);
+	m_renderDevice->BindBuffer(m_bufferPoints, 0);
+	m_renderDevice->BindBuffer(m_bufferVertexEdges, 1);
+	m_renderDevice->BindBuffer(m_bufferVertices, 2);
+	m_renderDevice->BindBuffer(m_bufferVertexIdLookup, 3);
+	m_renderDevice->DispatchCompute(m_shaderGenerateVertices, vertexCount);
+
+	// 5. Marches nonempty_cell_list and streams out up to 15 uints per
+	// cell—the indices to make up to five triangles. Samples VertexIDVol to
+	// get this information.
+	m_renderDevice->SetShaderUniform(m_shaderGenerateIndices, "u_resolution", resolution);
 	m_renderDevice->BindBuffer(m_bufferNonEmptyCells, 0);
-	m_renderDevice->BindBuffer(m_bufferPoints, 1);
-	m_renderDevice->BindBuffer(m_bufferAtomicCounter, 2);
-	m_renderDevice->BindBuffer(m_bufferVertices, 3);
-	m_renderDevice->BindBuffer(m_bufferIndices, 4);
-	m_renderDevice->BindBuffer(m_bufferLookup, 5);
-	m_renderDevice->DispatchCompute(m_shaderListVertices, nonEmptyCellCount);
-	
-	// Read the atomic counter (the number of triangles)
+	m_renderDevice->BindBuffer(m_bufferVertexIdLookup, 1);
+	m_renderDevice->BindBuffer(m_bufferLookup, 2);
+	m_renderDevice->BindBuffer(m_bufferIndices, 3);
+	m_renderDevice->BindBuffer(m_bufferAtomicCounter, 4);
+	m_renderDevice->DispatchCompute(m_shaderGenerateIndices, nonEmptyCellCount);
+
+	// Read the atomic counter (the number of indices)
 	counter = m_bufferAtomicCounter.MapBufferDataRead<uint32>();
-	uint32 vertexCount = *counter * 3;
+	uint32 indexCount = *counter * 3;
 	m_bufferAtomicCounter.UnmapBufferData();
-	//printf("vertexCount = %u\n", vertexCount);
-
-
-	/*const Vector4f* nonempty = m_bufferNonEmptyCells.MapBufferDataRead<Vector4f>();
-	printf("m_bufferNonEmptyCells\n");
-	if (nonempty != nullptr)
-	{
-		for (uint32 i = 0; i < nonEmptyCellCount; i++)
-		{
-			std::cout << i << "  " << nonempty[i] << std::endl;
-		}
-	}*/
-	m_bufferNonEmptyCells.UnmapBufferData();
-
-	/*const DensityPoint* points = m_bufferPoints.MapBufferDataRead<DensityPoint>();
-	printf("m_bufferPoints\n");
-	if (points != nullptr)
-	{
-		for (uint32 i = 0; i < (resolution.z + 1) * (resolution.x + 1) * (resolution.y + 1); i++)
-		{
-			std::cout << i << "  " << points[i].point << " = " << points[i].density << std::endl;
-		}
-	}
-	m_bufferPoints.UnmapBufferData();*/
-	
-	/*const VertexPosTexNorm* vertices = m_bufferVertices.MapBufferDataRead<VertexPosTexNorm>();
-	const uint32* indices = m_bufferIndices.MapBufferDataRead<uint32>();
-	printf("m_bufferVertices\n");
-	if (vertices != nullptr)
-	{
-		for (uint32 i = 0; i < Math::Min(12u, vertexCount); i++)
-		{
-			std::cout << i << "  " << indices[i]
-				<< "  " << vertices[i].position
-				<< "  " << vertices[i].texCoord
-				<< "  " << vertices[i].normal
-				<< std::endl;
-		}
-	}
-	m_bufferIndices.UnmapBufferData();
-	m_bufferVertices.UnmapBufferData();*/
-
-
+	//printf("indexCount = %u\n", indexCount);
+	// Reset atomic counter to 0
+	m_bufferAtomicCounter.BufferSubData(0, 1, &zero);
 
 	// Copy vertices and indices into the mesh buffers
-	//printf("vertexCount = %u\n", vertexCount);
-	if (vertexCount == 0)
-		return nullptr;
 	CMG_ASSERT(vertexCount <= (m_bufferVertices.GetSize() / sizeof(VertexPosTexNorm)));
 	   
 	Mesh* mesh = new Mesh();
@@ -478,14 +474,24 @@ EntityHandle DensityTerrainManager::CreateChunk(const Vector3f & position,
 	mesh->GetVertexData()->GetVertexBuffer()->BufferData(
 		0, vertexCount * sizeof(VertexPosTexNorm), m_bufferVertices);
 	mesh->GetIndexData()->GetIndexBuffer()->BufferData(
-		0, vertexCount * sizeof(uint32), m_bufferIndices);
-	mesh->GetIndexData()->SetIndexRange(0, vertexCount);
+		0, indexCount * sizeof(uint32), m_bufferIndices);
+	mesh->GetIndexData()->SetIndexRange(0, indexCount);
 
 	TransformComponent transform;
 	MeshComponent meshComponent;
 	meshComponent.mesh = mesh;
 	EntityHandle entity = m_ecs.CreateEntity(
 		transform, meshComponent, m_terrainMaterial);
+	
+	/*
+	// Create wireframe box around chunk
+	Mesh* debugMesh = Primitives::CreateWireframeCube();
+	transform.position = position + (m_chunkSize * 0.5f);
+	transform.scale = m_chunkSize * 0.5f;
+	meshComponent.mesh = debugMesh;
+	m_ecs.CreateEntity(
+		transform, meshComponent, m_terrainMaterial);
+	*/
 
 	return entity;
 	
