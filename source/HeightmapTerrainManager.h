@@ -14,8 +14,8 @@ public:
 		const MaterialComponent& material, ECS& ecs);
 	virtual ~HeightmapTerrainManager();
 
-	void SetGenerateVerticesShader(Shader* shader);
-	void SetGenerateNormalsShader(Shader* shader);
+	void SetGenerateVerticesShader(Shader::sptr shader);
+	void SetGenerateNormalsShader(Shader::sptr shader);
 	virtual void UpdateComponents(float delta, BaseECSComponent** components) override;
 
 protected:
@@ -25,8 +25,8 @@ protected:
 	//void SewSeam(const Vector3i& coord, const Vector3i& neighborCoord);
 
 public:
-	Shader* m_shaderGenerateVertices;
-	Shader* m_shaderGenerateNormals;
+	Shader::sptr m_shaderGenerateVertices;
+	Shader::sptr m_shaderGenerateNormals;
 
 private:
 	uint32 GetVertexIndex(Vector2i point, uint32 lodIndex) const;

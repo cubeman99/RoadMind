@@ -93,6 +93,7 @@ void MainApp::OnInitialize()
 	transform = TransformComponent();
 	transform.position = Vector3f::ZERO;
 
+	/*
 	MeshComponent mesh;
 	MaterialComponent material;
 	mesh.mesh = m_vehicleMesh;
@@ -107,7 +108,7 @@ void MainApp::OnInitialize()
 	material.SetShader(m_shader);
 	material.SetUniform("u_color", Color::RED);
 	material.SetUniform("s_diffuse", m_roadTexture);
-	m_ecs.CreateEntity(transform, mesh, material);
+	m_ecs.CreateEntity(transform, mesh, material);*/
 
 	m_camera.SetPerspective(GetWindow()->GetAspectRatio(), 1.0f, 1.0f, 1000.0f);
 

@@ -8,6 +8,6 @@
 
 struct MeshComponent : public ECSComponent<MeshComponent>
 {
-	Mesh* mesh;
+	Mesh::sptr mesh;
 };
 

@@ -355,12 +355,12 @@ HeightmapTerrainManager::~HeightmapTerrainManager()
 {
 }
 
-void HeightmapTerrainManager::SetGenerateVerticesShader(Shader * shader)
+void HeightmapTerrainManager::SetGenerateVerticesShader(Shader::sptr shader)
 {
 	m_shaderGenerateVertices = shader;
 }
 
-void HeightmapTerrainManager::SetGenerateNormalsShader(Shader * shader)
+void HeightmapTerrainManager::SetGenerateNormalsShader(Shader::sptr shader)
 {
 	m_shaderGenerateNormals = shader;
 }
@@ -401,7 +401,7 @@ EntityHandle HeightmapTerrainManager::CreateChunk(const Vector3f & position,
 		Math::Max(1u, ((resolution.y + 1) / WORK_GROUP_SIZE) + 1),
 		1);
 
-	Mesh* mesh = new Mesh();
+	Mesh::sptr mesh = std::make_shared<Mesh>();
 	mesh->GetVertexData()->BufferVertices(vertexCount, (const VertexPosTexNorm*) nullptr);
 	mesh->GetVertexData()->GetVertexBuffer()->BufferData(
 		0, vertexCount * sizeof(VertexPosTexNorm), m_bufferVertices);

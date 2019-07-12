@@ -21,7 +21,6 @@ public:
 	void UnloadResources();
 	void Reset();
 	void GenerateTerrain();
-	void LoadComputeShader(Shader*& outShader, const Path& path);
 
 	void OnInitialize() override;
 	void OnQuit() override;
@@ -53,18 +52,17 @@ private:
 	Camera m_camera;
 
 	// Resources
-	Shader* m_shader;
-	Shader* m_computeShader;
+	Shader::sptr m_shader;
+	Shader::sptr m_computeShader;
+	Shader::sptr m_shaderRenderTerrain;
 	SpriteFont* m_font;
-	Texture* m_textureRoad;
-	Texture* m_textureTest2;
-	Texture* m_textureTerrain;
-	Texture* m_textureRock;
-	Texture* m_textureGrass;
-	Texture* m_textureGrassColormap;
-	Mesh* m_vehicleMesh;
-	Mesh* m_meshWheel;
-	Mesh* m_terrainMesh;
-	Shader* m_shaderRenderTerrain;
+	Texture::sptr m_textureRoad;
+	Texture::sptr m_textureTest2;
+	Texture::sptr m_textureTerrain;
+	Texture::sptr m_textureRock;
+	Texture::sptr m_textureGrass;
+	Texture::sptr m_textureGrassColormap;
+	Mesh::sptr m_vehicleMesh;
+	Mesh::sptr m_meshWheel;
 };
 

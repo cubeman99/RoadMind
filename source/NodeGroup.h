@@ -46,7 +46,7 @@ public:
 // Class:   NodeGroup
 // Purpose: Represents a group of adjacent lane nodes with a shared direction.
 //-----------------------------------------------------------------------------
-class NodeGroup : public IPosition
+class NodeGroup : public IPosition, public ECSComponent<NodeGroup>
 {
 	friend class RoadNetwork;
 	friend class RoadIntersection;

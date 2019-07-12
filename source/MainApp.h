@@ -77,8 +77,6 @@ private:
 
 	Vector2f m_mousePosition;
 
-	Mesh* m_vehicleMesh;
-	Mesh* m_meshWheel;
 	DebugDraw* m_debugDraw;
 
 	struct DebugOption
@@ -125,9 +123,12 @@ private:
 	Vector3f m_cursorGroundPosition;
 	Vector3f m_cursorGroundPositionPrev;
 
+	Mesh* m_vehicleMesh;
+	Mesh* m_meshWheel;
 	Shader* m_shader;
 	Texture* m_backgroundTexture;
 	Texture* m_roadTexture;
+
 	Vector2f m_backgroundPosition;
 	Vector2f m_backgroundSize;
 	ProfileSection m_profiling;

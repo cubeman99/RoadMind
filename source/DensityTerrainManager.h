@@ -14,8 +14,6 @@ public:
 		const MaterialComponent& material, ECS& ecs);
 	virtual ~DensityTerrainManager();
 
-	void SetMarchingCubesShader(Shader* shader);
-	void SetDensityShader(Shader* shader);
 	virtual void UpdateComponents(float delta, BaseECSComponent** components) override;
 
 protected:
@@ -27,12 +25,12 @@ private:
 public:
 	ECS& m_ecs;
 	RenderDevice* m_renderDevice;
-	Shader* m_shaderGenerateDensity;
-	Shader* m_shaderListNonEmptyCells;
-	Shader* m_shaderListVertices;
-	Shader* m_shaderMarchingCubes;
-	Shader* m_shaderGenerateVertices;
-	Shader* m_shaderGenerateIndices;
+	Shader::sptr m_shaderGenerateDensity;
+	Shader::sptr m_shaderListNonEmptyCells;
+	Shader::sptr m_shaderListVertices;
+	Shader::sptr m_shaderMarchingCubes;
+	Shader::sptr m_shaderGenerateVertices;
+	Shader::sptr m_shaderGenerateIndices;
 	MaterialComponent m_terrainMaterial;
 
 	Texture* m_vertexIdTexture;

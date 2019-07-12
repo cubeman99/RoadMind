@@ -37,6 +37,7 @@ float densityFunction(vec3 pos)
 	density += snoise(samplePos * 1.96) * 0.50 * amplitude;
 	density += snoise(samplePos * 1.01) * 1.00 * amplitude;
 	density += snoise(samplePos * 0.49) * 2.00 * amplitude;
+
     /*for (int j = 0; j < octaves; j++) {
 		vec3 samplePos = pos;
 		samplePos.x += snoise(pos * frequency) * 2;

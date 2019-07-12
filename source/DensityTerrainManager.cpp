@@ -351,16 +351,6 @@ DensityTerrainManager::~DensityTerrainManager()
 {
 }
 
-void DensityTerrainManager::SetMarchingCubesShader(Shader * shader)
-{
-	m_shaderMarchingCubes = shader;
-}
-
-void DensityTerrainManager::SetDensityShader(Shader * shader)
-{
-	m_shaderGenerateDensity = shader;
-}
-
 void DensityTerrainManager::UpdateComponents(float delta, BaseECSComponent** components)
 {
 	TransformComponent* transform = (TransformComponent*) components[0];
@@ -469,7 +459,7 @@ EntityHandle DensityTerrainManager::CreateChunk(const Vector3f & position,
 	// Copy vertices and indices into the mesh buffers
 	CMG_ASSERT(vertexCount <= (m_bufferVertices.GetSize() / sizeof(VertexPosTexNorm)));
 	   
-	Mesh* mesh = new Mesh();
+	Mesh::sptr mesh = std::make_shared<Mesh>();
 	mesh->GetVertexData()->BufferVertices(vertexCount, (const VertexPosTexNorm*) nullptr);
 	mesh->GetVertexData()->GetVertexBuffer()->BufferData(
 		0, vertexCount * sizeof(VertexPosTexNorm), m_bufferVertices);

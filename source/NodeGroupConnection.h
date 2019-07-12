@@ -15,7 +15,9 @@
 // Class:   NodeGroupConnection
 // Purpose: Represents a one-way connection between two node (sub) groups.
 //-----------------------------------------------------------------------------
-class NodeGroupConnection : public RoadSurface
+class NodeGroupConnection :
+	public RoadSurface,
+	public ECSComponent<NodeGroupConnection>
 {
 	friend class RoadNetwork;
 	friend class NodeGroup;
