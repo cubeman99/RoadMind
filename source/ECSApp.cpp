@@ -202,9 +202,9 @@ void ECSApp::OnUpdate(float dt)
 			m_world = m_worldDensity;
 	}
 
-	TransformComponent* transform = m_scene.GetComponent<TransformComponent>(m_entityPlayer);
+	TransformComponent* transform = m_entityPlayer->GetComponent<TransformComponent>();
 	float speed = 50.0f * dt;
-	Vector3f forward = m_scene.GetComponent<TransformComponent>(m_cameraEntity)->rotation.GetForward();
+	Vector3f forward = m_cameraEntity->GetComponent<TransformComponent>()->rotation.GetForward();
 	Vector3f up = Vector3f::UNITZ;
 	Vector3f right = Vector3f::Normalize(Vector3f::Cross(forward, up));
 	forward = Vector3f::Normalize(Vector3f::Cross(up, right));
@@ -220,7 +220,7 @@ void ECSApp::OnUpdate(float dt)
 		transform->position += up * speed;
 	if (keyboard->IsKeyDown(Keys::q))
 		transform->position -= up * speed;
-	m_scene.GetComponent<ArcBall>(m_cameraEntity)->SetFocus(m_scene.GetComponent<TransformComponent>(m_entityPlayer)->position);
+	m_cameraEntity->GetComponent<ArcBall>()->SetFocus(m_entityPlayer->GetComponent<TransformComponent>()->position);
 
 	// Update ECS
 	m_world->SetFocus(transform->position);
@@ -244,8 +244,8 @@ void ECSApp::OnRender()
 	g.SetTransformation(Matrix4f::IDENTITY);*/
 
 	// Set camera transform
-	auto transform = m_scene.GetComponent<TransformComponent>(m_cameraEntity);
-	auto arcBall = m_scene.GetComponent<ArcBall>(m_cameraEntity);
+	auto transform = m_cameraEntity->GetComponent<TransformComponent>();
+	auto arcBall = m_cameraEntity->GetComponent<ArcBall>();
 	m_camera.SetOrientation(transform->transform.rotation);
 	m_camera.SetPosition(transform->transform.position);
 
@@ -269,7 +269,7 @@ void ECSApp::LoadResources()
 	ResourceManager* resourceManager = GetResourceManager();
 
 	// Fonts
-	m_font = SpriteFont::LoadBuiltInFont(BuiltInFonts::FONT_CONSOLE);
+	resourceManager->LoadBuiltInFont(m_font, BuiltInFonts::FONT_CONSOLE);
 
 	// Textures
 	TextureParams texParams;
@@ -298,8 +298,6 @@ void ECSApp::LoadResources()
 
 void ECSApp::UnloadResources()
 {
-	delete m_font;
-	m_font = nullptr;
 }
 
 void ECSApp::Reset()

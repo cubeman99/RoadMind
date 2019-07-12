@@ -9,6 +9,8 @@ static const char* SAVE_FILE_PATH = "road_network.rdmd";
 
 #define ASSETS_PATH "C:/workspace/c++/cmg/RoadMind/assets/"
 
+using namespace cmg;
+
 
 MainApp::MainApp()
 	: m_profiling("root")
@@ -22,6 +24,10 @@ MainApp::MainApp()
 	m_debugOptions.push_back(m_showSeams = new DebugOption("Seams", false));
 	m_debugOptions.push_back(m_showCollisions = new DebugOption("Collisions", false));
 	m_debugOptions.push_back(m_showDrivingLines = new DebugOption("Paths", false));
+
+	ResourceManager* resourceManager = GetResourceManager();
+	resourceManager->AddPath(Path(ASSETS_PATH));
+	resourceManager->AddShaderIncludePath(Path(ASSETS_PATH "shaders"));
 
 	/*
 	m_showCollisions->enabled = false;
@@ -52,13 +58,10 @@ MainApp::MainApp()
 
 MainApp::~MainApp()
 {
-	UnloadShaders();
 }
 
 void MainApp::OnInitialize()
 {
-	LoadShaders();
-
 	m_paused = false;
 	m_debugDraw = new DebugDraw();
 	m_network = new RoadNetwork(m_ecs);
@@ -66,13 +69,17 @@ void MainApp::OnInitialize()
 	m_backgroundTexture = nullptr;
 
 	// Load assets
+	ResourceManager* resourceManager = GetResourceManager();
+	LoadShaders();
 	TextureParams params;
 	params.SetWrap(TextureWrap::REPEAT);
-	m_roadTexture = Texture::LoadTexture(ASSETS_PATH "textures/asphalt.png", params);
-	Mesh::Load(ASSETS_PATH "toyota_ae86.obj", m_vehicleMesh, MeshLoadOptions::k_flip_triangles);
-	m_font = SpriteFont::LoadBuiltInFont(BuiltInFonts::FONT_CONSOLE);
+	resourceManager->LoadTexture(m_roadTexture,
+		"textures/asphalt.png", params);
+	resourceManager->LoadMesh(m_vehicleMesh,
+		"toyota_ae86.obj", MeshLoadOptions::k_flip_triangles);
+	resourceManager->LoadBuiltInFont(m_font, BuiltInFonts::FONT_CONSOLE);
 
-	// Create systems
+	// Create ECS systems
 	m_meshRenderSystem = new MeshRenderSystem(*m_debugDraw, *GetRenderDevice());
 	m_arcBallControlSystem.SetMouse(GetMouse());
 	m_arcBallControlSystem.SetUpAxis(Vector3f::UNITZ);
@@ -93,22 +100,26 @@ void MainApp::OnInitialize()
 	transform = TransformComponent();
 	transform.position = Vector3f::ZERO;
 
-	/*
 	MeshComponent mesh;
-	MaterialComponent material;
+	Material::sptr material = std::make_shared<Material>();
+	MaterialComponent materialComponent;
+	materialComponent.material = material;
 	mesh.mesh = m_vehicleMesh;
-	material.SetShader(m_shader);
-	material.SetUniform("u_color", Color::WHITE);
-	material.SetUniform("s_diffuse", m_roadTexture);
-	m_entityPlayer = m_ecs.CreateEntity(transform, mesh, material);
+	material->SetShader(m_shader);
+	material->SetUniform("u_color", Color::WHITE);
+	material->SetUniform("s_diffuse", m_roadTexture);
+	m_entityPlayer = m_ecs.CreateEntity(transform, mesh, materialComponent);
 
-	Mesh* sphere = Primitives::CreateIcoSphere(1.0f, 2);
+	Mesh::sptr sphere = GetResourceManager()->Add(
+		"unit_icosphere_sub2", Primitives::CreateIcoSphere(1.0f, 2));
 	mesh.mesh = sphere;
+	material = std::make_shared<Material>();
 	transform.scale = Vector3f(0.5f);
-	material.SetShader(m_shader);
-	material.SetUniform("u_color", Color::RED);
-	material.SetUniform("s_diffuse", m_roadTexture);
-	m_ecs.CreateEntity(transform, mesh, material);*/
+	material->SetShader(m_shader);
+	material->SetUniform("u_color", Color::RED);
+	material->SetUniform("s_diffuse", m_roadTexture);
+	materialComponent.material = material;
+	m_ecs.CreateEntity(transform, mesh, materialComponent);
 
 	m_camera.SetPerspective(GetWindow()->GetAspectRatio(), 1.0f, 1.0f, 1000.0f);
 
@@ -415,42 +426,22 @@ void MainApp::DrawCurveLine(Graphics2D& g,
 
 void MainApp::LoadShaders()
 {
-	Shader::LoadShader(m_shader,
-		ASSETS_PATH "shaders/shader_vs.glsl",
-		ASSETS_PATH "shaders/shader_fs.glsl");
-}
-
-void MainApp::UnloadShaders()
-{
-	delete m_shader;
-	m_shader = nullptr;
+	GetResourceManager()->LoadShader(
+		m_shader, "shader",
+		"shaders/shader_vs.glsl",
+		"shaders/shader_fs.glsl");
 }
 
 void MainApp::OnQuit()
 {
 	delete m_debugDraw;
 	m_debugDraw = nullptr;
-	delete m_vehicleMesh;
-	m_vehicleMesh = nullptr;
-	delete m_meshWheel;
-	m_meshWheel = nullptr;
 	delete m_drivingSystem;
-	delete m_roadTexture;
-	m_roadTexture = nullptr;
 
 	m_drivingSystem = nullptr;
 
 	delete m_network;
 	m_network = nullptr;
-
-	delete m_font;
-	m_font = nullptr;
-
-	if (m_backgroundTexture != nullptr)
-	{
-		delete m_backgroundTexture;
-		m_backgroundTexture = nullptr;
-	}
 }
 
 void MainApp::OnResizeWindow(int width, int height)
@@ -460,18 +451,11 @@ void MainApp::OnResizeWindow(int width, int height)
 
 void MainApp::OnDropFile(const String& fileName)
 {
-	if (m_backgroundTexture != nullptr)
+	Error error = GetResourceManager()->LoadTexture(
+		m_backgroundTexture, Path(fileName));
+
+	if (error.Passed())
 	{
-		delete m_backgroundTexture;
-		m_backgroundTexture = nullptr;
-	}
-
-	Texture* texture = Texture::LoadTexture(fileName);
-
-	if (texture != nullptr)
-	{
-		m_backgroundTexture = texture;
-
 		m_backgroundSize = Vector2f(10.0f, 10.0f);
 		m_backgroundPosition = Vector2f::ZERO;
 		printf("Loaded background image: %s\n", fileName.c_str());
@@ -802,7 +786,7 @@ void MainApp::OnRender()
 
 	if (m_backgroundTexture != nullptr)
 	{
-		g.DrawTexture(m_backgroundTexture,
+		g.DrawTexture(m_backgroundTexture.get(),
 			m_backgroundPosition - (m_backgroundSize * 0.5f));
 	}
 
@@ -1090,7 +1074,7 @@ void MainApp::OnRender()
 			modelMatrix = Matrix4f::CreateTranslation(0.0f, 0.0f, 0.2f) *
 				Matrix4f::CreateTranslation(state.position[i]) * Matrix4f(dcm);
 
-			m_debugDraw->DrawMesh(m_vehicleMesh, modelMatrix *
+			m_debugDraw->DrawMesh(m_vehicleMesh.get(), modelMatrix *
 				Matrix4f::CreateRotation(Vector3f::UNITZ, -Math::HALF_PI) *
 				Matrix4f::CreateRotation(Vector3f::UNITY, -Math::HALF_PI) *
 				Matrix4f::CreateTranslation(0.0f, 0.0f, 0.5f),
@@ -1123,7 +1107,7 @@ void MainApp::OnRender()
 		//ss << driver->GetId();
 		//ss << (int) driver->GetMovementState();
 		//ss << driver->GetAcceleration();
-		g.DrawString(m_font, ss.str(), Vector2f::ZERO, Color::WHITE, TextAlign::CENTERED);
+		g.DrawString(m_font.get(), ss.str(), Vector2f::ZERO, Color::WHITE, TextAlign::CENTERED);
 	}
 	glDisable(GL_DEPTH_TEST);
 	glDepthMask(false);
@@ -1261,7 +1245,7 @@ void MainApp::OnRender()
 	ss << "---------------------------" << endl;
 	ss << "Traffic: " << int(100 * m_drivingSystem->GetTrafficPercent() + 0.5f) << "%" << endl;
 
-	g.DrawString(m_font, ss.str(), Vector2f(5, 40));
+	g.DrawString(m_font.get(), ss.str(), Vector2f(5, 40));
 
 	if (m_currentTool == m_toolDraw)
 	{

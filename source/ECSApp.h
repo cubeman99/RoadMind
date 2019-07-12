@@ -47,15 +47,15 @@ private:
 	ArcBallControlSystem m_arcBallControlSystem;
 
 	// Entities
-	EntityHandle m_cameraEntity;
-	EntityHandle m_entityPlayer;
+	ECSEntity* m_cameraEntity;
+	ECSEntity* m_entityPlayer;
 	Camera m_camera;
 
 	// Resources
+	SpriteFont::sptr m_font;
 	Shader::sptr m_shader;
 	Shader::sptr m_computeShader;
 	Shader::sptr m_shaderRenderTerrain;
-	SpriteFont* m_font;
 	Texture::sptr m_textureRoad;
 	Texture::sptr m_textureTest2;
 	Texture::sptr m_textureTerrain;

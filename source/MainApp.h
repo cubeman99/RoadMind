@@ -28,7 +28,6 @@ public:
 	MainApp();
 	~MainApp();
 
-	void UnloadShaders();
 	void LoadShaders();
 
 	void OnInitialize() override;
@@ -59,7 +58,6 @@ private:
 	RenderParams m_renderParams;
 	Joystick* m_joystick;
 	Joystick* m_wheel;
-	SpriteFont* m_font;
 	RoadNetwork* m_network;
 	DrivingSystem* m_drivingSystem;
 
@@ -123,11 +121,12 @@ private:
 	Vector3f m_cursorGroundPosition;
 	Vector3f m_cursorGroundPositionPrev;
 
-	Mesh* m_vehicleMesh;
-	Mesh* m_meshWheel;
-	Shader* m_shader;
-	Texture* m_backgroundTexture;
-	Texture* m_roadTexture;
+	SpriteFont::sptr m_font;
+	Mesh::sptr m_vehicleMesh;
+	Mesh::sptr m_meshWheel;
+	Shader::sptr m_shader;
+	Texture::sptr m_backgroundTexture;
+	Texture::sptr m_roadTexture;
 
 	Vector2f m_backgroundPosition;
 	Vector2f m_backgroundSize;
@@ -136,7 +135,6 @@ private:
 	ProfileSection* m_profileDrivers;
 	ProfileSection* m_profileDraw;
 	ProfileSection* m_profileNetworkSimulation;
-
 };
 
 

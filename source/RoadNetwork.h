@@ -96,10 +96,12 @@ private:
 	Set<NodeGroup*> m_nodeGroups;
 	Set<NodeGroupConnection*> m_nodeGroupConnections;
 	Set<RoadIntersection*> m_intersections;
-	unsigned int m_nodeGroupConnectionIdCounter;
-	unsigned int m_tieIdCounter;
-	unsigned int m_nodeGroupIdCounter;
-	unsigned int m_intersectionIdCounter;
+	uint32 m_nodeGroupConnectionIdCounter;
+	uint32 m_tieIdCounter;
+	uint32 m_nodeGroupIdCounter;
+	uint32 m_intersectionIdCounter;
+
+
 };
 
 

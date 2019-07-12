@@ -16,8 +16,8 @@ int main(int argc, char* argv[])
 {
 	srand((unsigned int) time(nullptr));
 
-	//MainApp app;
-	ECSApp app;
+	MainApp app;
+	//ECSApp app;
 	//GeometryApp app;
 	//DrivingApp app;
 	app.Initialize("Road Mind", 800, 600);
