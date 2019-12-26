@@ -136,7 +136,7 @@ struct
 
 void GeometryApp::OnInitialize()
 {
-	m_font = SpriteFont::LoadBuiltInFont(BuiltInFonts::FONT_CONSOLE);
+	GetResourceManager()->LoadBuiltInFont(m_font, BuiltInFonts::FONT_CONSOLE);
 
 	m_hoverPoint = nullptr;
 
@@ -170,9 +170,6 @@ void GeometryApp::OnInitialize()
 
 void GeometryApp::OnQuit()
 {
-	delete m_font;
-	m_font = nullptr;
-
 	for (Point* point : m_points)
 		delete point;
 	m_points.clear();
@@ -314,7 +311,7 @@ void GeometryApp::OnRender()
 	std::stringstream ss;
 	ss << "GEOMETRY TEST" << endl;
 
-	g.DrawString(m_font, ss.str(), Vector2f(5, 5), Color::YELLOW);
+	g.DrawString(m_font.get(), ss.str(), Vector2f(5, 5), Color::YELLOW);
 	
 	if (m_wireframe)
 		glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);

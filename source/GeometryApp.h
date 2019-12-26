@@ -80,7 +80,7 @@ private:
 	Array<Point*> m_points;
 	Array<Shape> m_shapes;
 	Vector2f m_mousePosition;
-	SpriteFont* m_font;
+	Font::sptr m_font;
 	Point* m_hoverPoint;
 
 	Point** m_arcPoints;

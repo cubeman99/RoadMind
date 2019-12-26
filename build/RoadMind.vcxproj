@@ -51,7 +51,7 @@
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalLibraryDirectories>../../cmgEngine/INSTALL/lib/Debug;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>cmgCore.lib;cmgMath.lib;cmgGraphics.lib;cmgInput.lib;cmgPhysics.lib;cmgApplication.lib;opengl32.lib;glu32.lib;dinput8.lib;Xinput9_1_0.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>FreeType.lib;SOIL.lib;cmgCore.lib;cmgMath.lib;cmgGraphics.lib;cmgInput.lib;cmgPhysics.lib;cmgApplication.lib;opengl32.lib;glu32.lib;dinput8.lib;Xinput9_1_0.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -67,7 +67,7 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
-      <AdditionalDependencies>cmgCore.lib;cmgMath.lib;cmgGraphics.lib;cmgInput.lib;cmgApplication.lib;opengl32.lib;glu32.lib;dinput8.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>FreeType.lib;SOIL.lib;cmgCore.lib;cmgMath.lib;cmgGraphics.lib;cmgInput.lib;cmgApplication.lib;opengl32.lib;glu32.lib;dinput8.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalLibraryDirectories>../../cmgEngine/INSTALL/lib/Release;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
   </ItemDefinitionGroup>

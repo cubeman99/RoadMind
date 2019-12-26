@@ -54,6 +54,7 @@ public:
 	bool IsGhost() const;
 	float GetLinearSlope() const;
 	Mesh* GetMesh();
+	bool ContainsPoint(const Vector2f& point);
 
 	// Setters
 

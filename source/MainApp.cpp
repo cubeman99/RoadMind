@@ -54,6 +54,18 @@ MainApp::MainApp()
 	m_renderParams.EnableCullFace(true);
 	m_renderParams.SetFrontFace(FrontFace::k_clockwise);
 	m_renderParams.SetCullFace(CullFace::k_back);
+
+	m_renderParamsHud.SetClearColor(Color::MAGENTA);
+	m_renderParamsHud.EnablePolygonSmooth(false);
+	m_renderParamsHud.EnableLineSmooth(false);
+	m_renderParamsHud.SetPolygonMode(PolygonMode::k_fill);
+	m_renderParamsHud.SetClearBits(ClearBits::k_color_buffer_bit | ClearBits::k_depth_buffer_bit);
+	m_renderParamsHud.EnableBlend(true);
+	m_renderParamsHud.SetBlendFunction(BlendFunc::k_source_alpha, BlendFunc::k_one_minus_source_alpha);
+	m_renderParamsHud.EnableCullFace(false);
+	m_renderParamsHud.EnableDepthBufferWrite(false);
+	m_renderParamsHud.EnableDepthTest(false);
+	m_renderParamsHud.EnableNearFarPlaneClipping(false);
 }
 
 MainApp::~MainApp()
@@ -62,6 +74,9 @@ MainApp::~MainApp()
 
 void MainApp::OnInitialize()
 {
+	ResourceManager* resourceManager = GetResourceManager();
+	resourceManager->LoadBuiltInFont(m_font, BuiltInFonts::FONT_CONSOLE);
+
 	m_paused = false;
 	m_debugDraw = new DebugDraw();
 	m_network = new RoadNetwork(m_ecs);
@@ -69,7 +84,6 @@ void MainApp::OnInitialize()
 	m_backgroundTexture = nullptr;
 
 	// Load assets
-	ResourceManager* resourceManager = GetResourceManager();
 	LoadShaders();
 	TextureParams params;
 	params.SetWrap(TextureWrap::REPEAT);
@@ -77,7 +91,6 @@ void MainApp::OnInitialize()
 		"textures/asphalt.png", params);
 	resourceManager->LoadMesh(m_vehicleMesh,
 		"toyota_ae86.obj", MeshLoadOptions::k_flip_triangles);
-	resourceManager->LoadBuiltInFont(m_font, BuiltInFonts::FONT_CONSOLE);
 
 	// Create ECS systems
 	m_meshRenderSystem = new MeshRenderSystem(*m_debugDraw, *GetRenderDevice());
@@ -449,20 +462,21 @@ void MainApp::OnResizeWindow(int width, int height)
 	m_camera.SetAspectRatio(GetWindow()->GetAspectRatio());
 }
 
-void MainApp::OnDropFile(const String& fileName)
+void MainApp::OnDropFiles(const Array<Path>& paths)
 {
+	Path path = paths[0];
 	Error error = GetResourceManager()->LoadTexture(
-		m_backgroundTexture, Path(fileName));
+		m_backgroundTexture, path);
 
 	if (error.Passed())
 	{
 		m_backgroundSize = Vector2f(10.0f, 10.0f);
 		m_backgroundPosition = Vector2f::ZERO;
-		printf("Loaded background image: %s\n", fileName.c_str());
+		printf("Loaded background image: %s\n", path.c_str());
 	}
 	else
 	{
-		printf("Error background image: %s\n", fileName.c_str());
+		printf("Error background image: %s\n", path.c_str());
 	}
 }
 
@@ -742,6 +756,7 @@ void MainApp::OnRender()
 	MouseState mouseState = GetMouse()->GetMouseState();
 	Vector2f windowSize((float)window->GetWidth(),
 		(float)window->GetHeight());
+
 	Graphics2D g(window);
 	g.SetTransformation(Matrix4f::IDENTITY);
 
@@ -1185,14 +1200,10 @@ void MainApp::OnRender()
 		}
 	}
 
-
 	// Draw HUD
-	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-	projection = Matrix4f::CreateOrthographic(0.0f,
-		(float)window->GetWidth(), (float)window->GetHeight(),
-		0.0f, -1.0f, 1.0f);
-	glMatrixMode(GL_PROJECTION);
-	glLoadMatrixf(projection.m);
+	m_renderer.SetRenderParams(m_renderParamsHud);
+	m_renderer.ApplyRenderSettings();
+	g.SetWindowOrthoProjection();
 
 	if (m_currentTool == m_toolSelection)
 	{

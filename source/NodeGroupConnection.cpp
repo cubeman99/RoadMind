@@ -228,6 +228,12 @@ Mesh* NodeGroupConnection::GetMesh()
 	return m_mesh;
 }
 
+bool NodeGroupConnection::ContainsPoint(const Vector2f& point)
+{
+	return false;
+}
+
+
 //-----------------------------------------------------------------------------
 // Setters
 //-----------------------------------------------------------------------------

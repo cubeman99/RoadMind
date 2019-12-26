@@ -37,7 +37,7 @@ DrivingApp::~DrivingApp()
 
 void DrivingApp::OnInitialize()
 {
-	m_font = SpriteFont::LoadBuiltInFont(BuiltInFonts::FONT_CONSOLE);
+	GetResourceManager()->LoadBuiltInFont(m_font, BuiltInFonts::FONT_CONSOLE);
 	m_debugDraw = new DebugDraw();
 
 	m_defaultCameraState.m_viewHeight = 50.0f;
@@ -174,8 +174,6 @@ void DrivingApp::OnInitialize()
 
 void DrivingApp::OnQuit()
 {
-	delete m_font;
-	m_font = nullptr;
 	delete m_player;
 	m_player = nullptr;
 }

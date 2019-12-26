@@ -33,7 +33,7 @@ public:
 	void OnInitialize() override;
 	void OnQuit() override;
 	void OnResizeWindow(int width, int height) override;
-	void OnDropFile(const String& fileName) override;
+	void OnDropFiles(const Array<Path>& paths) override;
 	void OnUpdate(float timeDelta) override;
 	void OnRender() override;
 
@@ -56,6 +56,7 @@ private:
 
 	Renderer m_renderer;
 	RenderParams m_renderParams;
+	RenderParams m_renderParamsHud;
 	Joystick* m_joystick;
 	Joystick* m_wheel;
 	RoadNetwork* m_network;
@@ -121,7 +122,7 @@ private:
 	Vector3f m_cursorGroundPosition;
 	Vector3f m_cursorGroundPositionPrev;
 
-	SpriteFont::sptr m_font;
+	Font::sptr m_font;
 	Mesh::sptr m_vehicleMesh;
 	Mesh::sptr m_meshWheel;
 	Shader::sptr m_shader;

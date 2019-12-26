@@ -52,7 +52,7 @@ private:
 	Camera m_camera;
 
 	// Resources
-	SpriteFont::sptr m_font;
+	Font::sptr m_font;
 	Shader::sptr m_shader;
 	Shader::sptr m_computeShader;
 	Shader::sptr m_shaderRenderTerrain;

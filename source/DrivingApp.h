@@ -31,7 +31,7 @@ public:
 	void DrawVehicle(Graphics2D& g, Vehicle* vehicle);
 
 private:
-	SpriteFont* m_font;
+	Font::sptr m_font;
 	DebugDraw* m_debugDraw;
 	PhysicsEngine* m_physicsEngine;
 
