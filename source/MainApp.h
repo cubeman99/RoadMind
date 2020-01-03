@@ -54,7 +54,6 @@ private:
 	void DrawCurveLine(Graphics2D& g, const Biarc& horizontalArc, const VerticalCurve& verticalCurve, float offset, const Color& color);
 	void DrawCurveLine(Graphics2D& g, const RoadCurveLine& arcs, const Color& color);
 
-	Renderer m_renderer;
 	RenderParams m_renderParams;
 	RenderParams m_renderParamsHud;
 	Joystick* m_joystick;

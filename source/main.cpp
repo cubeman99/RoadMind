@@ -10,7 +10,6 @@
 #include "MainApp.h"
 #include "GeometryApp.h"
 #include "DrivingApp.h"
-#include "ECSApp.h"
 
 int main(int argc, char* argv[])
 {

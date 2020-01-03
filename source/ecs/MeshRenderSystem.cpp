@@ -34,9 +34,9 @@ void MeshRenderSystem::UpdateComponents(float delta, BaseECSComponent** componen
 		Matrix4f mvp = m_camera->GetViewProjectionMatrix() *
 			transform->transform.GetMatrix();
 		if (shader->HasUniform("u_mvp"))
-			m_renderDevice.SetShaderUniform(shader, "u_mvp", mvp);
+			m_renderDevice.SetShaderUniform(shader.get(), "u_mvp", mvp);
 		if (shader->HasUniform("u_eyePos"))
-			m_renderDevice.SetShaderUniform(shader, "u_eyePos", m_camera->GetPosition());
+			m_renderDevice.SetShaderUniform(shader.get(), "u_eyePos", m_camera->GetPosition());
 
 		uint32 samplerSlot = 0;
 		for (auto it = material->uniforms_begin(); it != material->uniforms_end(); it++)
@@ -47,31 +47,32 @@ void MeshRenderSystem::UpdateComponents(float delta, BaseECSComponent** componen
 			{
 				if (it->second.type == UniformType::k_texture)
 				{
-					m_renderDevice.SetTextureSampler(shader, name, it->second.texture, samplerSlot);
+					m_renderDevice.SetTextureSampler(shader.get(), name,
+						it->second.texture.get(), samplerSlot);
 					samplerSlot++;
 				}
 				else if (it->second.type == UniformType::k_vec4)
-					m_renderDevice.SetShaderUniform(shader, name, value.vec4);
+					m_renderDevice.SetShaderUniform(shader.get(), name, value.vec4);
 				else if (it->second.type == UniformType::k_vec3)
-					m_renderDevice.SetShaderUniform(shader, name, value.vec3);
+					m_renderDevice.SetShaderUniform(shader.get(), name, value.vec3);
 				else if (it->second.type == UniformType::k_vec2)
-					m_renderDevice.SetShaderUniform(shader, name, value.vec2);
+					m_renderDevice.SetShaderUniform(shader.get(), name, value.vec2);
 				else if (it->second.type == UniformType::k_float)
-					m_renderDevice.SetShaderUniform(shader, name, value.float32_value);
+					m_renderDevice.SetShaderUniform(shader.get(), name, value.float32_value);
 				else if (it->second.type == UniformType::k_unsigned_int)
-					m_renderDevice.SetShaderUniform(shader, name, value.float32_value);
+					m_renderDevice.SetShaderUniform(shader.get(), name, value.float32_value);
 				else if (it->second.type == UniformType::k_uvec3)
-					m_renderDevice.SetShaderUniform(shader, name, value.uvec3);
+					m_renderDevice.SetShaderUniform(shader.get(), name, value.uvec3);
 				else if (it->second.type == UniformType::k_uvec2)
-					m_renderDevice.SetShaderUniform(shader, name, value.uvec2);
+					m_renderDevice.SetShaderUniform(shader.get(), name, value.uvec2);
 				else if (it->second.type == UniformType::k_ivec3)
-					m_renderDevice.SetShaderUniform(shader, name, value.ivec3);
+					m_renderDevice.SetShaderUniform(shader.get(), name, value.ivec3);
 				else if (it->second.type == UniformType::k_ivec2)
-					m_renderDevice.SetShaderUniform(shader, name, value.ivec2);
+					m_renderDevice.SetShaderUniform(shader.get(), name, value.ivec2);
 				else
 					CMG_ASSERT(false);
 			}
 		}
-		m_renderDevice.Draw(nullptr, shader, meshComponent->mesh);
+		m_renderDevice.Draw(nullptr, shader.get(), meshComponent->mesh);
 	}
 }

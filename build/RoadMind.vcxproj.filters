@@ -30,9 +30,6 @@
     <Filter Include="source\ecs">
       <UniqueIdentifier>{46885e75-a71d-46d3-b9ce-13c458ae751c}</UniqueIdentifier>
     </Filter>
-    <Filter Include="source\MarchingCubes">
-      <UniqueIdentifier>{b7870c94-0246-438a-b495-9a89d9250a7d}</UniqueIdentifier>
-    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\source\Node.h">
@@ -113,9 +110,6 @@
     <ClInclude Include="..\source\RoadCurves.h">
       <Filter>source\Core</Filter>
     </ClInclude>
-    <ClInclude Include="..\source\ECSApp.h">
-      <Filter>source\Applications</Filter>
-    </ClInclude>
     <ClInclude Include="..\source\ecs\MaterialComponent.h">
       <Filter>source\ecs</Filter>
     </ClInclude>
@@ -124,18 +118,6 @@
     </ClInclude>
     <ClInclude Include="..\source\ecs\MeshRenderSystem.h">
       <Filter>source\ecs</Filter>
-    </ClInclude>
-    <ClInclude Include="..\source\Chunk.h">
-      <Filter>source\MarchingCubes</Filter>
-    </ClInclude>
-    <ClInclude Include="..\source\TerrainManager.h">
-      <Filter>source\MarchingCubes</Filter>
-    </ClInclude>
-    <ClInclude Include="..\source\HeightmapTerrainManager.h">
-      <Filter>source\MarchingCubes</Filter>
-    </ClInclude>
-    <ClInclude Include="..\source\DensityTerrainManager.h">
-      <Filter>source\MarchingCubes</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -211,23 +193,8 @@
     <ClCompile Include="..\source\RoadCurves.cpp">
       <Filter>source\Core</Filter>
     </ClCompile>
-    <ClCompile Include="..\source\ECSApp.cpp">
-      <Filter>source\Applications</Filter>
-    </ClCompile>
     <ClCompile Include="..\source\ecs\MeshRenderSystem.cpp">
       <Filter>source\ecs</Filter>
-    </ClCompile>
-    <ClCompile Include="..\source\Chunk.cpp">
-      <Filter>source\MarchingCubes</Filter>
-    </ClCompile>
-    <ClCompile Include="..\source\TerrainManager.cpp">
-      <Filter>source\MarchingCubes</Filter>
-    </ClCompile>
-    <ClCompile Include="..\source\HeightmapTerrainManager.cpp">
-      <Filter>source\MarchingCubes</Filter>
-    </ClCompile>
-    <ClCompile Include="..\source\DensityTerrainManager.cpp">
-      <Filter>source\MarchingCubes</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

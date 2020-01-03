@@ -765,8 +765,8 @@ void MainApp::OnRender()
 	// Set up render params
 	m_renderParams.SetPolygonMode(
 		m_wireframeMode->enabled ? PolygonMode::k_line : PolygonMode::k_fill);
-	m_renderer.SetRenderParams(m_renderParams);
-	m_renderer.ApplyRenderSettings(true);
+	GetRenderDevice()->SetRenderParams(m_renderParams);
+	GetRenderDevice()->ApplyRenderSettings(true);
 
 	// Get camera transform
 	auto transform = m_ecs.GetComponent<TransformComponent>(m_cameraEntity);
@@ -1201,8 +1201,8 @@ void MainApp::OnRender()
 	}
 
 	// Draw HUD
-	m_renderer.SetRenderParams(m_renderParamsHud);
-	m_renderer.ApplyRenderSettings();
+	GetRenderDevice()->SetRenderParams(m_renderParamsHud);
+	GetRenderDevice()->ApplyRenderSettings();
 	g.SetWindowOrthoProjection();
 
 	if (m_currentTool == m_toolSelection)
